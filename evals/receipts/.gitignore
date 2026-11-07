@@ -1,0 +1,2 @@
+# The rendered eval set is committed (~5 MB, deterministic). The root .gitignore ignores out/; re-include it here.
+!out/
