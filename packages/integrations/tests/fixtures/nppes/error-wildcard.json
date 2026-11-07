@@ -1,0 +1,9 @@
+{
+  "Errors": [
+    {
+      "description": "Wildcards require at least two leading characters",
+      "field": "last_name",
+      "number": "03"
+    }
+  ]
+}
