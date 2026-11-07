@@ -70,6 +70,14 @@ The story then reconciles exactly:
 
 **Approvals.** Blocks are never approvable (bad speaker, over the per-person cap *before* the dinner, over an HCP's annual cap). Flags are approvable by anyone except the plan's rep. **After the dinner, an actual per-person cost over the cap is a flag (exception to compliance), not a block**, because the money is already spent and compliance has to be able to close it out.
 
+## Sat Nov 7 — visual direction
+
+**Ramp-based palette, sleek and streamlined.** Colors are taken from ramp.com's own stylesheet (warm off-white `#F4F2F0`, black `#1A1919`, "solar" lime `#E4F222`, "smolder" green `#17332D`, warm grays). Status colors are ours, tuned to sit with it; every text color passes WCAG AA (4.5:1). The lime is **fill only** (text on it uses `color/on-accent`). No Ramp logo anywhere; the cap bar and stamp stay ours.
+
+**One font: Inter Tight** (closest free font to Ramp's Lausanne). **No serif**: the wordmark is Inter Tight in a heavier weight. This replaces the plan's "one serif for the wordmark and video titles."
+
+**Variables are in Figma** (`Covers tokens`, mode `Light`, 38 variables), created by Claude Code in one call and read back to verify. Each has its CSS name set as its Web code syntax (`var(--color-status-over)`). Accent names: `color/accent` (lime fill), `color/on-accent` (text on lime), `color/accent-strong` (dark green for links and selected states). Code-only tokens (motion, `stamp/rotation`) are hidden from Figma's property pickers.
+
 ## Pending
 
 - **Where `FixtureService` keeps judge data** — decide before B2 (Cole). Leaning: server-side key-value store, so the phone QR handoff works and pages call the server the same way in fixtures and live.
