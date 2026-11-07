@@ -1,0 +1,16 @@
+{
+  "name": "covers",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "pnpm --filter @covers/web dev",
+    "build": "pnpm --filter @covers/web build",
+    "test": "pnpm -r --if-present test",
+    "test:contract": "pnpm -r --if-present test:contract",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}
