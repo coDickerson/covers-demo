@@ -110,9 +110,9 @@ export function runContractSuite(name: string, make: Make) {
         const ruvane = capFor(ev.caps, IDS.ruvane);
         expect(ruvane).toMatchObject({ capCents: 200000, ytdCents: 194000, projectedCents: 205000, state: 'over', sameTopicCount12mo: 2 });
 
-        const ruizChecks = ev.checks.filter((c) => c.subject.kind === 'hcp' && c.subject.npi === IDS.ruvane);
-        expect(ruizChecks.some((c) => c.packId === 'P4' && c.outcome === 'block')).toBe(true);
-        expect(ruizChecks.some((c) => c.packId === 'P5' && c.outcome === 'flag')).toBe(true);
+        const ruvaneChecks = ev.checks.filter((c) => c.subject.kind === 'hcp' && c.subject.npi === IDS.ruvane);
+        expect(ruvaneChecks.some((c) => c.packId === 'P4' && c.outcome === 'block')).toBe(true);
+        expect(ruvaneChecks.some((c) => c.packId === 'P5' && c.outcome === 'flag')).toBe(true);
       });
 
       it('blocks the plan under P1 when Dr. Ortwell is the speaker', async () => {
