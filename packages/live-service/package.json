@@ -1,0 +1,23 @@
+{
+  "name": "@covers/live-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@covers/contract": "workspace:*",
+    "@covers/engine": "workspace:*",
+    "postgres": "3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12"
+  }
+}
