@@ -2,6 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { IDS, fixtures } from '../fixtures';
 
+/** The NPI check digit: Luhn over "80840" + the 10 digits. Real NPIs pass it. */
+const npiChecksumPasses = (npi: string) => {
+  let sum = 0;
+  [...`80840${npi}`].reverse().forEach((ch, i) => {
+    let d = Number(ch);
+    if (i % 2 === 1) d = d * 2 > 9 ? d * 2 - 9 : d * 2;
+    sum += d;
+  });
+  return sum % 10 === 0;
+};
+
 const ledger = (npi: string) => fixtures.ledger.find((l) => l.npi === npi)!;
 
 describe('seed fixtures', () => {
@@ -16,20 +27,23 @@ describe('seed fixtures', () => {
 
   it('uses NPIs that cannot belong to a real doctor', () => {
     const npis = [...fixtures.hcps.map((h) => h.npi), ...fixtures.speakers.map((s) => s.hcp.npi)];
-    for (const npi of npis) expect(npi.startsWith('9')).toBe(true);
+    for (const npi of npis) {
+      expect(npi, npi).toMatch(/^9\d{9}$/); // real NPIs start with 1 or 2
+      expect(npiChecksumPasses(npi), npi).toBe(false);
+    }
     expect(fixtures.hcps.every((h) => h.source === 'seed')).toBe(true);
   });
 
-  it('puts Dr. Ruiz $60 from her cap, over it with this dinner, on her third same-topic program', () => {
-    const ruiz = ledger(IDS.ruiz);
-    expect(annualCapCents - ruiz.ytdCents).toBe(6000);
-    expect(ruiz.ytdCents + plan.estimatedPerPerson).toBeGreaterThan(annualCapCents);
-    expect(ruiz.sameTopicCount12mo).toBeGreaterThanOrEqual(fixtures.company.repeatTopicFlagAt);
+  it('puts Dr. Ruvane $60 from her cap, over it with this dinner, on her third same-topic program', () => {
+    const ruvane = ledger(IDS.ruvane);
+    expect(annualCapCents - ruvane.ytdCents).toBe(6000);
+    expect(ruvane.ytdCents + plan.estimatedPerPerson).toBeGreaterThan(annualCapCents);
+    expect(ruvane.sameTopicCount12mo).toBeGreaterThanOrEqual(fixtures.company.repeatTopicFlagAt);
   });
 
-  it('leaves every other invitee ok (under 80%) so the plan clears once Dr. Ruiz is removed', () => {
+  it('leaves every other invitee ok (under 80%) so the plan clears once Dr. Ruvane is removed', () => {
     const near = (annualCapCents * fixtures.company.nearThresholdPct) / 100;
-    for (const npi of [...plan.inviteeNpis.filter((n) => n !== IDS.ruiz), IDS.patel]) {
+    for (const npi of [...plan.inviteeNpis.filter((n) => n !== IDS.ruvane), IDS.patel]) {
       const l = ledger(npi);
       expect(l.ytdCents + plan.estimatedPerPerson, npi).toBeLessThanOrEqual(near);
       expect(l.sameTopicCount12mo, npi).toBeLessThan(fixtures.company.repeatTopicFlagAt);

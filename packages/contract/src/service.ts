@@ -2,7 +2,7 @@
 // Refusals reject with CoversError (see types.ts).
 import type {
   AuditEvent, Attendance, BreakItResult, CapStatus, CompileResult, Ctx, Evaluation, FundResult,
-  Hcp, PlanInput, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
+  Hcp, PlanInput, PlanPatch, PlanView, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
   RulePack, Settlement, Speaker,
 } from './types';
 
@@ -14,13 +14,15 @@ export interface CoversService {
 
   // before the dinner
   createPlan(ctx: Ctx, input: PlanInput): Promise<ProgramPlan>;
-  updatePlan(ctx: Ctx, id: string, patch: Partial<ProgramPlan>): Promise<ProgramPlan>;
+  getPlan(ctx: Ctx, id: string): Promise<PlanView>; // plan + latest stored evaluation; never re-evaluates, writes no audit event
+  updatePlan(ctx: Ctx, id: string, patch: PlanPatch): Promise<ProgramPlan>; // any edit sets status back to 'draft'
   evaluatePlan(ctx: Ctx, id: string): Promise<Evaluation>;
-  approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>; // actorId must differ from the rep
+  approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>; // flags only, by anyone except the plan's rep
   issueFund(ctx: Ctx, id: string): Promise<FundResult>; // refuses unless status is 'cleared'
 
   // after the dinner
   submitReceipt(ctx: Ctx, planId: string, image: ReceiptImage): Promise<Receipt>;
+  getReceipt(ctx: Ctx, planId: string): Promise<Receipt | null>;
   fixLine(ctx: Ctx, receiptId: string, lineId: string, patch: Partial<ReceiptLine>): Promise<Receipt>;
   confirmAttendance(ctx: Ctx, a: Attendance): Promise<Settlement>; // ctx.actorId and a.confirmedBy must be the plan's rep
   getSettlement(ctx: Ctx, planId: string): Promise<Settlement | null>;
