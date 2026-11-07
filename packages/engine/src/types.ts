@@ -4,7 +4,11 @@ export const PACK_IDS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'] as const;
 export type PackId = (typeof PACK_IDS)[number];
 
 /** Year-to-date spend for one HCP, computed by the caller from the ledger. */
-export type LedgerEntry = { npi: string; ytdCents: number; capCents?: number };
+export type LedgerEntry = {
+  npi: string; ytdCents: number; capCents?: number;
+  /** Same-topic programs in the last 12 months not present in `history` (e.g. from seed data). Added to the history count. */
+  sameTopicCount12mo?: number;
+};
 
 /** One past program an HCP attended. Used for repeat-attendance (P5). */
 export type AttendanceHistory = { npi: string; topic: string; date: string; planId: string };

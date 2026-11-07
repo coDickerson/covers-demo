@@ -82,12 +82,13 @@ export function settle(input: SettleInput): Settlement {
   const openPayments: OpenPaymentsRow[] = [];
 
   for (const npi of unique([...expected, ...att.attendedNpis])) {
-    const { capCents, ytdCents } = capFor(npi, ledger, s);
+    const { capCents, ytdCents, priorRepeats } = capFor(npi, ledger, s);
     const share = attended.has(npi) ? shareOf.get(npi)! : 0;
     const projectedCents = ytdCents + share;
     const state = capState(projectedCents, capCents, s);
     const repeats = sameTopicHistory(npi, plan.topic, dinnerDate, plan.id, input.history);
-    caps.push({ npi, capCents, ytdCents, projectedCents, state, sameTopicCount12mo: repeats.length });
+    const repeatCount = priorRepeats + repeats.length;
+    caps.push({ npi, capCents, ytdCents, projectedCents, state, sameTopicCount12mo: repeatCount });
     if (!attended.has(npi)) continue;
 
     const h = hcps.get(npi);
@@ -101,9 +102,9 @@ export function settle(input: SettleInput): Settlement {
     checks.add('P4.annual-cap', { kind: 'hcp', npi }, state === 'over' ? 'flag' : 'pass',
       state === 'over' ? `${name}'s share brings the year to ${formatCents(projectedCents)}, over the ${formatCents(capCents)} cap.`
         : `${name}: ${formatCents(projectedCents)} of ${formatCents(capCents)} annual cap.`, [`ledger:${npi}`]);
-    if (npi !== speakerNpi && repeats.length >= s.repeatTopicThreshold) {
+    if (npi !== speakerNpi && repeatCount >= s.repeatTopicThreshold) {
       checks.add('P5.repeat-attendance', { kind: 'hcp', npi }, 'flag',
-        `${name} attended ${repeats.length} earlier programs on this topic in the last 12 months.`, repeats.map((id) => `plan:${id}`));
+        `${name} attended ${repeatCount} earlier programs on this topic in the last 12 months.`, repeats.map((id) => `plan:${id}`));
     }
 
     // ---- P6 Open Payments draft: covered recipients who ate ----

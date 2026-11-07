@@ -145,13 +145,20 @@ describe('evaluate: approvals', () => {
   const nearLedger = [{ npi: CHEN.npi, ytdCents: 150_000 }];
   const flagId = `P4.annual-cap:hcp:${CHEN.npi}`;
 
-  it('an approved flag from someone other than the rep clears the plan', () => {
+  it('an approved flag from someone other than the rep clears the plan and records the approval', () => {
     const ev = evaluate({
       ...baseInput(PLAN_WITHOUT_RUIZ), ledger: nearLedger,
       approvals: [{ checkId: flagId, by: 'compliance-priya', note: 'ok', at: '2026-11-08T13:00:00-08:00' }],
     });
     expect(find(ev, flagId)?.outcome).toBe('flag');
+    expect(find(ev, flagId)?.approval).toEqual({ by: 'compliance-priya', note: 'ok', at: '2026-11-08T13:00:00-08:00' });
     expect(ev.status).toBe('cleared');
+  });
+
+  it('adds a seed repeat-attendance count to the history count', () => {
+    const ev = evaluate({ ...baseInput(PLAN_WITHOUT_RUIZ), ledger: [{ npi: OKAFOR.npi, ytdCents: 0, sameTopicCount12mo: 2 }] });
+    expect(ev.caps.find((c) => c.npi === OKAFOR.npi)?.sameTopicCount12mo).toBe(2);
+    expect(find(ev, `P5.repeat-attendance:hcp:${OKAFOR.npi}`)?.outcome).toBe('flag');
   });
 
   it('ignores an approval by the plan rep', () => {

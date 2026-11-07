@@ -52,5 +52,5 @@ export function capState(projected: number, cap: number, s: EngineSettings): Cap
 
 export function capFor(npi: string, ledger: Map<string, LedgerEntry>, s: EngineSettings) {
   const e = ledger.get(npi);
-  return { capCents: e?.capCents ?? s.defaultAnnualCapCents, ytdCents: e?.ytdCents ?? 0 };
+  return { capCents: e?.capCents ?? s.defaultAnnualCapCents, ytdCents: e?.ytdCents ?? 0, priorRepeats: e?.sameTopicCount12mo ?? 0 };
 }

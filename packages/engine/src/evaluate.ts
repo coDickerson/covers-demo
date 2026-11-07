@@ -58,11 +58,12 @@ export function evaluate(input: EvaluateInput): Evaluation {
   const diners = unique([...invitees, ...(speaker ? [speaker.hcp.npi] : [])]);
   const caps: CapStatus[] = [];
   for (const npi of diners) {
-    const { capCents, ytdCents } = capFor(npi, ledger, s);
+    const { capCents, ytdCents, priorRepeats } = capFor(npi, ledger, s);
     const projectedCents = ytdCents + plan.estimatedPerPerson;
     const repeats = sameTopicHistory(npi, plan.topic, dinnerDate, plan.id, input.history);
+    const repeatCount = priorRepeats + repeats.length;
     const state = capState(projectedCents, capCents, s);
-    caps.push({ npi, capCents, ytdCents, projectedCents, state, sameTopicCount12mo: repeats.length });
+    caps.push({ npi, capCents, ytdCents, projectedCents, state, sameTopicCount12mo: repeatCount });
 
     // ---- P4 annual cap (block over, flag near) ----
     const name = displayName(npi, hcps);
@@ -76,15 +77,22 @@ export function evaluate(input: EvaluateInput): Evaluation {
 
     // ---- P5 repeat attendance (invitees only; the speaker presents) ----
     if (invitees.includes(npi)) {
-      const flagged = repeats.length >= s.repeatTopicThreshold;
+      const flagged = repeatCount >= s.repeatTopicThreshold;
       checks.add('P5.repeat-attendance', { kind: 'hcp', npi }, flagged ? 'flag' : 'pass',
-        flagged ? `${name} already attended ${repeats.length} programs on this topic in the last 12 months.`
-          : `${name}: ${repeats.length} same-topic program${repeats.length === 1 ? '' : 's'} in the last 12 months.`,
-        repeats.map((id) => `plan:${id}`));
+        flagged ? `${name} already attended ${repeatCount} programs on this topic in the last 12 months.`
+          : `${name}: ${repeatCount} same-topic program${repeatCount === 1 ? '' : 's'} in the last 12 months.`,
+        [...repeats.map((id) => `plan:${id}`), ...(priorRepeats > 0 ? [`ledger:${npi}`] : [])]);
     }
   }
 
-  return { planId: plan.id, status: statusOf(checks.list, input.approvals ?? [], plan.repId), checks: checks.list, caps, evaluatedAt: input.now };
+  // Approved flags carry who approved them. Blocks and the rep's own approvals are ignored.
+  const approvals = (input.approvals ?? []).filter((a) => a.by !== plan.repId);
+  const byCheck = new Map(approvals.map((a) => [a.checkId, a]));
+  const finalChecks = checks.list.map((c) => {
+    const a = c.outcome === 'flag' ? byCheck.get(c.id) : undefined;
+    return a ? { ...c, approval: { by: a.by, note: a.note, at: a.at } } : c;
+  });
+  return { planId: plan.id, status: statusOf(finalChecks, approvals, plan.repId), checks: finalChecks, caps, evaluatedAt: input.now };
 }
 
 /** Any block → blocked; else any unapproved flag → needs_approval; else cleared. Reps cannot approve their own plan. */
