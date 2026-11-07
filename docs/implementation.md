@@ -8,7 +8,7 @@ We ship three things by midday Tue Nov 10: a live website a judge can use, a pub
 
 **The product.** Covers is a compliance check for medical-device and pharma field sales dinners, enforced through the company card. Before a speaker dinner, it checks four things: the speaker is approved, every doctor is identified by NPI, the meal is under the per-person cap, and no doctor is near the company's annual limit for her. The card's meal budget unlocks only when the plan clears. The morning after, the rep snaps the receipt and taps who came; Covers splits the bill, updates each doctor's running total, and drafts the federal Open Payments row.
 
-**The demo moment.** A rep adds Dr. Ruiz to a dinner and her cap bar turns red: she is $60 from her annual limit. The plan blocks before anyone books a table. After the dinner, Dr. Kim is marked a no-show: the other shares re-flow and her annual total does not move.
+**The demo moment.** A rep adds Dr. Ruvane to a dinner and her cap bar turns red: she is $60 from her annual limit. The plan blocks before anyone books a table. After the dinner, Dr. Kinsale is marked a no-show: the other shares re-flow and her annual total does not move.
 
 **The rule that keeps you independent.** Nobody writes code against the other person's unfinished work. Both of you code against the contract in section 3. Person B's app runs on `FixtureService` from the first hour; Person A's `LiveService` replaces it behind one environment flag at the checkpoints.
 
@@ -209,8 +209,8 @@ export interface CoversService {
 **The seed scenario** (in `packages/contract/fixtures`, written together at C0; every person and company is fictional):
 
 - Company: Halden Medical, a mid-size device maker. One rep (Jordan Lee, Bay Area), one compliance lead (Priya Shah).
-- Speakers: Dr. Marcus Patel (approved for the topic), Dr. Lena Ortiz (training expired).
-- HCPs: five fictional doctors with fake NPIs. Dr. Ana Ruiz has $1,940 of a $2,000 annual cap already spent and attended the same topic twice in the last 12 months. Dr. Grace Kim is the scripted no-show after the dinner.
+- Speakers: Dr. Marcus Patel (approved for the topic), Dr. Lena Ortwell (training expired).
+- HCPs: five fictional doctors with fake NPIs. Dr. Ana Ruvane has $1,940 of a $2,000 annual cap already spent and attended the same topic twice in the last 12 months. Dr. Grace Kinsale is the scripted no-show after the dinner.
 - The scripted dinner: "Speaker dinner: Dr. Patel on catheter outcomes," six invitees, $110 estimated per person.
 - Two sample receipts: the clean one ($612 for 6 covers, one wine line) and a hard one (blurry, a line labeled "beverages").
 - Placeholder `proof.json` with the right shape and obviously fake numbers, which A replaces with real results.
@@ -242,7 +242,7 @@ A owns everything that produces a fact or a number, and proves it with tests and
 | # | Task | When | Done when |
 | --- | --- | --- | --- |
 | A1 | Ramp sandbox spike (90 min, time-boxed) | Sat 4:30–6 pm | Decision written in `docs/ramp-spike.md`: real, partly real, or mocked |
-| A2 | Engine: packs P1–P6, `evaluate()` and `settle()` | Sat 6 pm–midnight | Scripted dinner blocks Dr. Ruiz and Dr. Ortiz; settlement math exact; invariant tests pass |
+| A2 | Engine: packs P1–P6, `evaluate()` and `settle()` | Sat 6 pm–midnight | Scripted dinner blocks Dr. Ruvane and Dr. Ortwell; settlement math exact; invariant tests pass |
 | A3 | NPPES registry client | Sat late or Sun early | Search by name, state or NPI returns typed `Hcp` records; results cached |
 | A4 | `LiveService` and database | Sun 8 am–1 pm | Contract tests pass against `LiveService` (C1) |
 | A5 | Receipt reader | Sun 1–5 pm | Both sample receipts read; low-confidence lines flagged; totals reconcile to the cent |
@@ -267,7 +267,7 @@ All pass → fully real. Step 4 fails → real fund plus a seeded transaction, l
 
 - Per-person value = food and beverage total ÷ everyone who ate (HCPs, employees, extra guests), split with largest-remainder rounding so no cent is lost.
 - Invariants (fast-check): shares sum to the total; the same input gives a byte-identical output hash; removing an attendee never changes the total; toggling one pack changes only that pack's results.
-- The scripted dinner must produce: Dr. Ortiz blocked (training expired) if chosen as speaker; Dr. Ruiz blocked ($1,940 + $110 > $2,000) and flagged (third same-topic program).
+- The scripted dinner must produce: Dr. Ortwell blocked (training expired) if chosen as speaker; Dr. Ruvane blocked ($1,940 + $110 > $2,000) and flagged (third same-topic program).
 
 **A3 — NPPES client.** Use the CMS NPI Registry API (confirm the current version and endpoint). Map taxonomy codes to `recipientType`. Never store anything beyond what the registry returns.
 
@@ -310,9 +310,9 @@ B owns everything a judge sees and how it moves. B never touches A's packages; B
 | --- | --- | --- | --- |
 | B1 | Figma foundations: flows, variables, three Make variants, components | Sat 4:30–7:30 pm | One Plan screen chosen; variables and core components exist in Figma |
 | B2 | App skeleton, token pipeline, `FixtureService`, session cookie | Sat 7:30 pm–midnight | Site deploys; `/styleguide` renders every token and component from Figma values |
-| B3 | Hero screen: dinner plan with cap bars, checks and stamp | Sun 8 am–noon | The Dr. Ruiz moment plays on fixtures exactly as prototyped in Figma |
+| B3 | Hero screen: dinner plan with cap bars, checks and stamp | Sun 8 am–noon | The Dr. Ruvane moment plays on fixtures exactly as prototyped in Figma |
 | B4 | Phone pings (before and after) | Sun noon–2 pm | Both pings render at 390×844 from the same data the desktop uses |
-| B5 | Settlement screen and the re-flow | Sun 2–7 pm | Untick Dr. Kim: her column collapses, shares tween, her cap bar holds still |
+| B5 | Settlement screen and the re-flow | Sun 2–7 pm | Untick Dr. Kinsale: her column collapses, shares tween, her cap bar holds still |
 | B6 | Ledger, audit, Pack lab, proof, landing, judge mode | Sun 7 pm–Mon 11 am | Every page in section 8 works on fixtures and on live |
 | B7 | Visual tuning pass | Mon 11 am–1 pm | Side-by-side screenshots match Figma; motion values tuned and written back to Figma |
 | B8 | Figma Motion pieces for the video | Mon 1–4 pm | Intro, problem explainer, architecture card and outro exported as video |
@@ -327,7 +327,7 @@ B owns everything a judge sees and how it moves. B never touches A's packages; B
 
 **The moments to nail, in priority order**
 
-1. Cap bar: Dr. Ruiz's bar fills to $1,940, the projected $110 extends past the cap line in the alert color, and her row and the plan header switch to Blocked.
+1. Cap bar: Dr. Ruvane's bar fills to $1,940, the projected $110 extends past the cap line in the alert color, and her row and the plan header switch to Blocked.
 2. Stamp: when every check passes, a "Cleared" stamp lands on the plan and the card limit appears with a "Written to Ramp" link.
 3. Re-flow: after the dinner, unticking a no-show collapses her column, the other shares tween to the new value, and her cap bar does not move.
 4. Receipt stream: lines appear as they are read, each with a confidence dot; the wine line tags itself.
@@ -378,7 +378,7 @@ Type: one grotesk with tabular numerals for every amount, and one serif only for
 
 **Plan screen spec for Figma Make**
 
-> Desktop web app screen, 1440×900, for a compliance tool used by medical-device sales reps. Title: "Speaker dinner: Dr. Patel on catheter outcomes, Thu Nov 12, 7 pm". Left column: the plan (speaker with an "Approved" badge, venue, purpose, estimated $110 per person). Center: a list of six invited doctors, each row showing name, specialty, NPI, and a thin horizontal bar of year-to-date spend against an annual cap with a vertical cap line; one doctor (Dr. Ana Ruiz) has her bar nearly full with the projected amount extending past the cap in red. Right column: a checklist of five rules, each with pass, flag or block and a small citation link. Top right: a large status stamp reading "Blocked". Calm, document-like, warm off-white background, near-black text, one accent color, tabular numerals, no gradients, no illustrations.
+> Desktop web app screen, 1440×900, for a compliance tool used by medical-device sales reps. Title: "Speaker dinner: Dr. Patel on catheter outcomes, Thu Nov 12, 7 pm". Left column: the plan (speaker with an "Approved" badge, venue, purpose, estimated $110 per person). Center: a list of six invited doctors, each row showing name, specialty, NPI, and a thin horizontal bar of year-to-date spend against an annual cap with a vertical cap line; one doctor (Dr. Ana Ruvane) has her bar nearly full with the projected amount extending past the cap in red. Right column: a checklist of five rules, each with pass, flag or block and a small citation link. Top right: a large status stamp reading "Blocked". Calm, document-like, warm off-white background, near-black text, one accent color, tabular numerals, no gradients, no illustrations.
 
 **Using Figma from Claude Code.** Connect the Figma MCP server to both Claude Code sessions. The calls you will use:
 
@@ -400,7 +400,7 @@ A judge opens one link, logged out, and can either watch the scripted dinner ste
 | --- | --- | --- |
 | `/` | Read the one-liner; choose "Run the guided demo" or "Try it yourself"; links to proof, repo and video | none |
 | `/demo?step=1…8` | Click through the scripted dinner with a caption per step; also the recording path for the video | all, in order |
-| `/plans/new` | Pick a speaker (Dr. Ortiz fails), add doctors from the seed or by real NPI lookup, set venue and estimate, write the purpose, then Evaluate | `listSpeakers`, `searchHcps`, `createPlan`, `evaluatePlan` |
+| `/plans/new` | Pick a speaker (Dr. Ortwell fails), add doctors from the seed or by real NPI lookup, set venue and estimate, write the purpose, then Evaluate | `listSpeakers`, `searchHcps`, `createPlan`, `evaluatePlan` |
 | `/plans/[id]` | See checks, cap bars and the stamp; request an exception; switch to the compliance role to approve it; issue the fund | `evaluatePlan`, `approveException`, `issueFund` |
 | `/plans/[id]/after` | Upload their own receipt photo or pick a sample; tap who came; watch the re-flow; see Open Payments rows and exceptions | `submitReceipt`, `fixLine`, `confirmAttendance` |
 | `/m/[id]` | The phone pings; the desktop shows a QR code so a judge can open the ping on their own phone | `evaluatePlan`, `confirmAttendance` |
@@ -426,13 +426,13 @@ The video is about 2:30 (confirm the limit tonight): Figma Motion carries the st
 | 0:00–0:06 | Cold open: six name cards at a table; one doctor's bar fills past a line; "Blocked" stamps down | Figma Motion |
 | 0:06–0:25 | The problem: a map of reps and dinners; the four questions appear one by one (approved speaker, NPIs, per-person cap, annual limit) | Figma Motion |
 | 0:25–0:35 | The gap: "Ramp records who was there. Nothing checks whether the dinner should happen." | Figma Motion title card |
-| 0:35–1:15 | Before: rep builds the plan, checks tick in, Dr. Ruiz's bar goes red, she is removed, "Cleared" stamps, the fund appears in Ramp's own UI | Screen capture of `/demo`, then Ramp sandbox |
-| 1:15–1:40 | After: the phone buzzes, receipt photo, lines stream in, wine tags itself, Dr. Kim is unticked as a no-show, shares re-flow, Open Payments row drafted, written to Ramp | Phone capture, then screen capture |
+| 0:35–1:15 | Before: rep builds the plan, checks tick in, Dr. Ruvane's bar goes red, she is removed, "Cleared" stamps, the fund appears in Ramp's own UI | Screen capture of `/demo`, then Ramp sandbox |
+| 1:15–1:40 | After: the phone buzzes, receipt photo, lines stream in, wine tags itself, Dr. Kinsale is unticked as a no-show, shares re-flow, Open Payments row drafted, written to Ramp | Phone capture, then screen capture |
 | 1:40–1:55 | New rule in English, replay over past dinners, Promote, the next plan changes | Screen capture of `/packs` |
 | 1:55–2:15 | Proof: eval numbers with misses, Break-It grid, real vs simulated; architecture card "models read, code decides" | Screen capture, then Figma Motion card |
 | 2:15–2:30 | Outro: the closing line and the URL | Figma Motion |
 
-The before and after use different doctors on purpose: Dr. Ruiz is blocked and removed before the dinner, and Dr. Kim (a fictional seed doctor) is the no-show after it.
+The before and after use different doctors on purpose: Dr. Ruvane is blocked and removed before the dinner, and Dr. Kinsale (a fictional seed doctor) is the no-show after it.
 
 **Figma Motion pieces** (B, Monday 1–4 pm): intro, problem explainer, gap card, architecture card, outro. Build them from the same components and variables as the app, so the animated and recorded parts look like one product. Export each at 1920×1080, 30 fps. If the Figma connector's video export is available in Claude Code, use it; otherwise export from Figma directly.
 
@@ -451,9 +451,9 @@ The before and after use different doctors on purpose: Dr. Ruiz is blocked and r
 >
 > Ramp records which doctors were at dinner. Nothing checks whether the dinner should happen. That's Covers.
 >
-> Jordan books a speaker dinner. Covers identifies each guest from the federal registry and checks the plan. Dr. Ruiz is sixty dollars from her annual limit, so the plan is blocked before anyone books a table. Jordan removes her. Every check passes, and only now does the card's meal budget unlock, written straight into Ramp.
+> Jordan books a speaker dinner. Covers identifies each guest from the federal registry and checks the plan. Dr. Ruvane is sixty dollars from her annual limit, so the plan is blocked before anyone books a table. Jordan removes her. Every check passes, and only now does the card's meal budget unlock, written straight into Ramp.
 >
-> The next morning, one ping: snap the receipt, tap who came. Covers reads every line, catches the wine, and notices Dr. Kim didn't make it. Her share moves to everyone else, her annual total doesn't change, and no federal report is drafted for her. Only the unclear cases go to compliance, with evidence attached.
+> The next morning, one ping: snap the receipt, tap who came. Covers reads every line, catches the wine, and notices Dr. Kinsale didn't make it. Her share moves to everyone else, her annual total doesn't change, and no federal report is drafted for her. Only the unclear cases go to compliance, with evidence attached.
 >
 > New regulations become new rule packs, not new software. Write the rule in English; Covers compiles it, replays it over past dinners, and a person promotes it.
 >
@@ -500,7 +500,7 @@ RAMP_BASE_URL  RAMP_CLIENT_ID  RAMP_CLIENT_SECRET  SUPABASE_URL  SUPABASE_SERVIC
 
 **C0 kickoff (together, one session)**
 
-> Read docs/implementation.md. Scaffold a pnpm monorepo with the layout in "How the split works." Create packages/contract with the types and the CoversService interface from "The shared contract," converted to Zod schemas with inferred types. Write the seed fixtures for the scenario described there, all fictional. Write a contract test suite in packages/contract/tests that takes any CoversService and checks every method's shape plus the scripted scenario (Dr. Ruiz blocked, Dr. Ortiz blocked as speaker, Dr. Kim's no-show leaves her total unchanged). Add the root CLAUDE.md. Deploy a blank Next.js page to Vercel. Stop and show me the contract before committing.
+> Read docs/implementation.md. Scaffold a pnpm monorepo with the layout in "How the split works." Create packages/contract with the types and the CoversService interface from "The shared contract," converted to Zod schemas with inferred types. Write the seed fixtures for the scenario described there, all fictional. Write a contract test suite in packages/contract/tests that takes any CoversService and checks every method's shape plus the scripted scenario (Dr. Ruvane blocked, Dr. Ortwell blocked as speaker, Dr. Kinsale's no-show leaves her total unchanged). Add the root CLAUDE.md. Deploy a blank Next.js page to Vercel. Stop and show me the contract before committing.
 
 **Person A kickoff**
 

@@ -1,0 +1,9 @@
+{
+  "_note": "Starting citations per pack. Person A owns the final ruleIds and wording; verify every source before the demo.",
+  "P1": { "label": "Halden Medical speaker policy (fictional); HHS-OIG Special Fraud Alert on speaker programs, Nov 16, 2020", "packId": "P1", "ruleId": "P1.speaker-eligible", "version": "1.0.0" },
+  "P2": { "label": "CMS Open Payments covered recipient types", "packId": "P2", "ruleId": "P2.npi-resolved", "version": "1.0.0" },
+  "P3": { "label": "Halden Medical meal policy (fictional): $125 per person, all-in", "url": "https://guidehouse.com/-/media/www/site/insights/life-sciences/2018/physician-feed-thysef.pdf", "packId": "P3", "ruleId": "P3.per-person-cap", "version": "1.0.0" },
+  "P4": { "label": "California annual per-HCP limit requirement; Halden Medical limit (fictional): $2,000", "packId": "P4", "ruleId": "P4.annual-cap", "version": "1.0.0" },
+  "P5": { "label": "HHS-OIG Special Fraud Alert on speaker programs, Nov 16, 2020", "packId": "P5", "ruleId": "P5.red-flags", "version": "1.0.0" },
+  "P6": { "label": "CMS Open Payments: food and beverage, in-kind", "packId": "P6", "ruleId": "P6.open-payments-row", "version": "1.0.0" }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "co-halden",
+  "name": "Halden Medical",
+  "description": "Fictional mid-size medical-device maker. Demo data.",
+  "perPersonCapCents": 12500,
+  "annualCapCents": 200000,
+  "nearThresholdPct": 80,
+  "repeatTopicFlagAt": 2
+}

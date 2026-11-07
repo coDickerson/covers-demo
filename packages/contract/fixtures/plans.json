@@ -1,0 +1,16 @@
+[
+  {
+    "id": "plan-demo",
+    "title": "Speaker dinner: Dr. Patel on catheter outcomes",
+    "purpose": "Peer education on catheter outcome data for interventional and vascular clinicians.",
+    "topic": "Catheter outcomes",
+    "repId": "rep-jordan-lee",
+    "speakerId": "spk-patel",
+    "venue": "Alder & Vine, San Francisco",
+    "date": "2026-11-12T19:00:00-08:00",
+    "inviteeNpis": ["9000000001", "9000000002", "9000000003", "9000000004", "9000000005", "9000000006"],
+    "employeeCount": 1,
+    "estimatedPerPerson": 11000,
+    "status": "draft"
+  }
+]

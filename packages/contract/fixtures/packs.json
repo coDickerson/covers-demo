@@ -1,0 +1,14 @@
+[
+  { "id": "P1", "name": "Speaker eligibility", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "The speaker's status is approved, the topic is on their approved list, and their contract is active on the dinner date. Otherwise block." },
+  { "id": "P2", "name": "HCP identity", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "Every invitee resolves to an NPI and a recipient type. A weak match becomes a pick-list, never a guess. Otherwise flag." },
+  { "id": "P3", "name": "Per-person meal cap", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "The estimated per-person cost, including tax and tip, is at or under the company cap. Block before the dinner; after the dinner, an actual per-person cost over the cap goes to compliance." },
+  { "id": "P4", "name": "Annual cap per HCP", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "Each HCP's year-to-date spend plus this dinner stays under their annual cap. Block that HCP if over; flag when above 80% of the cap." },
+  { "id": "P5", "name": "OIG red flags", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "Flag alcohol on the receipt, an HCP attending the same topic for the third time in 12 months, and non-HCP guests such as spouses." },
+  { "id": "P6", "name": "Open Payments draft", "version": "1.0.0", "effective": "2026-01-01", "status": "live", "compiled": null,
+    "english": "Per-person value is the printed total, including tax and tip, divided by everyone who ate. Draft a food-and-beverage row only for covered recipients who attended, including the speaker. No-shows get no row. Drafted, humans file." }
+]

@@ -1,0 +1,8 @@
+[
+  { "npi": "9000000001", "name": "Dr. Ana Ruvane", "credential": "MD", "specialty": "Interventional Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+  { "npi": "9000000002", "name": "Dr. Grace Kinsale", "credential": "MD", "specialty": "Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+  { "npi": "9000000003", "name": "Dr. Daniel Okafor", "credential": "MD", "specialty": "Vascular Surgery", "state": "CA", "recipientType": "physician", "source": "seed" },
+  { "npi": "9000000004", "name": "Dr. Mei Lindqvist", "credential": "DO", "specialty": "Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+  { "npi": "9000000005", "name": "Sofia Brennick", "credential": "NP", "specialty": "Cardiology", "state": "CA", "recipientType": "nurse_practitioner", "source": "seed" },
+  { "npi": "9000000006", "name": "Dr. Robert Ellery", "credential": "MD", "specialty": "Interventional Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" }
+]

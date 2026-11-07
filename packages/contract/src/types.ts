@@ -61,6 +61,10 @@ export type ProgramPlan = z.infer<typeof ProgramPlan>;
 export const PlanInput = ProgramPlan.omit({ id: true, status: true, fundId: true });
 export type PlanInput = z.infer<typeof PlanInput>;
 
+// updatePlan takes only plan inputs: status and fundId change only through evaluate / approve / fund / attendance.
+export const PlanPatch = PlanInput.partial();
+export type PlanPatch = z.infer<typeof PlanPatch>;
+
 export const Citation = z.object({
   label: z.string(),
   url: z.string().optional(),
@@ -86,6 +90,7 @@ export const CheckResult = z.object({
   message: z.string(), // one sentence a rep can read
   citation: Citation,
   evidence: z.array(z.string()), // ids of the facts used (registry record, roster row, ledger entry)
+  approval: z.object({ by: z.string(), note: z.string(), at: IsoDateTime }).optional(), // set when a flag is approved; blocks are never approvable
 });
 export type CheckResult = z.infer<typeof CheckResult>;
 
@@ -107,6 +112,10 @@ export const Evaluation = z.object({
   evaluatedAt: IsoDateTime,
 });
 export type Evaluation = z.infer<typeof Evaluation>;
+
+// What getPlan returns: the plan plus its latest stored evaluation (null if never evaluated). Reading never re-evaluates.
+export const PlanView = z.object({ plan: ProgramPlan, evaluation: Evaluation.nullable() });
+export type PlanView = z.infer<typeof PlanView>;
 
 export const ReceiptLine = z.object({
   id: z.string(),
@@ -228,9 +237,15 @@ export const BreakItResult = z.object({ passed: z.boolean(), checks: z.array(Che
 export type BreakItResult = z.infer<typeof BreakItResult>;
 
 // ---- Errors ----
-// Refusals (rep approving own exception, fund on an uncleared plan, ...) reject with a CoversError.
+// Refusals reject with a CoversError on the server. Across the server→browser boundary they travel as a plain
+// CoversErrorBody ({ code, message }), since a class does not survive JSON.
+//   forbidden     — wrong actor (rep approves own exception, someone other than the rep confirms attendance)
+//   invalid_state — not allowed in the current state (fund on an uncleared plan, approving a block)
 export const CoversErrorCode = z.enum(['not_found', 'forbidden', 'invalid_state', 'validation', 'rate_limited']);
 export type CoversErrorCode = z.infer<typeof CoversErrorCode>;
+
+export const CoversErrorBody = z.object({ code: CoversErrorCode, message: z.string() });
+export type CoversErrorBody = z.infer<typeof CoversErrorBody>;
 
 export class CoversError extends Error {
   constructor(public readonly code: CoversErrorCode, message: string) {
