@@ -32,6 +32,19 @@ The story then reconciles exactly:
 
 **Deploy.** Cole connects the GitHub repo to Vercel from the dashboard.
 
+**Figma.** Cole is on Figma Education (200 MCP calls/day, 10/min). Calls are scarce: anything Cole can do quickly by hand in Figma, Cole does. Calls go to what only Claude Code can do (reading screens, screenshot comparison).
+- Design file (source of truth): https://www.figma.com/design/amtGh7fESBeXnQx49BDXDj/Covers-Design
+- Make file (three throwaway Plan-screen variants only; its code is not shipped): https://www.figma.com/make/tYG3H3EXGODg6BFbMgbjWz/Covers
+- Variables live in **one collection, `Covers tokens`**, light mode only. Names use full slash paths (`color/status/over`), which map 1:1 to CSS (`--color-status-over`).
+
+**Token pipeline uses a plugin JSON export, not `get_variable_defs`.** Cole exports the collection with a variables-export plugin to `design/tokens.json`; `pnpm tokens:pull` converts it to `apps/web/styles/tokens.css`. Zero MCP calls, and it captures motion variables, which `get_variable_defs` would miss because nothing is bound to them.
+
+**Fake NPIs start with 9.** Real NPIs start with 1 or 2, so a seed NPI can never collide with a real doctor. *(Claude's call.)*
+
+**Repeat attendance (P5).** `sameTopicCount12mo` counts *prior* programs on the same topic. Flag when it is ≥ 2, i.e. this dinner would be the third. Dr. Ruiz has 2. *(Claude's call, matches Break-It #14.)*
+
+**Seed actors.** `rep-jordan-lee` (rep), `cmp-priya-shah` (compliance), `mgr-morgan-reyes` (Jordan's manager, added because `Rep.managerId` needs a value). *(Claude's call.)*
+
 ## Pending
 
 - **Where `FixtureService` keeps judge data** — decide before B2 (Cole). Leaning: server-side key-value store, so the phone QR handoff works and pages call the server the same way in fixtures and live.

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "spk-patel",
+    "hcp": { "npi": "9000000101", "name": "Dr. Marcus Patel", "credential": "MD", "specialty": "Interventional Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+    "status": "approved",
+    "approvedTopics": ["Catheter outcomes"],
+    "contractEnds": "2027-06-30"
+  },
+  {
+    "id": "spk-ortiz",
+    "hcp": { "npi": "9000000102", "name": "Dr. Lena Ortiz", "credential": "MD", "specialty": "Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+    "status": "training_expired",
+    "approvedTopics": ["Catheter outcomes"],
+    "contractEnds": "2027-03-31"
+  }
+]

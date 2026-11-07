@@ -1,0 +1,32 @@
+[
+  {
+    "id": "sample-clean",
+    "planId": "plan-demo",
+    "imageUrl": "/samples/receipt-clean.jpg",
+    "printedCovers": 6,
+    "totalCents": 61200,
+    "lines": [
+      { "id": "l1", "text": "Appetizers (3)", "amountCents": 5400, "category": "food", "confidence": 0.97 },
+      { "id": "l2", "text": "Entrees (6)", "amountCents": 26400, "category": "food", "confidence": 0.98 },
+      { "id": "l3", "text": "Desserts (4)", "amountCents": 4800, "category": "food", "confidence": 0.96 },
+      { "id": "l4", "text": "Sparkling water (3)", "amountCents": 1500, "category": "food", "confidence": 0.93 },
+      { "id": "l5", "text": "Pinot Noir, bottle (2)", "amountCents": 9600, "category": "alcohol", "confidence": 0.95 },
+      { "id": "l6", "text": "Tax", "amountCents": 4114, "category": "tax", "confidence": 0.99 },
+      { "id": "l7", "text": "Tip", "amountCents": 9386, "category": "tip", "confidence": 0.98 }
+    ]
+  },
+  {
+    "id": "sample-hard",
+    "planId": "plan-demo",
+    "imageUrl": "/samples/receipt-hard.jpg",
+    "printedCovers": 6,
+    "totalCents": 63477,
+    "lines": [
+      { "id": "l1", "text": "Apps", "amountCents": 6400, "category": "food", "confidence": 0.74 },
+      { "id": "l2", "text": "Entrees", "amountCents": 31200, "category": "food", "confidence": 0.81 },
+      { "id": "l3", "text": "Beverages", "amountCents": 11800, "category": "other", "confidence": 0.38 },
+      { "id": "l4", "text": "Tax", "amountCents": 4277, "category": "tax", "confidence": 0.66 },
+      { "id": "l5", "text": "Gratuity", "amountCents": 9800, "category": "tip", "confidence": 0.71 }
+    ]
+  }
+]

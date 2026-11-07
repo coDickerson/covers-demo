@@ -1,0 +1,10 @@
+[
+  { "npi": "9000000001", "ytdCents": 194000, "sameTopicCount12mo": 2 },
+  { "npi": "9000000002", "ytdCents": 42000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000003", "ytdCents": 61000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000004", "ytdCents": 88000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000005", "ytdCents": 12000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000006", "ytdCents": 35000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000101", "ytdCents": 30000, "sameTopicCount12mo": 0 },
+  { "npi": "9000000102", "ytdCents": 0, "sameTopicCount12mo": 0 }
+]
