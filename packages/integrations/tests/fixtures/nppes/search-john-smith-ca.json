@@ -1,0 +1,276 @@
+{
+  "result_count": 5,
+  "results": [
+    {
+      "addresses": [
+        {
+          "address_1": "915 SIR FRANCIS DRAKE BLVD",
+          "address_purpose": "MAILING",
+          "address_type": "DOM",
+          "city": "SAN ANSELMO",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "949601913",
+          "state": "CA"
+        },
+        {
+          "address_1": "915 SIR FRANCIS DRAKE BLVD",
+          "address_purpose": "LOCATION",
+          "address_type": "DOM",
+          "city": "SAN ANSELMO",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "949601913",
+          "state": "CA"
+        }
+      ],
+      "basic": {
+        "credential": "D.D.S.",
+        "enumeration_date": "2006-09-24",
+        "first_name": "JOHN",
+        "last_name": "SMITH",
+        "last_updated": "2007-07-08",
+        "middle_name": "THOMAS",
+        "name_prefix": "Dr.",
+        "name_suffix": "--",
+        "sex": "M",
+        "sole_proprietor": "YES",
+        "status": "A"
+      },
+      "created_epoch": "1159122953000",
+      "endpoints": [],
+      "enumeration_type": "NPI-1",
+      "identifiers": [],
+      "last_updated_epoch": "1183947785000",
+      "number": "1033219522",
+      "other_names": [],
+      "practiceLocations": [],
+      "taxonomies": [
+        {
+          "code": "1223G0001X",
+          "desc": "Dentist, General Practice",
+          "license": "18016",
+          "primary": true,
+          "state": "CA",
+          "taxonomy_group": ""
+        }
+      ]
+    },
+    {
+      "addresses": [
+        {
+          "address_1": "2269 BOWDOIN ST",
+          "address_purpose": "MAILING",
+          "address_type": "DOM",
+          "city": "LA VERNE",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "917502715",
+          "state": "CA"
+        },
+        {
+          "address_1": "500 W BADILLO ST",
+          "address_purpose": "LOCATION",
+          "address_type": "DOM",
+          "city": "COVINA",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "917223762",
+          "state": "CA"
+        }
+      ],
+      "basic": {
+        "credential": "Ph.D., LCSW",
+        "enumeration_date": "2007-02-11",
+        "first_name": "JOHN",
+        "last_name": "SMITH",
+        "last_updated": "2009-10-02",
+        "middle_name": "KEITH",
+        "name_prefix": "Dr.",
+        "name_suffix": "--",
+        "sex": "M",
+        "sole_proprietor": "YES",
+        "status": "A"
+      },
+      "created_epoch": "1171228481000",
+      "endpoints": [],
+      "enumeration_type": "NPI-1",
+      "identifiers": [],
+      "last_updated_epoch": "1254517357000",
+      "number": "1265573299",
+      "other_names": [],
+      "practiceLocations": [],
+      "taxonomies": [
+        {
+          "code": "1041C0700X",
+          "desc": "Social Worker, Clinical",
+          "license": "LCS19868",
+          "primary": true,
+          "state": "CA",
+          "taxonomy_group": ""
+        }
+      ]
+    },
+    {
+      "addresses": [
+        {
+          "address_1": "1 MEDICAL PLAZA DR",
+          "address_purpose": "LOCATION",
+          "address_type": "DOM",
+          "city": "ROSEVILLE",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "956613037",
+          "state": "CA"
+        },
+        {
+          "address_1": "2100 POWELL ST",
+          "address_2": "STE 900",
+          "address_purpose": "MAILING",
+          "address_type": "DOM",
+          "city": "EMERYVILLE",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "946081826",
+          "state": "CA"
+        }
+      ],
+      "basic": {
+        "credential": "P.A-C",
+        "enumeration_date": "2006-07-24",
+        "first_name": "JOHN",
+        "last_name": "SMITH",
+        "last_updated": "2007-11-13",
+        "middle_name": "DEWEY",
+        "name_prefix": "--",
+        "name_suffix": "--",
+        "sex": "M",
+        "sole_proprietor": "NO",
+        "status": "A"
+      },
+      "created_epoch": "1153779123000",
+      "endpoints": [],
+      "enumeration_type": "NPI-1",
+      "identifiers": [],
+      "last_updated_epoch": "1194973576000",
+      "number": "1821010398",
+      "other_names": [],
+      "practiceLocations": [],
+      "taxonomies": [
+        {
+          "code": "363A00000X",
+          "desc": "Physician Assistant",
+          "license": "PA14503",
+          "primary": true,
+          "state": "CA",
+          "taxonomy_group": ""
+        }
+      ]
+    },
+    {
+      "addresses": [
+        {
+          "address_1": "867 N FAIR OAKS AVE",
+          "address_purpose": "MAILING",
+          "address_type": "DOM",
+          "city": "PASADENA",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "911033050",
+          "state": "CA"
+        },
+        {
+          "address_1": "867 FAIR OAKS AVE",
+          "address_purpose": "LOCATION",
+          "address_type": "DOM",
+          "city": "PASADENA",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "91103",
+          "state": "CA"
+        }
+      ],
+      "basic": {
+        "enumeration_date": "2017-08-09",
+        "first_name": "JOHN",
+        "last_name": "SMITH",
+        "last_updated": "2017-08-09",
+        "middle_name": "JESUS",
+        "sex": "M",
+        "sole_proprietor": "NO",
+        "status": "A"
+      },
+      "created_epoch": "1502296686000",
+      "endpoints": [],
+      "enumeration_type": "NPI-1",
+      "identifiers": [],
+      "last_updated_epoch": "1502296686000",
+      "number": "1093230252",
+      "other_names": [],
+      "practiceLocations": [],
+      "taxonomies": [
+        {
+          "code": "225400000X",
+          "desc": "Rehabilitation Practitioner",
+          "license": null,
+          "primary": true,
+          "state": null,
+          "taxonomy_group": ""
+        }
+      ]
+    },
+    {
+      "addresses": [
+        {
+          "address_1": "12781 JOSEPHINE ST",
+          "address_purpose": "MAILING",
+          "address_type": "DOM",
+          "city": "GARDEN GROVE",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "928414622",
+          "state": "CA"
+        },
+        {
+          "address_1": "12781 JOSEPHINE ST",
+          "address_purpose": "LOCATION",
+          "address_type": "DOM",
+          "city": "GARDEN GROVE",
+          "country_code": "US",
+          "country_name": "United States",
+          "postal_code": "928414622",
+          "state": "CA"
+        }
+      ],
+      "basic": {
+        "certification_date": "2024-11-29",
+        "credential": "R1585691024",
+        "enumeration_date": "2024-11-29",
+        "first_name": "JOHN",
+        "last_name": "SMITH",
+        "last_updated": "2024-11-29",
+        "sex": "M",
+        "sole_proprietor": "NO",
+        "status": "A"
+      },
+      "created_epoch": "1732923304000",
+      "endpoints": [],
+      "enumeration_type": "NPI-1",
+      "identifiers": [],
+      "last_updated_epoch": "1732923304000",
+      "number": "1952127466",
+      "other_names": [],
+      "practiceLocations": [],
+      "taxonomies": [
+        {
+          "code": "101YA0400X",
+          "desc": "Counselor, Addiction (Substance Use Disorder)",
+          "license": "R1585691024",
+          "primary": true,
+          "state": "CA",
+          "taxonomy_group": ""
+        }
+      ]
+    }
+  ]
+}
