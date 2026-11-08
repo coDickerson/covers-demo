@@ -4,62 +4,35 @@ For C2 (flip to live on a preview deploy). Everything on A's side is in `package
 needs one server-side function call. Verified Nov 7: LiveService passes the shared contract suite against our Supabase
 database, through both of Supabase's poolers.
 
-## 1. One function call (server only)
+## 1. Already wired (Nov 8)
 
-```ts
-// apps/web/lib/service.ts — server-only module
-import 'server-only';
-import type { CoversService } from '@covers/contract';
-import { createLiveServiceFromEnv } from '@covers/live-service';
-import { FixtureService } from './fixture-service';
+Cole's app picks the service in `apps/web/lib/service.ts`; live mode goes through **`apps/web/lib/live.ts`** (A's one
+file in `apps/web`), which now calls `createLiveServiceFromEnv()`: Postgres + migrations, NPI registry, Ramp,
+receipt reader, Pack-lab compiler and cache mode all come from env. `isReplaying()` in the same file tells the UI
+when to show "Replaying recorded responses".
 
-let live: ReturnType<typeof createLiveServiceFromEnv> | undefined; // one pool per server instance
+- Pages call `POST /api/covers/<method>` with `{ "args": [...] }`; ctx comes from the `covers_sid` / `covers_role`
+  cookies (see `docs/handoff-b.md`). Errors come back as `{ ok: false, error: { code, message } }`.
+- Migrations are bundled as code, so live mode migrates itself on first use (the old "migrations run separately" note
+  no longer applies).
+- Verified on a production build (`next build` + `next start`, `COVERS_MODE=live`, `COVERS_CACHE=1`): evaluatePlan →
+  blocked, issueFund → 409 invalid_state, Break-It #15 passes, getProof → 15/15, replayed registry search → 7 results.
 
-export async function getService(): Promise<{ service: CoversService; replaying: boolean }> {
-  if (process.env.COVERS_MODE !== 'live') return { service: fixtureService, replaying: false };
-  live ??= createLiveServiceFromEnv();
-  const { service, cacheMode } = await live;
-  return { service, replaying: cacheMode === 'replay' }; // replaying → show "Replaying recorded responses"
-}
-const fixtureService = new FixtureService();
-```
-
-- **Node runtime only.** The database client does not run on the Edge runtime: keep `export const runtime = 'nodejs'`
-  (the default) on routes and server actions that call the service.
-- `ctx.sessionId` = the visitor's session cookie; `ctx.actorId` = the header's role switch (`rep-jordan-lee` /
-  `cmp-priya-shah`). `getProof()` takes no ctx.
-- The first call for a new session copies the seed (one query). Sessions expire after 24 h.
-
-## 2. Errors → HTTP
-
-Refusals throw `CoversError` (from `@covers/contract`). Send them to the browser as `CoversErrorBody`:
+## 2. Errors → HTTP (Cole's route)
 
 | `code` | HTTP | Examples |
 |---|---|---|
 | `not_found` | 404 | unknown plan or pack |
 | `forbidden` | 403 | rep approves own exception; non-rep confirms attendance; rep promotes a rule |
 | `invalid_state` | 409 | fund on an uncleared plan; approving a block; promote before replay; feature needs a key |
-| `validation` | 422 | duplicate receipt photo; unreadable receipt; bad plan input |
+| `validation` | 400 | duplicate receipt photo; unreadable receipt; bad input (Zod errors too) |
 | `rate_limited` | 429 | the session used its 20 receipt reads |
 
-```ts
-catch (e) { if (e instanceof CoversError) return Response.json({ code: e.code, message: e.message }, { status: STATUS[e.code] }); throw e; }
-```
+## 3. next.config.ts (done)
 
-## 3. next.config.ts
-
-```ts
-const nextConfig: NextConfig = {
-  // Workspace packages export TypeScript source.
-  transpilePackages: ['@covers/contract', '@covers/engine', '@covers/integrations', '@covers/live-service'],
-  // Only needed for replay mode on Vercel: ship the recorded responses with the functions.
-  outputFileTracingIncludes: { '/**': ['../../cache/**/*'] },
-};
-```
-
-Add `"@covers/live-service": "workspace:*"` to `apps/web/package.json`. Migrations and `proof/proof.json` are bundled
-as code, so nothing else needs to be shipped as files. (Check the `outputFileTracingIncludes` key against the Next 16
-docs; it was a top-level option in Next 15.)
+`transpilePackages` includes `@covers/integrations`; `outputFileTracingIncludes` ships `cache/` with the API route for
+replay mode; `postgres` stays in `serverExternalPackages`. `live.ts` points `COVERS_CACHE_DIR` at the repo's `cache/`
+(relative to `apps/web`), because inside the Next bundle the package cannot find it on its own.
 
 ## 4. Environment variables
 

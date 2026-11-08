@@ -17,6 +17,9 @@ importers:
       '@covers/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@covers/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
       '@covers/live-service':
         specifier: workspace:*
         version: link:../../packages/live-service
