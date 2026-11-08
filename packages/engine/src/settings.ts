@@ -9,7 +9,7 @@ export const DEFAULT_SETTINGS: EngineSettings = {
   confidenceGate: 0.8,
   reconcileToleranceCents: 1,
   // CMS Open Payments, program year 2026: $13.82 per payment, $138.13 aggregate.
-  // Source: cms.gov/openpayments/program-participants/reporting-entities/data-collection (checked Nov 7 2026).
+  // Source: cms.gov/openpayments/program-participants/reporting-entities/data-collection (checked Nov 7 and Nov 8 2026).
   openPayments: { programYear: 2026, smallPaymentCents: 1_382, aggregateCents: 13_813 },
   enabledPacks: PACK_IDS,
 };
