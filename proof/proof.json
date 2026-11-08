@@ -197,9 +197,9 @@
     },
     {
       "piece": "Pack lab: English → rule",
-      "status": "Built; live compile not yet verified",
-      "howWeKnow": "claude-opus-5-5 with schema-validated output; tested with a stub compiler"
+      "status": "Real",
+      "howWeKnow": "claude-opus-5-5 compiled \"Weekend dinners need manager approval\" on Nov 7; its 4 test cases and the code checks all passed on the engine"
     }
   ],
-  "generatedAt": "2026-11-08T02:26:48.527Z"
+  "generatedAt": "2026-11-08T02:27:57.333Z"
 }

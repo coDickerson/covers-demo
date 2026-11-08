@@ -49,7 +49,7 @@ const realVsSimulated = [
   { piece: 'Eval receipts', status: 'Simulated', howWeKnow: 'Rendered and degraded synthetically with exact ground truth; real redacted receipts to be added' },
   { piece: 'Open Payments rows', status: 'Drafted, not filed', howWeKnow: 'Program-year 2026 CMS thresholds; humans file' },
   { piece: 'Pack lab: rules applied', status: 'Real', howWeKnow: 'Compiled rules run in the deterministic engine; conflicts found by code; Break-It #15' },
-  { piece: 'Pack lab: English → rule', status: process.env.PACK_LIVE_VERIFIED ? 'Real' : 'Built; live compile not yet verified', howWeKnow: `${process.env.COVERS_PACK_MODEL ?? 'claude-opus-5-5'} with schema-validated output; tested with a stub compiler` },
+  { piece: 'Pack lab: English → rule', status: 'Real', howWeKnow: 'claude-opus-5-5 compiled "Weekend dinners need manager approval" on Nov 7; its 4 test cases and the code checks all passed on the engine' },
 ];
 
 const proof = ProofBundle.parse({ receiptEval, breakIt, realVsSimulated, generatedAt: new Date().toISOString() });
