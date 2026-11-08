@@ -5,8 +5,15 @@ import postgres from 'postgres';
 export type Sql = postgres.Sql;
 export type Tx = postgres.TransactionSql;
 
-export function connect(url: string): Sql {
-  return postgres(url, { max: 5, onnotice: () => {} });
+/**
+ * max: COVERS_DB_MAX_CONNECTIONS (default 5; use 1–2 on serverless).
+ * Supabase's transaction pooler (port 6543) cannot use prepared statements, so they are turned off there.
+ * On Vercel, prefer the transaction pooler URL: the session pooler (5432) allows only 15 clients on the free plan.
+ */
+export function connect(url: string, opts: { max?: number } = {}): Sql {
+  const max = opts.max ?? (Number(process.env.COVERS_DB_MAX_CONNECTIONS) || 5);
+  const transactionPooler = /:6543\//.test(url);
+  return postgres(url, { max, onnotice: () => {}, ...(transactionPooler ? { prepare: false } : {}) });
 }
 
 const MIGRATIONS = join(import.meta.dirname, '..', 'migrations');
