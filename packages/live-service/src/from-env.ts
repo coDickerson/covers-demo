@@ -18,7 +18,11 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
 
   const mode = cacheModeFrom(env.COVERS_CACHE);
   const replay = mode === 'replay';
-  const cache = createCache({ mode, dir: env.COVERS_CACHE_DIR ?? join(import.meta.dirname, '..', '..', '..', 'cache') });
+  // Replay reads recordings from disk: on Vercel set COVERS_CACHE_DIR and include the folder in the deployment
+  // (see docs/live-mode.md). Locally the repo's cache/ folder is found automatically.
+  const here = typeof import.meta.dirname === 'string' ? import.meta.dirname : undefined;
+  const cacheDir = env.COVERS_CACHE_DIR ?? (here ? join(here, '..', '..', '..', 'cache') : join(process.cwd(), 'cache'));
+  const cache = createCache({ mode, dir: cacheDir });
 
   // Ramp: real with credentials; in replay, served from recordings even without credentials.
   const rampLive = env.RAMP_CLIENT_ID && env.RAMP_CLIENT_SECRET

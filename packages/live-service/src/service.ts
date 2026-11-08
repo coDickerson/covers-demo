@@ -15,7 +15,7 @@ import { hashImage } from './image-hash';
 import { looksLikeInstructions, runBreakItCase } from './breakit';
 import { isLabPack, labTests, nextPackId, pastDinners, toCustom, type LabCompiled, type PackCompilerPort } from './packlab';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import bundledProof from '../../../proof/proof.json';
 import { ProofBundle } from '@covers/contract';
 import { ensureSession, getDoc, listDocs, loadKinds, putDoc, putDocs, resetSession, type Seed } from './store';
 
@@ -484,13 +484,11 @@ export class LiveService implements CoversService {
     return res;
   }
 
-  /** proof/proof.json written by `pnpm proof` (real numbers, misses included); the placeholder until then. */
+  /** proof/proof.json written by `pnpm proof` (real numbers, misses included), bundled at build time. */
   async getProof(): Promise<ProofBundle> {
-    try {
-      return ProofBundle.parse(JSON.parse(readFileSync(this.deps.proofPath ?? join(import.meta.dirname, '..', '..', '..', 'proof', 'proof.json'), 'utf8')));
-    } catch {
-      return cloneSeed().proof;
-    }
+    const raw = this.deps.proofPath ? JSON.parse(readFileSync(this.deps.proofPath, 'utf8')) : bundledProof;
+    const parsed = ProofBundle.safeParse(raw);
+    return parsed.success ? parsed.data : cloneSeed().proof;
   }
 
   async reset(ctx: Ctx): Promise<void> { await resetSession(this.sql, ctx, this.seed()); }
