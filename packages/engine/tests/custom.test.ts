@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate, findConflicts, planFacts, type CustomPack } from '../src/index';
-import { PLAN_WITHOUT_RUIZ, baseInput } from './scenario';
+import { PLAN_WITHOUT_RUVANE, baseInput } from './scenario';
 
 const weekend: CustomPack = {
   id: 'P7', version: '1',
@@ -8,11 +8,11 @@ const weekend: CustomPack = {
     { id: 'weekend', when: [{ field: 'dayOfWeek', op: 'in', values: ['sat', 'sun'] }], outcome: 'flag', message: 'Weekend dinners need manager approval.' },
   ] },
 };
-const saturday = { ...PLAN_WITHOUT_RUIZ, date: '2026-11-14T19:00:00-08:00' };
+const saturday = { ...PLAN_WITHOUT_RUVANE, date: '2026-11-14T19:00:00-08:00' };
 
 describe('plan facts', () => {
   it('reads the local weekday and hour as written', () => {
-    expect(planFacts(PLAN_WITHOUT_RUIZ)).toMatchObject({ dayOfWeek: 'thu', localHour: 19, headcount: 7, inviteeCount: 5 });
+    expect(planFacts(PLAN_WITHOUT_RUVANE)).toMatchObject({ dayOfWeek: 'thu', localHour: 19, headcount: 7, inviteeCount: 5 });
     expect(planFacts(saturday).dayOfWeek).toBe('sat');
   });
 });
@@ -22,7 +22,7 @@ describe('promoted custom packs', () => {
     const sat = evaluate({ ...baseInput(saturday), customPacks: [weekend] });
     expect(sat.status).toBe('needs_approval');
     expect(sat.checks.find((c) => c.packId === 'P7')).toMatchObject({ outcome: 'flag', ruleId: 'P7.weekend', citation: { packId: 'P7', ruleId: 'P7.weekend', version: '1' } });
-    const thu = evaluate({ ...baseInput(PLAN_WITHOUT_RUIZ), customPacks: [weekend] });
+    const thu = evaluate({ ...baseInput(PLAN_WITHOUT_RUVANE), customPacks: [weekend] });
     expect(thu.status).toBe('cleared');
     expect(thu.checks.find((c) => c.packId === 'P7')?.outcome).toBe('pass');
   });

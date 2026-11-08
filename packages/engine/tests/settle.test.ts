@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { CoversError, Settlement } from '@covers/contract';
 import { settle, splitEvenly } from '../src/index';
 import {
-  ATTENDANCE, BAKER, CHEN, CLEAN_RECEIPT, KIM, NGUYEN, OKAFOR, PATEL, PLAN_WITHOUT_RUIZ, baseInput,
+  ATTENDANCE, BAKER, CHEN, CLEAN_RECEIPT, KINSALE, NGUYEN, OKAFOR, PATEL, PLAN_WITHOUT_RUVANE, baseInput,
 } from './scenario';
 
 const input = (over: Partial<Parameters<typeof settle>[0]> = {}) => ({
-  ...baseInput(PLAN_WITHOUT_RUIZ), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, ...over,
+  ...baseInput(PLAN_WITHOUT_RUVANE), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, ...over,
 });
 const find = (s: Settlement, id: string) => s.checks.find((c) => c.id === id);
 
@@ -25,11 +25,11 @@ describe('settle: the scripted dinner', () => {
     expect(s.byPerson.reduce((a, p) => a + p.amountCents, 0)).toBe(61_200);
   });
 
-  it('leaves the no-show Dr. Kim unchanged and drafts no Open Payments row for her', () => {
-    const kim = s.caps.find((c) => c.npi === KIM.npi);
+  it('leaves the no-show Dr. Kinsale unchanged and drafts no Open Payments row for her', () => {
+    const kim = s.caps.find((c) => c.npi === KINSALE.npi);
     expect(kim).toMatchObject({ ytdCents: 52_000, projectedCents: 52_000 });
-    expect(s.openPayments.some((r) => r.npi === KIM.npi)).toBe(false);
-    expect(s.byPerson.some((p) => p.npi === KIM.npi)).toBe(false);
+    expect(s.openPayments.some((r) => r.npi === KINSALE.npi)).toBe(false);
+    expect(s.byPerson.some((p) => p.npi === KINSALE.npi)).toBe(false);
   });
 
   it('adds each attendee share to their annual total, including the speaker', () => {
@@ -93,7 +93,7 @@ describe('settle: after-dinner rules', () => {
   });
 
   it('flags someone who ate but was not on the plan', () => {
-    const s = settle(input({ attendance: { ...ATTENDANCE, attendedNpis: [...ATTENDANCE.attendedNpis, KIM.npi.replace('202', '299')] } }));
+    const s = settle(input({ attendance: { ...ATTENDANCE, attendedNpis: [...ATTENDANCE.attendedNpis, KINSALE.npi.replace('202', '299')] } }));
     expect(s.checks.some((c) => c.ruleId === 'P2.uninvited' && c.outcome === 'flag')).toBe(true);
   });
 
