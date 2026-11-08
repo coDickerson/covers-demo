@@ -1,5 +1,5 @@
 // Builds LiveService from environment variables (COVERS_MODE=live). Used by apps/web's server code.
-import { createNppesClient, createRampClient, createReceiptReader } from '@covers/integrations';
+import { createNppesClient, createPackCompiler, createRampClient, createReceiptReader } from '@covers/integrations';
 import { connect, migrate } from './db';
 import { LiveService } from './service';
 
@@ -17,9 +17,10 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
   const nppes = createNppesClient();
   // Receipt photos are read only when an API key is configured; otherwise uploads refuse and samples still work.
   const reader = env.ANTHROPIC_API_KEY ? createReceiptReader(env.COVERS_RECEIPT_MODEL ? { model: env.COVERS_RECEIPT_MODEL } : {}) : undefined;
+  const compiler = env.ANTHROPIC_API_KEY ? createPackCompiler(env.COVERS_PACK_MODEL ? { model: env.COVERS_PACK_MODEL } : {}) : undefined;
   const maxReads = env.COVERS_MAX_READS_PER_SESSION ? Number(env.COVERS_MAX_READS_PER_SESSION) : undefined;
   const service = new LiveService({
-    sql, searchRegistry: (q) => nppes.searchHcps(q), ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}),
+    sql, searchRegistry: (q) => nppes.searchHcps(q), ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}), ...(compiler ? { compiler } : {}),
     ...(maxReads ? { maxReadsPerSession: maxReads } : {}),
   });
   return { service, close: () => sql.end() };

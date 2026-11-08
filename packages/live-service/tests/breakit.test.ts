@@ -19,11 +19,11 @@ describe.skipIf(!url)('Break-It suite', () => {
   afterAll(async () => { await sql?.end(); });
 
   for (const c of BREAK_IT_CASES) {
-    it(`#${c.id} ${c.attack} → ${c.id === 15 ? 'reported as not built (A7)' : c.expected}`, async () => {
+    it(`#${c.id} ${c.attack} → ${c.expected}`, async () => {
       const svc = new LiveService({ sql });
       const ctx = { sessionId: `bi-${crypto.randomUUID()}`, actorId: IDS.rep };
       const res = BreakItResult.parse(await svc.runBreakIt(ctx, c.id));
-      expect(res.passed, res.note).toBe(c.id !== 15);
+      expect(res.passed, res.note).toBe(true);
       // The visitor's own session is untouched.
       expect((await svc.getPlan(ctx, IDS.demoPlan)).plan.inviteeNpis).toContain(IDS.ruvane);
     });

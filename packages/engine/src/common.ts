@@ -18,6 +18,11 @@ export class Checks {
       citation: cite(ruleId), evidence: [...evidence].sort(),
     });
   }
+
+  /** Results from a promoted Pack-lab pack; always enabled when passed in. */
+  addCustom(packId: string, ruleId: string, outcome: CheckResult['outcome'], message: string, citation: CheckResult['citation']) {
+    this.list.push({ id: `${ruleId}:plan`, ruleId, packId, subject: { kind: 'plan' }, outcome, message, citation, evidence: ['plan'] });
+  }
 }
 
 export function indexBy<T, K>(xs: readonly T[], key: (x: T) => K): Map<K, T> {

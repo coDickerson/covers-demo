@@ -1,4 +1,5 @@
 import type { Attendance, Hcp, ProgramPlan, Receipt, Speaker } from '@covers/contract';
+import type { CustomPack } from './custom';
 
 export const PACK_IDS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'] as const;
 export type PackId = (typeof PACK_IDS)[number];
@@ -45,6 +46,8 @@ export type EvaluateInput = {
   history: AttendanceHistory[];
   approvals?: Approval[];
   settings?: Partial<EngineSettings>;
+  /** Promoted Pack-lab packs (A7), applied after P1–P6. */
+  customPacks?: CustomPack[];
   /** Caller-supplied clock, so the engine stays pure. ISO datetime. */
   now: string;
 };

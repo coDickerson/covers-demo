@@ -4,3 +4,4 @@ export { ensureSession, resetSession, getDoc, listDocs, putDoc, type Seed } from
 export { LiveService, seedFromFixtures, type LiveDeps, type HcpSearch, type RampPort, type ReceiptReaderPort } from './service';
 export { createLiveServiceFromEnv } from './from-env';
 export { BREAK_IT_CASES, runBreakItCase, looksLikeInstructions } from './breakit';
+export { pastDinners, labTests, strictestOutcome, type PackCompilerPort, type LabCompiled } from './packlab';

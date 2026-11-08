@@ -8,6 +8,7 @@ import type { Sql } from './db';
 import { write } from './gateway';
 import { getDoc, putDoc } from './store';
 import type { LiveService, ReceiptReaderPort } from './service';
+import type { PackCompilerPort } from './packlab';
 
 export const BREAK_IT_CASES: { id: number; attack: string; expected: string }[] = [
   { id: 1, attack: "Speaker's training expired", expected: 'Plan blocked, P1 cited' },
@@ -44,7 +45,7 @@ const refusal = async (p: Promise<unknown>, code: string) => {
 };
 
 export async function runBreakItCase(
-  make: (extra?: { reader?: ReceiptReaderPort }) => LiveService, sql: Sql, ctx: Ctx, caseId: number,
+  make: (extra?: { reader?: ReceiptReaderPort; compiler?: PackCompilerPort }) => LiveService, sql: Sql, ctx: Ctx, caseId: number,
 ): Promise<BreakItResult> {
   const def = BREAK_IT_CASES.find((c) => c.id === caseId);
   if (!def) throw new CoversError('not_found', `No Break-It case ${caseId}.`);
@@ -172,8 +173,33 @@ export async function runBreakItCase(
       const hits = pick(ev.checks, (c) => c.ruleId === 'P5.repeat-attendance' && c.outcome === 'flag');
       return result(hits.some((c) => c.subject.kind === 'hcp' && c.subject.npi === IDS.ruvane), hits, hits[0]?.message ?? 'Not flagged.');
     }
-    case 15:
-      return result(false, [], 'Not built yet: the Pack lab (compile, replay, promote) is task A7. Reported as a failure until it exists.');
+    case 15: {
+      // A stub compiler returns what a faithful compile of a self-contradicting rule looks like; the checks are ours.
+      const contradictory: PackCompilerPort = {
+        async compile() {
+          const weekend = [{ field: 'dayOfWeek' as const, op: 'in' as const, values: ['sat' as const, 'sun' as const] }];
+          return {
+            model: 'stub-compiler', promptVersion: 'breakit',
+            output: {
+              name: 'Weekend dinners', citationLabel: 'Fictional company policy', conflictsWithExisting: [], unsupported: null,
+              rules: [
+                { id: 'weekend-block', when: weekend, outcome: 'block', message: 'Weekend dinners are not allowed.' },
+                { id: 'weekend-flag', when: weekend, outcome: 'flag', message: 'Weekend dinners need manager approval.' },
+              ],
+              tests: [],
+            },
+          };
+        },
+      };
+      const s = make({ compiler: contradictory });
+      const { pack, tests } = await s.compilePack(scratch, 'Weekend dinners are not allowed. Weekend dinners only need manager approval.');
+      const conflictTest = tests.find((t) => t.name.startsWith('No conflicts'));
+      const diff = await s.replayPack(cmp, pack.id);
+      const shown = diff.changed.some((c) => c.why.includes('Conflict'));
+      const r = await refusal(s.promotePack(cmp, pack.id), 'invalid_state');
+      return result(conflictTest?.passed === false && shown && r.ok, [],
+        `Compile test: "${conflictTest?.name}". Replay: ${diff.changed.length} of ${diff.mealsReplayed} dinners change, conflict ${shown ? 'shown' : 'not shown'}. Promote ${r.got}.`);
+    }
   }
   throw new CoversError('not_found', `No Break-It case ${caseId}.`);
 }

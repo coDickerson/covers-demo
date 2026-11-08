@@ -140,8 +140,8 @@
       "id": 15,
       "attack": "Contradictory English rule compiled in the Pack lab",
       "expected": "Replay shows the conflict; Promote blocked",
-      "passed": false,
-      "note": "Not built yet: the Pack lab (compile, replay, promote) is task A7. Reported as a failure until it exists."
+      "passed": true,
+      "note": "Compile test: \"No conflicts (found: \"weekend-block\" says block and \"weekend-flag\" says flag for exactly the same dinners.)\". Replay: 3 of 20 dinners change, conflict shown. Promote refused with invalid_state."
     }
   ],
   "realVsSimulated": [
@@ -191,10 +191,15 @@
       "howWeKnow": "Program-year 2026 CMS thresholds; humans file"
     },
     {
-      "piece": "Pack lab",
-      "status": "Not built yet",
-      "howWeKnow": "Break-It #15"
+      "piece": "Pack lab: rules applied",
+      "status": "Real",
+      "howWeKnow": "Compiled rules run in the deterministic engine; conflicts found by code; Break-It #15"
+    },
+    {
+      "piece": "Pack lab: English → rule",
+      "status": "Built; live compile not yet verified",
+      "howWeKnow": "claude-opus-5-5 with schema-validated output; tested with a stub compiler"
     }
   ],
-  "generatedAt": "2026-11-08T02:21:35.265Z"
+  "generatedAt": "2026-11-08T02:26:48.527Z"
 }

@@ -5,6 +5,7 @@ import { dayNumber, localDate } from './dates';
 import { formatCents } from './money';
 import { resolveSettings } from './settings';
 import type { Approval, EvaluateInput } from './types';
+import { customCitation, planFacts, ruleMatches } from './custom';
 
 export function evaluate(input: EvaluateInput): Evaluation {
   const s = resolveSettings(input.settings);
@@ -82,6 +83,15 @@ export function evaluate(input: EvaluateInput): Evaluation {
         flagged ? `${name} already attended ${repeatCount} programs on this topic in the last 12 months.`
           : `${name}: ${repeatCount} same-topic program${repeatCount === 1 ? '' : 's'} in the last 12 months.`,
         [...repeats.map((id) => `plan:${id}`), ...(priorRepeats > 0 ? [`ledger:${npi}`] : [])]);
+    }
+  }
+
+  // ---- Promoted Pack-lab packs: compiled by a model, applied here by code ----
+  const facts = planFacts(plan);
+  for (const p of input.customPacks ?? []) {
+    for (const r of p.compiled.rules) {
+      const hit = ruleMatches(r, facts);
+      checks.addCustom(p.id, `${p.id}.${r.id}`, hit ? r.outcome : 'pass', hit ? r.message : `Does not apply: ${r.message}`, customCitation(p, r.id));
     }
   }
 

@@ -13,6 +13,7 @@ import type { Sql } from './db';
 import { listAudit, write } from './gateway';
 import { hashImage } from './image-hash';
 import { looksLikeInstructions, runBreakItCase } from './breakit';
+import { isLabPack, labTests, nextPackId, pastDinners, toCustom, type LabCompiled, type PackCompilerPort } from './packlab';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ProofBundle } from '@covers/contract';
@@ -40,7 +41,7 @@ export type ReceiptReaderPort = {
 type StoredImage = { base64: string; mime: string; hash: string };
 type RampLink = { fundId: string; cardId: string; lastFour: string; ownerUserId: string; limitCents: number };
 
-export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; maxReadsPerSession?: number; proofPath?: string; now?: () => string };
+export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; compiler?: PackCompilerPort; maxReadsPerSession?: number; proofPath?: string; now?: () => string };
 
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
@@ -103,7 +104,9 @@ export class LiveService implements CoversService {
     for (const npi of plan.inviteeNpis) {
       if (!known.has(npi)) { const h = await getDoc<Hcp>(this.sql, sid, 'registryHcp', npi); if (h) known.set(npi, h); }
     }
+    const customPacks = (await listDocs<RulePack>(this.sql, sid, 'pack')).filter((p) => p.status === 'live').filter(isLabPack).map(toCustom);
     return {
+      customPacks,
       plan, speaker: speakers.find((s) => s.id === plan.speakerId) ?? null, hcps: [...known.values()],
       ledger: ledger.map((l): LedgerEntry => ({ npi: l.npi, ytdCents: l.ytdCents, sameTopicCount12mo: l.sameTopicCount12mo })),
       history, settings, now: this.now(),
@@ -394,9 +397,70 @@ export class LiveService implements CoversService {
 
   // ---- pack lab (A7) ----
   async listPacks(ctx: Ctx): Promise<RulePack[]> { return listDocs(this.sql, await this.open(ctx), 'pack'); }
-  async compilePack(_ctx: Ctx, _english: string): Promise<CompileResult> { throw notYet('The Pack lab'); }
-  async replayPack(_ctx: Ctx, _packId: string): Promise<ReplayDiff> { throw notYet('The Pack lab'); }
-  async promotePack(_ctx: Ctx, _packId: string): Promise<RulePack> { throw notYet('The Pack lab'); }
+  async compilePack(ctx: Ctx, english: string): Promise<CompileResult> {
+    const sid = await this.open(ctx);
+    if (!this.deps.compiler) throw notYet('Compiling rules (needs an Anthropic API key)');
+    const text = english.trim();
+    if (!text || text.length > 600) throw new CoversError('validation', 'Write the rule in one or two sentences (up to 600 characters).');
+    const packs = await listDocs<RulePack>(this.sql, sid, 'pack');
+    const live = packs.filter((p) => p.status === 'live').map((p) => ({ id: p.id, name: p.name, english: p.english }));
+    let res: Awaited<ReturnType<PackCompilerPort['compile']>>;
+    try {
+      res = await this.deps.compiler.compile(text, live);
+    } catch (e) {
+      throw new CoversError('validation', `Could not compile the rule: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const { tests, conflicts } = labTests(res.output);
+    const compiled: LabCompiled = {
+      rules: res.output.rules, citationLabel: res.output.citationLabel, tests, conflicts, model: res.model, promptVersion: res.promptVersion,
+    };
+    const pack: RulePack = { id: nextPackId(packs), name: res.output.name, version: '1', effective: this.now().slice(0, 10), english: text, compiled, status: 'draft' };
+    await write(this.sql, ctx, {
+      action: 'pack.compiled', packId: pack.id, input: text, model: res.model, promptVersion: res.promptVersion,
+      detail: `${pack.name}: ${res.output.rules.length} rule(s), ${tests.filter((t) => t.passed).length}/${tests.length} tests pass${conflicts.length ? `; conflicts: ${conflicts.join(' ')}` : ''}`.slice(0, 500),
+    }, (tx) => putDoc(tx, sid, 'pack', pack.id, pack));
+    return { pack, tests };
+  }
+
+  async replayPack(ctx: Ctx, packId: string): Promise<ReplayDiff> {
+    const sid = await this.open(ctx);
+    const pack = await getDoc<RulePack>(this.sql, sid, 'pack', packId);
+    if (!pack || !isLabPack(pack)) throw new CoversError('not_found', `Pack ${packId} is not a Pack-lab pack.`);
+    const candidate = toCustom(pack);
+    const changed: ReplayDiff['changed'] = [];
+    const dinners = pastDinners();
+    for (const plan of dinners) {
+      const facts = await this.facts(sid, plan);
+      const live = facts.customPacks.filter((p) => p.id !== packId);
+      const before = evaluate({ ...facts, customPacks: live }).status;
+      const afterEv = evaluate({ ...facts, customPacks: [...live, candidate] });
+      if (afterEv.status !== before) {
+        const hits = afterEv.checks.filter((c) => c.packId === packId && c.outcome !== 'pass').map((c) => c.message);
+        const conflict = pack.compiled.conflicts.length ? ` Conflict: ${pack.compiled.conflicts.join(' ')}` : '';
+        changed.push({ planId: plan.id, before, after: afterEv.status, why: `${hits.join(' ')}${conflict}`.trim() });
+      }
+    }
+    const diff: ReplayDiff = { packId, mealsReplayed: dinners.length, changed };
+    const next: RulePack = { ...pack, compiled: { ...pack.compiled, replayed: { at: this.now(), mealsReplayed: dinners.length, changed: changed.length } } };
+    await write(this.sql, ctx, { action: 'pack.replayed', packId, input: { packId }, detail: `${changed.length} of ${dinners.length} past dinners would change` },
+      (tx) => putDoc(tx, sid, 'pack', packId, next));
+    return diff;
+  }
+
+  async promotePack(ctx: Ctx, packId: string): Promise<RulePack> {
+    const sid = await this.open(ctx);
+    const pack = await getDoc<RulePack>(this.sql, sid, 'pack', packId);
+    if (!pack || !isLabPack(pack)) throw new CoversError('not_found', `Pack ${packId} is not a Pack-lab pack.`);
+    if ((await listDocs<Rep>(this.sql, sid, 'rep')).some((r) => r.id === ctx.actorId)) throw new CoversError('forbidden', 'Reps cannot promote rules; compliance or a manager can.');
+    if (pack.status === 'live') return pack;
+    const failed = pack.compiled.tests.filter((t) => !t.passed);
+    if (failed.length) throw new CoversError('invalid_state', `Promote blocked: ${failed.map((t) => t.name).join('; ')}`);
+    if (!pack.compiled.replayed) throw new CoversError('invalid_state', 'Promote blocked: replay the pack over past dinners first.');
+    const live: RulePack = { ...pack, status: 'live', effective: this.now().slice(0, 10) };
+    await write(this.sql, ctx, { action: 'pack.promoted', packId, input: { packId }, detail: `${pack.name} is live: ${pack.english}`.slice(0, 500) },
+      (tx) => putDoc(tx, sid, 'pack', packId, live));
+    return live;
+  }
 
   // ---- judge tools ----
   async runBreakIt(ctx: Ctx, caseId: number): Promise<BreakItResult> {
