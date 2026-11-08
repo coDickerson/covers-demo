@@ -4,6 +4,22 @@ For C2 (flip to live on a preview deploy). Everything on A's side is in `package
 needs one server-side function call. Verified Nov 7: LiveService passes the shared contract suite against our Supabase
 database, through both of Supabase's poolers.
 
+## 0. C2 checklist (Sun Nov 8, 10 pm)
+
+Checked Nov 8, 1:20 pm on a production build (`next build` + `next start`, `COVERS_MODE=live`, `COVERS_CACHE=1`,
+Supabase): plan-demo → blocked (P4, P5), `issueFund` → 409, `getProof` → 15/15, recorded registry search replays,
+an unrecorded one → 409 "Replaying recorded responses…".
+
+1. Vercel → `covers-demo` → Settings → Environment Variables, **Preview only** (leave Production on fixtures until C3):
+   `COVERS_MODE=live`, `DATABASE_URL` (transaction pooler, `:6543`), `COVERS_DB_MAX_CONNECTIONS=2`,
+   `RAMP_BASE_URL`, `RAMP_CLIENT_ID`, `RAMP_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `COVERS_CACHE=0`.
+   Nikhil sends the values privately.
+2. Settings → Functions → Function Region: **`pdx1`** (the database is in us-west-2).
+3. Push any branch (or redeploy) to get a preview URL; open it logged out.
+4. Smoke test on the preview: the landing page loads; `evaluatePlan("plan-demo")` → blocked; `issueFund` on it → 409;
+   a real NPI search (e.g. "John Smith CA") returns registry doctors with no spend.
+5. Each person fixes mismatches on their own side; the contract suite is the referee.
+
 ## 1. Already wired (Nov 8)
 
 Cole's app picks the service in `apps/web/lib/service.ts`; live mode goes through **`apps/web/lib/live.ts`** (A's one
