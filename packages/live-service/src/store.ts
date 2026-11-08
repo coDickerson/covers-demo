@@ -23,10 +23,28 @@ export async function putDoc(tx: Tx, sessionId: string, kind: string, id: string
     on conflict (session_id, kind, id) do update set data = excluded.data, updated_at = now()`;
 }
 
+/** Upserts many documents in one statement. Only call inside gateway.write. */
+export async function putDocs(tx: Tx, sessionId: string, rows: { kind: string; id: string; data: unknown }[]): Promise<void> {
+  if (rows.length === 0) return;
+  // Last write wins within one batch, like sequential putDoc calls.
+  const unique = [...new Map(rows.map((r) => [`${r.kind}\u0000${r.id}`, r])).values()];
+  const values = unique.map((r) => ({ session_id: sessionId, kind: r.kind, id: r.id, data: tx.json(r.data as never) }));
+  await tx`
+    insert into docs ${tx(values, 'session_id', 'kind', 'id', 'data')}
+    on conflict (session_id, kind, id) do update set data = excluded.data, updated_at = now()`;
+}
+
+/** Reads every document of the given kinds in one query, grouped by kind. */
+export async function loadKinds(sql: Sql | Tx, sessionId: string, kinds: string[]): Promise<Map<string, unknown[]>> {
+  const rows = await sql<{ kind: string; data: unknown }[]>`
+    select kind, data from docs where session_id = ${sessionId} and kind = any(${kinds}) order by kind, id`;
+  const out = new Map<string, unknown[]>(kinds.map((k) => [k, []]));
+  for (const r of rows) out.get(r.kind)!.push(r.data);
+  return out;
+}
+
 async function copySeed(tx: Tx, sessionId: string, seed: Seed) {
-  for (const [kind, rows] of Object.entries(seed)) {
-    for (const r of rows) await putDoc(tx, sessionId, kind, r.id, r.data);
-  }
+  await putDocs(tx, sessionId, Object.entries(seed).flatMap(([kind, rows]) => rows.map((r) => ({ kind, id: r.id, data: r.data }))));
 }
 
 /** First visit creates the session and copies the seed into it. Concurrent first visits seed once. Returns true if created. */

@@ -17,7 +17,7 @@ import { isLabPack, labTests, nextPackId, pastDinners, toCustom, type LabCompile
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ProofBundle } from '@covers/contract';
-import { ensureSession, getDoc, listDocs, putDoc, resetSession, type Seed } from './store';
+import { ensureSession, getDoc, listDocs, loadKinds, putDoc, putDocs, resetSession, type Seed } from './store';
 
 export type HcpSearch = (q: string) => Promise<Hcp[]>;
 
@@ -60,6 +60,16 @@ export function seedFromFixtures(): Seed {
   };
 }
 
+const FACT_KINDS = ['speaker', 'hcp', 'registryHcp', 'ledger', 'history', 'company', 'pack'];
+
+function settingsFrom(c: Company | null): Partial<EngineSettings> {
+  if (!c) return {};
+  return {
+    perPersonCapCents: c.perPersonCapCents, defaultAnnualCapCents: c.annualCapCents,
+    nearNumerator: c.nearThresholdPct, nearDenominator: 100, repeatTopicThreshold: c.repeatTopicFlagAt,
+  };
+}
+
 const notYet = (what: string) => new CoversError('invalid_state', `${what} is not available yet.`);
 
 export class LiveService implements CoversService {
@@ -72,8 +82,16 @@ export class LiveService implements CoversService {
     this.now = deps.now ?? (() => new Date().toISOString());
   }
 
+  /** Sessions this instance has already ensured, so later calls skip the round trip (10-minute memory). */
+  private readonly ensured = new Map<string, number>();
+
   private async open(ctx: Ctx) {
-    await ensureSession(this.sql, ctx, this.seed());
+    const t = Date.now();
+    const seen = this.ensured.get(ctx.sessionId);
+    if (seen === undefined || t - seen > 600_000) {
+      await ensureSession(this.sql, ctx, this.seed());
+      this.ensured.set(ctx.sessionId, t);
+    }
     return ctx.sessionId;
   }
 
@@ -84,32 +102,22 @@ export class LiveService implements CoversService {
   }
 
   private async settings(sid: string): Promise<Partial<EngineSettings>> {
-    const c = await getDoc<Company>(this.sql, sid, 'company', 'company');
-    if (!c) return {};
-    return {
-      perPersonCapCents: c.perPersonCapCents, defaultAnnualCapCents: c.annualCapCents,
-      nearNumerator: c.nearThresholdPct, nearDenominator: 100, repeatTopicThreshold: c.repeatTopicFlagAt,
-    };
+    return settingsFrom(await getDoc<Company>(this.sql, sid, 'company', 'company'));
   }
 
-  /** Everything the engine needs, read from the session. */
-  private async facts(sid: string, plan: ProgramPlan) {
-    const [speakers, hcps, ledger, history, settings] = await Promise.all([
-      listDocs<Speaker>(this.sql, sid, 'speaker'), listDocs<Hcp>(this.sql, sid, 'hcp'),
-      listDocs<LedgerSeed>(this.sql, sid, 'ledger'), listDocs<AttendanceHistory>(this.sql, sid, 'history'),
-      this.settings(sid),
-    ]);
-    const known = new Map(hcps.map((h) => [h.npi, h]));
+  /** Everything the engine needs for a plan, in one query. */
+  private async facts(sid: string, plan: ProgramPlan, snap?: Map<string, unknown[]>) {
+    const d = snap ?? await loadKinds(this.sql, sid, FACT_KINDS);
+    const speakers = d.get('speaker') as Speaker[];
+    const known = new Map((d.get('hcp') as Hcp[]).map((h) => [h.npi, h]));
     for (const s of speakers) if (!known.has(s.hcp.npi)) known.set(s.hcp.npi, s.hcp);
-    for (const npi of plan.inviteeNpis) {
-      if (!known.has(npi)) { const h = await getDoc<Hcp>(this.sql, sid, 'registryHcp', npi); if (h) known.set(npi, h); }
-    }
-    const customPacks = (await listDocs<RulePack>(this.sql, sid, 'pack')).filter((p) => p.status === 'live').filter(isLabPack).map(toCustom);
+    for (const h of d.get('registryHcp') as Hcp[]) if (!known.has(h.npi) && plan.inviteeNpis.includes(h.npi)) known.set(h.npi, h);
+    const customPacks = (d.get('pack') as RulePack[]).filter((p) => p.status === 'live').filter(isLabPack).map(toCustom);
     return {
       customPacks,
       plan, speaker: speakers.find((s) => s.id === plan.speakerId) ?? null, hcps: [...known.values()],
-      ledger: ledger.map((l): LedgerEntry => ({ npi: l.npi, ytdCents: l.ytdCents, sameTopicCount12mo: l.sameTopicCount12mo })),
-      history, settings, now: this.now(),
+      ledger: (d.get('ledger') as LedgerSeed[]).map((l): LedgerEntry => ({ npi: l.npi, ytdCents: l.ytdCents, sameTopicCount12mo: l.sameTopicCount12mo })),
+      history: d.get('history') as AttendanceHistory[], settings: settingsFrom((d.get('company') as Company[])[0] ?? null), now: this.now(),
     };
   }
 
@@ -171,13 +179,17 @@ export class LiveService implements CoversService {
 
   /** Evaluates with the given approvals (default: stored ones) and stores approvals, evaluation and status together. */
   private async runEvaluation(ctx: Ctx, sid: string, plan: ProgramPlan, action: string, detail: string, newApprovals?: Approval[]) {
-    const approvals = newApprovals ?? (await getDoc<Approval[]>(this.sql, sid, 'approvals', plan.id)) ?? [];
-    const ev = evaluate({ ...(await this.facts(sid, plan)), approvals });
-    await write(this.sql, ctx, { action, planId: plan.id, input: { plan, approvals }, detail: `${detail} → ${ev.status}` }, async (tx) => {
-      if (newApprovals) await putDoc(tx, sid, 'approvals', plan.id, newApprovals);
-      await putDoc(tx, sid, 'evaluation', plan.id, ev);
-      await putDoc(tx, sid, 'plan', plan.id, { ...plan, status: ev.status });
-    });
+    const [stored, facts] = await Promise.all([
+      newApprovals ? Promise.resolve(null) : getDoc<Approval[]>(this.sql, sid, 'approvals', plan.id),
+      this.facts(sid, plan),
+    ]);
+    const approvals = newApprovals ?? stored ?? [];
+    const ev = evaluate({ ...facts, approvals });
+    await write(this.sql, ctx, { action, planId: plan.id, input: { plan, approvals }, detail: `${detail} → ${ev.status}` }, (tx) => putDocs(tx, sid, [
+      ...(newApprovals ? [{ kind: 'approvals', id: plan.id, data: newApprovals }] : []),
+      { kind: 'evaluation', id: plan.id, data: ev },
+      { kind: 'plan', id: plan.id, data: { ...plan, status: ev.status } },
+    ]));
     return ev;
   }
 
@@ -358,15 +370,17 @@ export class LiveService implements CoversService {
     const shares = new Map(st.byPerson.filter((p) => p.npi).map((p) => [p.npi!, p.amountCents]));
     const ledger = await listDocs<LedgerSeed>(this.sql, sid, 'ledger');
     const day = plan.date.slice(0, 10);
-    await write(this.sql, ctx, { action: 'attendance.confirmed', planId: plan.id, input: a, detail: `${st.headcount} ate; ${st.exceptions.length} exception(s)` }, async (tx) => {
-      for (const [npi, cents] of shares) {
+    await write(this.sql, ctx, { action: 'attendance.confirmed', planId: plan.id, input: a, detail: `${st.headcount} ate; ${st.exceptions.length} exception(s)` }, (tx) => putDocs(tx, sid, [
+      ...[...shares].flatMap(([npi, cents]) => {
         const row = ledger.find((l) => l.npi === npi) ?? { npi, ytdCents: 0, sameTopicCount12mo: 0 };
-        await putDoc(tx, sid, 'ledger', npi, { ...row, ytdCents: row.ytdCents + cents });
-        await putDoc(tx, sid, 'history', `${plan.id}:${npi}`, { npi, topic: plan.topic, date: day, planId: plan.id } satisfies AttendanceHistory);
-      }
-      await putDoc(tx, sid, 'settlement', plan.id, st);
-      await putDoc(tx, sid, 'plan', plan.id, { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' });
-    });
+        return [
+          { kind: 'ledger', id: npi, data: { ...row, ytdCents: row.ytdCents + cents } },
+          { kind: 'history', id: `${plan.id}:${npi}`, data: { npi, topic: plan.topic, date: day, planId: plan.id } satisfies AttendanceHistory },
+        ];
+      }),
+      { kind: 'settlement', id: plan.id, data: st },
+      { kind: 'plan', id: plan.id, data: { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' } },
+    ]));
     await this.writeBackToRamp(ctx, sid, plan, a, st);
     return st;
   }
