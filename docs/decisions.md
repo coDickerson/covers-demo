@@ -88,9 +88,33 @@ The story then reconciles exactly:
 
 **Live-mode wiring lives in `apps/web/lib/live.ts`, which A owns.** Env var `DATABASE_URL`.
 
+## Sun Nov 8 — deadline, video, and the storyboard direction
+
+**Deadline: Tue Nov 10, 11:59 PM PT** (the plan said noon). B9–B10 can run later on Tuesday.
+
+**Video: about 3 minutes.** No written length limit found; 3 min is a first target (moa's winning video ran 3:09). Structure: real-headline cold open → one dinner end to end → quick tour → "try it yourself".
+
+**Deploy is live** in fixture mode: https://covers-demo-flame.vercel.app (Vercel project `covers-demo`, root `apps/web`, `COVERS_MODE=fixtures`, Upstash connected). Upstash is on the free plan, so keep smoke tests to a few targeted calls.
+
+**The storyboard leads the design: `design/storyboard.html`.** 14 frames from plan to proof, each with who is looking, the one question the screen answers, what clicking opens, and the voiceover line. Frame 0 holds the problem, the solution and the workflow map. Principles taken from moa's video:
+- **One question per screen.** Details open in a side panel instead of crowding the page.
+- **Progress as a chain** of small cards: Plan → Checks → Card → Receipt → Settled.
+- **Findings cards:** the number in the headline sentence, a short table, policy clause chips, evidence chips, and options with one marked *Recommended*.
+- Only the people who need action carry a **"Needs your OK"** tag; everyone else stays quiet.
+
+This replaces the Figma Plan screen from B1. **Code leads; Figma now does the video pieces (B8)** and stays the source for variables. The old Plan screen, cap bar and stamp in Figma are archived.
+
+**Look: "Ledger".** Thin divider lines, square corners (`radius/control` and `radius/card` = 0), and lime only on the one action to take.
+- **Fonts:** Inter Tight, plus **JetBrains Mono** for amounts, IDs and policy clauses (`type/family/mono`).
+- **Palette:**
+  - page `#FBFAF8`, ink `#141414`, secondary `#4A4744`, muted `#7A7672`, lines `#E2DED9`
+  - status: over `#D93A26`, near `#A86A00`, ok `#2B7A4B`
+- **Type sizes:** heading 22, verdict 26, display 40, micro 11. Bold 700 for the verdict lines.
+- **Shapes:** cap bar 4 px. Stamp flat (`stamp/rotation` = 0).
+
 ## Pending
 
-- Vercel connection and the Upstash integration (Cole, dashboard).
+- ~~Vercel connection and the Upstash integration (Cole, dashboard).~~ Done Nov 8.
 
 ## Additions to the contract at C0 (please review, Nikhil)
 

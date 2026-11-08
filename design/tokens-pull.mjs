@@ -32,6 +32,7 @@ function cssValue(name, v) {
   if (name.startsWith('motion/')) return `${v}ms`;
   if (name === 'stamp/rotation') return `${v}deg`;
   if (name.startsWith('type/weight/')) return String(v);
+  if (name === 'type/family/mono') return `"${v}", ui-monospace, SFMono-Regular, Menlo, monospace`;
   if (name.startsWith('type/family/')) return `"${v}", ui-sans-serif, system-ui, sans-serif`;
   if (typeof v === 'number') return `${v}px`;
   return String(v);
@@ -47,6 +48,7 @@ for (const [n, v] of Object.entries(tokens)) {
   else if (n.startsWith('type/size/')) theme.push(`  --text-${n.split('/')[2]}: ${val};`);
   else if (n.startsWith('type/weight/')) theme.push(`  --font-weight-${n.split('/')[2]}: ${val};`);
   else if (n === 'type/family/sans') theme.push(`  --font-sans: var(--font-inter-tight), ${val};`);
+  else if (n === 'type/family/mono') theme.push(`  --font-mono: var(--font-jetbrains-mono), ${val};`);
   else if (n.startsWith('radius/')) theme.push(`  --radius-${n.split('/')[1]}: ${val};`);
   else if (n.startsWith('motion/ease/')) theme.push(`  --ease-${n.split('/')[2]}: ${val};`);
 }
