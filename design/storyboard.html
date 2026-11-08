@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Covers storyboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#141414; --ink2:#4A4744; --mute:#7A7672; --line:#E2DED9; --paper:#FBFAF8; --bg:#EEEBE6; --over:#D93A26; --ok:#2B7A4B; --near:#A86A00; --lime:#E4F222; --ease: cubic-bezier(.2,0,0,1); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: 260px 1fr; height: 100vh; overflow: hidden; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .lbl { font: 600 11px 'Inter Tight'; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+
+  /* sidebar */
+  nav { background: var(--paper); border-right: 1px solid var(--line); padding: 20px 0; overflow-y: auto; }
+  nav .brand { padding: 0 20px 16px; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+  nav .brand span { display: block; font: 500 11px 'JetBrains Mono'; color: var(--mute); margin-top: 2px; letter-spacing: 0; }
+  nav .phase { padding: 18px 20px 6px; }
+  nav a { display: grid; grid-template-columns: 26px 1fr; padding: 8px 20px; font-size: 14px; color: var(--ink2); cursor: pointer; text-decoration: none; }
+  nav a .n { font: 500 12px 'JetBrains Mono'; color: var(--mute); }
+  nav a:hover { background: #F2EFEA; }
+  nav a.on { background: var(--ink); color: var(--paper); }
+  nav a.on .n { color: var(--lime); }
+
+  main { display: grid; grid-template-rows: 1fr auto; overflow: hidden; }
+  .stage { overflow: auto; padding: 28px 36px; display: flex; justify-content: center; align-items: flex-start; }
+  .notes { background: var(--paper); border-top: 1px solid var(--line); padding: 16px 36px; display: grid; grid-template-columns: 1.1fr 1fr 1fr 1.4fr auto; gap: 28px; font-size: 13.5px; line-height: 1.4; }
+  .notes .lbl { display: block; margin-bottom: 4px; }
+  .notes .vo { font-style: italic; color: var(--ink2); }
+  .navbtns { display: flex; gap: 6px; align-items: center; }
+  .navbtns button { all: unset; cursor: pointer; border: 1px solid var(--ink); padding: 8px 12px; font: 500 13px 'JetBrains Mono'; }
+
+  .frame { display: none; }
+  .frame.on { display: block; }
+  .screen { width: 1180px; min-height: 700px; background: var(--paper); border: 1px solid #D6D2CC; box-shadow: 0 20px 50px -30px rgba(0,0,0,.35); position: relative; }
+  .appbar { display: flex; align-items: center; gap: 22px; height: 52px; padding: 0 28px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .appbar .mark { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+  .appbar .tabs { display: flex; gap: 18px; color: var(--mute); }
+  .appbar .tabs .on { color: var(--ink); font-weight: 600; }
+  .appbar .sp { flex: 1; }
+  .appbar .role { font: 500 11px 'JetBrains Mono'; border: 1px solid var(--ink); padding: 5px 9px; }
+  .crumb { padding: 14px 28px 0; font: 500 12px 'JetBrains Mono'; color: var(--mute); }
+  .crumb b { color: var(--ink); font-weight: 500; }
+  .btn { font: 600 14px 'Inter Tight'; padding: 11px 16px; border: 1px solid var(--ink); background: transparent; color: var(--ink); white-space: nowrap; display: inline-block; }
+  .btn.go { background: var(--lime); }
+  .btn.dark { background: var(--ink); color: var(--paper); }
+  .btn.off { color: var(--mute); border-color: var(--line); }
+  .tag { display: inline-block; font: 600 10.5px 'Inter Tight'; letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid currentColor; }
+  .tag.over { color: var(--over); } .tag.ok { color: var(--ok); } .tag.near { color: var(--near); }
+  .tag.ask { background: var(--ink); color: var(--lime); border-color: var(--ink); }
+
+  /* chain of artifacts (moa thumbnails) */
+  .chain { display: flex; gap: 10px; align-items: center; }
+  .chip { border: 1px solid var(--line); background: #fff; padding: 10px 12px; width: 150px; }
+  .chip .t { font-size: 13px; font-weight: 600; margin-top: 6px; }
+  .chip .s { font: 500 11px 'JetBrains Mono'; color: var(--mute); margin-top: 2px; }
+  .chip i { display: inline-block; width: 8px; height: 8px; background: var(--line); }
+  .chip.done i { background: var(--ok); } .chip.bad i { background: var(--over); } .chip.now i { background: var(--lime); outline: 1px solid var(--ink); }
+  .chip.bad { border-color: var(--over); }
+  .chain .ar { color: var(--mute); font: 500 12px 'JetBrains Mono'; }
+
+  /* bars: track = $2,500, cap 80% */
+  .bar { position: relative; height: 4px; background: var(--line); }
+  .bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
+  .bar u { position: absolute; top: 0; bottom: 0; background: #A8A49F; }
+  .bar.over u { background: var(--over); }
+  .bar s { position: absolute; left: 80%; top: -5px; width: 2px; height: 14px; background: var(--ink); }
+
+  .guest { display: grid; grid-template-columns: 220px 1fr 70px 110px; gap: 24px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .guest .amt { text-align: right; font-size: 13px; color: var(--ink2); }
+  .guest.sel { background: #FFF; box-shadow: inset 3px 0 0 var(--over); padding-left: 12px; margin-left: -12px; }
+
+  /* side panel */
+  .panel { position: absolute; top: 52px; right: 0; bottom: 0; width: 440px; background: #fff; border-left: 1px solid var(--ink); padding: 22px 26px; overflow: hidden; }
+  .find h3 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.2; margin: 8px 0 10px; }
+  .mt { border: 1px solid var(--line); margin-top: 14px; }
+  .mt div { display: flex; justify-content: space-between; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+  .mt div:first-child { border-top: 0; }
+  .mt .tot { background: #FDECE8; color: var(--over); font-weight: 600; }
+  .doc { display: grid; grid-template-columns: 34px 1fr; gap: 10px; border: 1px solid var(--line); padding: 10px 12px; margin-top: 12px; font-size: 13.5px; }
+  .doc .ic { width: 34px; height: 42px; border: 1px solid var(--line); background: repeating-linear-gradient(#fff 0 6px, #EEE 6px 7px); }
+  .clause { display: inline-block; font: 500 11px 'JetBrains Mono'; border: 1px solid var(--line); padding: 2px 6px; margin: 6px 4px 0 0; color: var(--ink2); }
+  .opt { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--ink); padding: 12px 14px; margin-top: 10px; font-size: 14px; }
+  .opt.off { border-color: var(--line); color: var(--mute); }
+
+  /* stamp */
+  .stamp { display: inline-block; transform: rotate(-6deg); border: 3px solid var(--ok); color: var(--ok); padding: 6px 14px 4px; text-align: center; }
+  .stamp .w { font: 700 30px 'Inter Tight'; letter-spacing: .1em; }
+  .stamp .r { font: 500 10px 'JetBrains Mono'; }
+  .frame.on .stamp.land { animation: land .48s var(--ease) both .25s; }
+  @keyframes land { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+
+  /* phone */
+  .phones { display: flex; gap: 40px; align-items: flex-start; }
+  .phone { width: 340px; height: 700px; background: var(--paper); border: 10px solid #111; border-radius: 44px; overflow: hidden; position: relative; box-shadow: 0 20px 50px -30px rgba(0,0,0,.5); }
+  .phone .sb { height: 40px; display: flex; justify-content: space-between; padding: 12px 26px 0; font: 600 13px 'Inter Tight'; }
+  .phone .in { padding: 14px 22px; }
+  .push { background: rgba(255,255,255,.9); border-radius: 18px; padding: 12px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13.5px; }
+  .push .a { display: flex; justify-content: space-between; font: 600 11px 'Inter Tight'; color: var(--mute); margin-bottom: 4px; }
+  .rline { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .dot.mid { background: var(--near); } .dot.low { background: var(--over); }
+  .tap { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .box { width: 22px; height: 22px; border: 1.5px solid var(--ink); display: grid; place-items: center; font-size: 13px; }
+  .box.on { background: var(--ink); color: var(--lime); }
+  .tap.no { color: var(--mute); text-decoration: line-through; }
+
+  /* doc frame 0 */
+  .paper { width: 1000px; background: var(--paper); border: 1px solid #D6D2CC; padding: 56px 64px 64px; box-shadow: 0 20px 50px -30px rgba(0,0,0,.35); }
+  .paper h1 { font-size: 40px; letter-spacing: -0.03em; line-height: 1.05; }
+  .paper h2 { font: 700 12px 'Inter Tight'; letter-spacing: .14em; text-transform: uppercase; margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); }
+  .paper p, .paper li { font-size: 16px; line-height: 1.55; color: var(--ink2); }
+  .paper p + p { margin-top: 10px; }
+  .paper ul { margin: 8px 0 0 18px; }
+  .paper b { color: var(--ink); }
+  .wf { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  .wf th { text-align: left; font: 600 11px 'Inter Tight'; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--ink); }
+  .wf td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .wf td.n { font: 500 12px 'JetBrains Mono'; color: var(--mute); }
+  .wf tr.ph td { background: #F2EFEA; font: 600 11px 'Inter Tight'; letter-spacing: .1em; text-transform: uppercase; padding: 8px 10px; }
+  .stat { border: 1px solid var(--line); background: #fff; padding: 14px 16px; }
+  .stat .v { font: 500 26px 'JetBrains Mono'; letter-spacing: -0.03em; margin-top: 4px; }
+</style>
+</head>
+<body>
+<nav id="nav"></nav>
+<main>
+  <div class="stage" id="stage">
+
+<!-- 0 · PROBLEM / SOLUTION / WORKFLOW -->
+<section class="frame" data-phase="Start here" data-title="Problem, solution, workflow"
+  data-who="Us (and judges)" data-q="Why does Covers exist?" data-show="The brief: problem, solution, workflow map" data-click="Each workflow row is a frame in this storyboard" data-vo="">
+  <div class="paper">
+    <div class="lbl">Covers · working brief · draft for iteration</div>
+    <h1>Check the dinner before the card works</h1>
+
+    <h2>The problem</h2>
+    <p>Medical-device and pharma reps host <b>speaker dinners</b> for doctors every week. Every meal a doctor receives is a <b>transfer of value</b>: the company has to report it to the federal <b>Open Payments</b> database, and its own policy caps it (here: $125 per person per meal, $2,000 per doctor per year). The speaker must be approved and trained for the topic. Repeat invitations to the same doctor look like inducement.</p>
+    <p>Today those checks happen <b>after the money is spent</b>. The rep books the table, pays with the company card, and compliance reconstructs who ate what from receipts and sign-in sheets weeks later. By then a doctor may already be over her limit, a no-show may have been reported as a payment, and the wine is buried in "Beverages".</p>
+    <p><b>The card records that money moved and who was there. Nothing checks whether the dinner should happen.</b></p>
+
+    <h2>Our solution</h2>
+    <ul>
+      <li><b>Before the dinner:</b> the rep enters the plan. Covers identifies every guest in the federal NPI registry and checks the speaker, the per-person estimate and each doctor's running annual total. The Ramp card's meal budget <b>unlocks only when every check passes</b>.</li>
+      <li><b>After the dinner:</b> one phone ping. The rep snaps the receipt and taps who actually came. Covers reads the receipt, splits the bill across the people who ate, updates each doctor's running total and drafts the Open Payments rows. No-shows get nothing reported.</li>
+      <li><b>Oversight:</b> only the exceptions reach compliance, each with its evidence and the rule it came from. Policy changes are written in plain English, replayed over past dinners, and promoted by a person.</li>
+      <li><b>Trust:</b> the model only reads (receipts, registry records). Deterministic code decides every amount and outcome, and every decision is cited and logged.</li>
+    </ul>
+
+    <h2>The workflow, mapped</h2>
+    <table class="wf">
+      <thead><tr><th style="width:34px">#</th><th style="width:130px">Who</th><th style="width:220px">Moment</th><th>The one question</th><th>What they see</th></tr></thead>
+      <tbody>
+        <tr class="ph"><td colspan="5">Before the dinner · desktop · rep</td></tr>
+        <tr><td class="n">1</td><td>Rep · Jordan</td><td>Plans the dinner</td><td>Who's coming, where, how much?</td><td>A short form; guests looked up by name or NPI</td></tr>
+        <tr><td class="n">2</td><td>Rep</td><td>Covers checks it</td><td>Is it checking the right things?</td><td>The check chain filling in, one rule at a time</td></tr>
+        <tr><td class="n">3</td><td>Rep</td><td>Blocked</td><td>Can this dinner happen?</td><td>Calm guest list; one "Needs your OK" on Dr. Ruvane</td></tr>
+        <tr><td class="n">4</td><td>Rep</td><td>Zooms into the problem</td><td>Why, and what do I do?</td><td>Side panel: the finding, the math, the policy clause, the options</td></tr>
+        <tr><td class="n">5</td><td>Rep</td><td>Cleared</td><td>Am I good to go?</td><td>Stamp lands; $875 restaurant-only card written to Ramp</td></tr>
+        <tr class="ph"><td colspan="5">After the dinner · phone · rep</td></tr>
+        <tr><td class="n">6</td><td>Rep</td><td>Morning ping</td><td>What do I need to do?</td><td>One notification: snap the receipt</td></tr>
+        <tr><td class="n">7</td><td>Rep</td><td>Receipt read</td><td>Did it read it right?</td><td>Lines stream in with confidence dots; the wine tags itself</td></tr>
+        <tr><td class="n">8</td><td>Rep</td><td>Who came</td><td>Who actually ate?</td><td>Tap names; Dr. Kinsale unticked</td></tr>
+        <tr><td class="n">9</td><td>Rep</td><td>Settled</td><td>Am I done?</td><td>$612 ÷ 6 = $102 each; Kinsale unchanged; 1 item to compliance</td></tr>
+        <tr class="ph"><td colspan="5">Oversight · desktop · compliance and judges</td></tr>
+        <tr><td class="n">10</td><td>Compliance · Priya</td><td>Queue</td><td>What needs my decision?</td><td>One exception (the wine) with evidence; approve or deny</td></tr>
+        <tr><td class="n">11</td><td>Compliance</td><td>Ledger</td><td>Which doctors are near their cap?</td><td>Every doctor's bar, sorted by risk</td></tr>
+        <tr><td class="n">12</td><td>Compliance</td><td>New rule</td><td>Can policy change without new software?</td><td>English rule → replay over past dinners → promote</td></tr>
+        <tr><td class="n">13</td><td>Judges</td><td>Proof</td><td>Can I trust it?</td><td>Eval numbers with misses, 15 attacks, real vs simulated</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Design principles (from moa)</h2>
+    <ul>
+      <li><b>One question per screen, one visual per answer.</b> Everything else is one click away in a side panel.</li>
+      <li><b>Zoom by levels:</b> dinner → guest → evidence, with a breadcrumb.</li>
+      <li><b>Show progress as a chain</b> of small cards that fill in: Plan → Checks → Card → Receipt → Settled.</li>
+      <li><b>Recommend, don't just report:</b> decisions are offered as options with one marked Recommended.</li>
+      <li><b>Reward closure, not points:</b> the stamp, "Settled", "Nothing left for you to do", "Audit trail intact".</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 1 · PLAN -->
+<section class="frame" data-phase="Before the dinner" data-title="Plan the dinner"
+  data-who="Rep · Jordan Lee · desktop" data-q="Who's coming, where, how much?" data-show="A short form. Guests added by name or NPI, shown as chips. Nothing evaluated yet." data-click="Guest chip → registry record (real NPI shows real name, zero history)" data-vo="Jordan books a speaker dinner with Dr. Patel and six clinicians.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div style="max-width:720px;margin:48px auto">
+      <div class="lbl">New speaker dinner</div>
+      <div style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin-top:8px">Dr. Patel on catheter outcomes</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:36px">
+        <div><div class="lbl">Speaker</div><div style="border-bottom:1px solid var(--ink);padding:10px 0;font-size:16px">Dr. Marcus Patel, MD</div></div>
+        <div><div class="lbl">When</div><div style="border-bottom:1px solid var(--ink);padding:10px 0;font-size:16px">Thu Nov 12 · 7:00 pm</div></div>
+        <div><div class="lbl">Venue</div><div style="border-bottom:1px solid var(--ink);padding:10px 0;font-size:16px">Alder &amp; Vine, San Francisco</div></div>
+        <div><div class="lbl">Estimate per person, all in</div><div class="mono" style="border-bottom:1px solid var(--ink);padding:10px 0;font-size:16px">$110</div></div>
+      </div>
+      <div class="lbl" style="margin-top:32px">Guests · 6</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Dr. Ana Ruvane</span>
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Dr. Grace Kinsale</span>
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Dr. Daniel Okafor</span>
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Dr. Mei Lindqvist</span>
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Sofia Brennick, NP</span>
+        <span class="tag" style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">Dr. Robert Ellery</span>
+        <span class="tag" style="color:var(--mute);border-style:dashed;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding:6px 10px">+ Add by name or NPI</span>
+      </div>
+      <div style="margin-top:40px"><span class="btn dark">Check this plan</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · CHECKING -->
+<section class="frame" data-phase="Before the dinner" data-title="Covers checks it"
+  data-who="Rep · desktop" data-q="Is it checking the right things?" data-show="The check chain fills in left to right, about 0.3 s per rule. Each card shows the fact it used." data-click="Any check card → its rule text and citation" data-vo="Covers identifies every guest in the federal registry and checks the plan.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div class="crumb">Plans / <b>Dr. Patel on catheter outcomes</b></div>
+    <div style="padding:120px 0 0;display:flex;flex-direction:column;align-items:center;gap:36px">
+      <div class="lbl">Checking 5 rules · policy pack v1</div>
+      <div class="chain">
+        <div class="chip done"><i></i><div class="t">Speaker</div><div class="s">Approved</div></div><span class="ar">→</span>
+        <div class="chip done"><i></i><div class="t">Identity</div><div class="s">7 of 7 in NPI</div></div><span class="ar">→</span>
+        <div class="chip done"><i></i><div class="t">Per person</div><div class="s">$110 of $125</div></div><span class="ar">→</span>
+        <div class="chip now"><i></i><div class="t">Annual cap</div><div class="s">checking…</div></div><span class="ar">→</span>
+        <div class="chip"><i></i><div class="t">Repeat topic</div><div class="s">—</div></div>
+      </div>
+      <div style="font-size:15px;color:var(--ink2)">Every result carries the rule and version that decided it</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · BLOCKED -->
+<section class="frame" data-phase="Before the dinner" data-title="Blocked"
+  data-who="Rep · desktop" data-q="Can this dinner happen?" data-show="One verdict line, the chain with one red card, and a calm guest list. Only Dr. Ruvane carries a 'Needs your OK' tag." data-click="Dr. Ruvane's row → side panel (frame 4)" data-vo="Dr. Ruvane is sixty dollars from her annual limit, so the plan is blocked before anyone books a table.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div class="crumb">Plans / <b>Dr. Patel on catheter outcomes</b></div>
+    <div style="padding:28px 28px 0">
+      <div style="display:flex;align-items:baseline;gap:16px"><span class="tag over">Blocked</span><span style="font-size:26px;font-weight:700;letter-spacing:-0.02em">One guest would pass her annual cap</span></div>
+      <div class="chain" style="margin-top:22px">
+        <div class="chip done"><i></i><div class="t">Speaker</div><div class="s">Approved</div></div>
+        <div class="chip done"><i></i><div class="t">Identity</div><div class="s">7 of 7</div></div>
+        <div class="chip done"><i></i><div class="t">Per person</div><div class="s">$110 of $125</div></div>
+        <div class="chip bad"><i></i><div class="t">Annual cap</div><div class="s">1 over</div></div>
+        <div class="chip" style="border-color:var(--near)"><i style="background:var(--near)"></i><div class="t">Repeat topic</div><div class="s">1 flag</div></div>
+      </div>
+      <div style="margin-top:34px;max-width:760px">
+        <div class="lbl" style="padding-bottom:8px;border-bottom:1px solid var(--ink)">Guests · annual spend with this dinner</div>
+        <div class="guest sel"><span><b>Dr. Ana Ruvane</b></span><div class="bar over"><b style="width:77.6%"></b><u style="left:77.6%;width:4.4%"></u><s></s></div><span class="amt mono" style="color:var(--over);font-weight:700">$2,050</span><span><span class="tag ask">Needs your OK</span></span></div>
+        <div class="guest"><span>Dr. Grace Kinsale</span><div class="bar"><b style="width:16.8%"></b><u style="left:16.8%;width:4.4%"></u><s></s></div><span class="amt mono">$530</span><span></span></div>
+        <div class="guest"><span>Dr. Daniel Okafor</span><div class="bar"><b style="width:24.4%"></b><u style="left:24.4%;width:4.4%"></u><s></s></div><span class="amt mono">$720</span><span></span></div>
+        <div class="guest"><span>Dr. Mei Lindqvist</span><div class="bar"><b style="width:35.2%"></b><u style="left:35.2%;width:4.4%"></u><s></s></div><span class="amt mono">$990</span><span></span></div>
+        <div class="guest"><span>Sofia Brennick, NP</span><div class="bar"><b style="width:4.8%"></b><u style="left:4.8%;width:4.4%"></u><s></s></div><span class="amt mono">$230</span><span></span></div>
+        <div class="guest"><span>Dr. Robert Ellery</span><div class="bar"><b style="width:14%"></b><u style="left:14%;width:4.4%"></u><s></s></div><span class="amt mono">$460</span><span></span></div>
+        <div class="guest"><span>Dr. Marcus Patel <span class="lbl">speaker</span></span><div class="bar"><b style="width:12%"></b><u style="left:12%;width:4.4%"></u><s></s></div><span class="amt mono">$410</span><span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · ZOOM: FINDING -->
+<section class="frame" data-phase="Before the dinner" data-title="Zoom into the problem"
+  data-who="Rep · desktop" data-q="Why is it blocked, and what do I do?" data-show="Side panel slides in over the list: the finding as a sentence with the number, a 4-line table, the policy clause, the options with one Recommended." data-click="Policy card → the policy text with the clause highlighted. Evidence chips → ledger rows." data-vo="Jordan sees exactly why: nineteen-forty this year, plus one-ten tonight.">
+  <div class="screen" style="overflow:hidden">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div class="crumb">Plans / Dr. Patel on catheter outcomes / <b>Dr. Ana Ruvane</b></div>
+    <div style="padding:28px;opacity:.35;max-width:700px">
+      <div style="display:flex;align-items:baseline;gap:16px"><span class="tag over">Blocked</span><span style="font-size:26px;font-weight:700">One guest would pass her annual cap</span></div>
+      <div style="margin-top:110px">
+        <div class="guest sel"><span><b>Dr. Ana Ruvane</b></span><div class="bar over"><b style="width:77.6%"></b><u style="left:77.6%;width:4.4%"></u><s></s></div><span class="amt mono">$2,050</span><span></span></div>
+        <div class="guest"><span>Dr. Grace Kinsale</span><div class="bar"><b style="width:16.8%"></b><u style="left:16.8%;width:4.4%"></u><s></s></div><span class="amt mono">$530</span><span></span></div>
+        <div class="guest"><span>Dr. Daniel Okafor</span><div class="bar"><b style="width:24.4%"></b><u style="left:24.4%;width:4.4%"></u><s></s></div><span class="amt mono">$720</span><span></span></div>
+      </div>
+    </div>
+    <div class="panel find">
+      <div class="lbl">P4 · Annual cap · v1</div>
+      <h3>$2,050 of $2,000 would go over Dr. Ruvane's annual cap</h3>
+      <span class="tag over">Blocks the plan</span>
+      <div class="mt mono">
+        <div><span>Paid this year</span><span>$1,940</span></div>
+        <div><span>This dinner</span><span>+ $110</span></div>
+        <div><span>Annual cap</span><span>$2,000</span></div>
+        <div class="tot"><span>Over by</span><span>$50</span></div>
+      </div>
+      <div class="doc"><div class="ic"></div><div><b>HCP meals policy</b> · company policy v1<br><span class="clause">§2.1 Per-person cap</span><span class="clause">§2.3 Annual cap per HCP</span></div></div>
+      <div style="font-size:12px;color:var(--near);margin-top:12px">Also flagged · P5 · 3rd program on this topic in 12 months</div>
+      <div class="lbl" style="margin-top:20px">What to do</div>
+      <div class="opt"><span><b>Remove Dr. Ruvane</b> from this dinner</span><span class="tag ok">Recommended</span></div>
+      <div class="opt off"><span>Request an exception</span><span style="font-size:12px">Cap blocks can't be approved</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · CLEARED -->
+<section class="frame" data-phase="Before the dinner" data-title="Cleared"
+  data-who="Rep · desktop" data-q="Am I good to go?" data-show="Her row collapses, every chain card turns green, the stamp lands, and the card appears with a link into Ramp." data-click="'View in Ramp' → the real fund in Ramp's sandbox" data-vo="Every check passes, and only now does the card's meal budget unlock, written straight into Ramp.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div class="crumb">Plans / <b>Dr. Patel on catheter outcomes</b></div>
+    <div style="padding:28px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">Ready for Thursday</div>
+          <div class="chain" style="margin-top:22px">
+            <div class="chip done"><i></i><div class="t">Speaker</div><div class="s">Approved</div></div>
+            <div class="chip done"><i></i><div class="t">Identity</div><div class="s">6 of 6</div></div>
+            <div class="chip done"><i></i><div class="t">Per person</div><div class="s">$110 of $125</div></div>
+            <div class="chip done"><i></i><div class="t">Annual cap</div><div class="s">all under</div></div>
+            <div class="chip done"><i></i><div class="t">Repeat topic</div><div class="s">none</div></div>
+          </div>
+        </div>
+        <div class="stamp land" style="margin:6px 30px 0 0"><div class="w">CLEARED</div><div class="r">5 OF 5 CHECKS · PACK V1</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:48px;margin-top:48px">
+        <div>
+          <div class="lbl" style="padding-bottom:8px;border-bottom:1px solid var(--ink)">Guests · 5 + speaker</div>
+          <div class="guest" style="grid-template-columns:220px 1fr 70px"><span>Dr. Grace Kinsale</span><div class="bar"><b style="width:16.8%"></b><u style="left:16.8%;width:4.4%"></u><s></s></div><span class="amt mono">$530</span></div>
+          <div class="guest" style="grid-template-columns:220px 1fr 70px"><span>Dr. Daniel Okafor</span><div class="bar"><b style="width:24.4%"></b><u style="left:24.4%;width:4.4%"></u><s></s></div><span class="amt mono">$720</span></div>
+          <div class="guest" style="grid-template-columns:220px 1fr 70px"><span>Dr. Mei Lindqvist</span><div class="bar"><b style="width:35.2%"></b><u style="left:35.2%;width:4.4%"></u><s></s></div><span class="amt mono">$990</span></div>
+          <div class="guest" style="grid-template-columns:220px 1fr 70px;color:var(--mute)"><span>+ 3 more</span><span></span><span></span></div>
+        </div>
+        <div style="background:var(--ink);color:var(--paper);padding:22px">
+          <div class="lbl" style="color:#9C9893">Ramp card · restaurants only</div>
+          <div class="mono" style="font-size:40px;letter-spacing:-0.04em;margin-top:8px">$875</div>
+          <div class="mono" style="font-size:12px;color:#9C9893;margin-top:6px">7 covers × $125 · card …5699</div>
+          <div class="btn go" style="margin-top:18px">View in Ramp ↗</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · PING -->
+<section class="frame" data-phase="After the dinner" data-title="Morning ping"
+  data-who="Rep · phone · next morning" data-q="What do I need to do?" data-show="One notification. Tapping it opens a single screen with one button." data-click="Desktop shows a QR code so a judge can open this on their own phone" data-vo="The next morning, one ping: snap the receipt, tap who came.">
+  <div class="phones">
+    <div class="phone" style="background:linear-gradient(#2C3A36,#151B19)">
+      <div class="sb" style="color:#fff"><span>8:02</span><span>●●●</span></div>
+      <div style="color:#fff;text-align:center;margin-top:60px;font-size:64px;font-weight:300;letter-spacing:-0.03em">8:02</div>
+      <div style="color:#ddd;text-align:center;font-size:15px">Friday, November 13</div>
+      <div class="in" style="margin-top:40px"><div class="push"><div class="a"><span>COVERS</span><span>now</span></div><b>Dr. Patel dinner · last night</b><br>Snap the receipt and tap who came. Takes 30 seconds.</div></div>
+    </div>
+    <div class="phone">
+      <div class="sb"><span>8:02</span><span>●●●</span></div>
+      <div class="in">
+        <div class="lbl">Last night · Alder &amp; Vine</div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em;margin-top:8px;line-height:1.15">Close out the Dr. Patel dinner</div>
+        <div style="margin-top:28px;border:1px solid var(--line);padding:14px;font-size:14px"><span class="lbl">Step 1 of 2</span><div style="margin-top:6px">Photo of the itemized receipt</div></div>
+        <div style="margin-top:10px;border:1px solid var(--line);padding:14px;font-size:14px;color:var(--mute)"><span class="lbl">Step 2 of 2</span><div style="margin-top:6px">Who came</div></div>
+        <div style="position:absolute;left:22px;right:22px;bottom:30px"><div class="btn go" style="width:100%;text-align:center;padding:16px">Snap receipt</div><div style="text-align:center;font-size:12px;color:var(--mute);margin-top:10px">or pick a sample receipt</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · RECEIPT -->
+<section class="frame" data-phase="After the dinner" data-title="Receipt read"
+  data-who="Rep · phone" data-q="Did it read it right?" data-show="Lines appear one at a time as they're read, each with a confidence dot. The wine line tags itself. Low-confidence lines ask for one tap." data-click="A low-confidence line → pick the right category in one tap" data-vo="Covers reads every line and catches the wine.">
+  <div class="phones">
+    <div class="phone">
+      <div class="sb"><span>8:03</span><span>●●●</span></div>
+      <div class="in">
+        <div class="lbl">Step 1 of 2 · Receipt</div>
+        <div style="font-size:22px;font-weight:700;margin-top:8px">Reading 9 lines…</div>
+        <div style="margin-top:16px">
+          <div class="rline"><i class="dot"></i><span>Burrata</span><span class="mono">$22.00</span></div>
+          <div class="rline"><i class="dot"></i><span>Halibut × 3</span><span class="mono">$126.00</span></div>
+          <div class="rline"><i class="dot"></i><span>Short rib × 3</span><span class="mono">$141.00</span></div>
+          <div class="rline"><i class="dot"></i><span>Pinot Noir, btl <span class="tag near" style="margin-left:6px">Alcohol</span></span><span class="mono">$68.00</span></div>
+          <div class="rline"><i class="dot mid"></i><span>Sparkling water</span><span class="mono">$18.00</span></div>
+          <div class="rline"><i class="dot"></i><span>Tax</span><span class="mono">$55.30</span></div>
+          <div class="rline"><i class="dot"></i><span>Tip</span><span class="mono">$110.00</span></div>
+          <div class="rline" style="opacity:.35"><i class="dot"></i><span>…</span><span></span></div>
+        </div>
+        <div style="margin-top:16px;display:flex;justify-content:space-between;font-size:15px"><b>Total</b><b class="mono">$612.00</b></div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px">6 covers printed on the receipt</div>
+      </div>
+    </div>
+    <div style="width:420px;padding-top:40px;font-size:15px;line-height:1.5;color:var(--ink2)">
+      <div class="lbl">Confidence dots</div>
+      <div style="margin-top:10px"><i class="dot" style="display:inline-block"></i> read clearly &nbsp; <i class="dot mid" style="display:inline-block"></i> unsure &nbsp; <i class="dot low" style="display:inline-block"></i> needs one tap</div>
+      <p style="margin-top:18px">The model only reads lines and categories. Amounts per person and what's reportable are decided by code in the next step.</p>
+      <p style="margin-top:12px">Line items here are illustrative; the real sample receipt reconciles to $612.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · WHO CAME -->
+<section class="frame" data-phase="After the dinner" data-title="Who came"
+  data-who="Rep · phone" data-q="Who actually ate?" data-show="Everyone invited, pre-ticked. Untick a no-show. The per-person share updates live at the bottom." data-click="—" data-vo="…and notices Dr. Kinsale didn't make it.">
+  <div class="phones">
+    <div class="phone">
+      <div class="sb"><span>8:04</span><span>●●●</span></div>
+      <div class="in">
+        <div class="lbl">Step 2 of 2 · Who came</div>
+        <div style="font-size:22px;font-weight:700;margin-top:8px">Untick anyone who didn't eat</div>
+        <div style="margin-top:14px">
+          <div class="tap"><span>Dr. Marcus Patel <span class="lbl">speaker</span></span><span class="box on">✓</span></div>
+          <div class="tap no"><span>Dr. Grace Kinsale</span><span class="box"></span></div>
+          <div class="tap"><span>Dr. Daniel Okafor</span><span class="box on">✓</span></div>
+          <div class="tap"><span>Dr. Mei Lindqvist</span><span class="box on">✓</span></div>
+          <div class="tap"><span>Sofia Brennick, NP</span><span class="box on">✓</span></div>
+          <div class="tap"><span>Dr. Robert Ellery</span><span class="box on">✓</span></div>
+          <div class="tap"><span>Jordan Lee <span class="lbl">you</span></span><span class="box on">✓</span></div>
+        </div>
+        <div style="position:absolute;left:22px;right:22px;bottom:30px">
+          <div style="display:flex;justify-content:space-between;font-size:14px;padding-bottom:12px"><span>6 people · $612</span><b class="mono">$102.00 each</b></div>
+          <div class="btn go" style="width:100%;text-align:center;padding:16px">Confirm</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · SETTLED -->
+<section class="frame" data-phase="After the dinner" data-title="Settled"
+  data-who="Rep · desktop (or phone)" data-q="Am I done?" data-show="The split re-flows to $102. Kinsale's column collapses; her annual bar doesn't move. Open Payments rows are drafted. One item goes to compliance." data-click="Any person → their Open Payments row. The wine → the exception." data-vo="Her share moves to everyone else, her annual total doesn't change, and no federal report is drafted for her.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Plans</span><span>Ledger</span><span>Rules</span><span>Proof</span></span><span class="sp"></span><span class="role">REP · JORDAN LEE</span></div>
+    <div class="crumb">Plans / Dr. Patel on catheter outcomes / <b>Settlement</b></div>
+    <div style="padding:28px">
+      <div style="display:flex;align-items:baseline;gap:16px"><span class="tag ok">Settled</span><span style="font-size:26px;font-weight:700;letter-spacing:-0.02em">Nothing left for you to do</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px">
+        <div class="stat"><div class="lbl">Receipt total</div><div class="v">$612</div></div>
+        <div class="stat"><div class="lbl">Ate</div><div class="v">6</div></div>
+        <div class="stat"><div class="lbl">Per person</div><div class="v">$102</div></div>
+        <div class="stat"><div class="lbl">To compliance</div><div class="v" style="color:var(--near)">1</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:36px">
+        <div>
+          <div class="lbl" style="padding-bottom:8px;border-bottom:1px solid var(--ink)">Open Payments rows drafted · 5</div>
+          <div class="guest" style="grid-template-columns:1fr 80px"><span>Dr. Marcus Patel</span><span class="amt mono">$102.00</span></div>
+          <div class="guest" style="grid-template-columns:1fr 80px"><span>Dr. Daniel Okafor</span><span class="amt mono">$102.00</span></div>
+          <div class="guest" style="grid-template-columns:1fr 80px"><span>Dr. Mei Lindqvist</span><span class="amt mono">$102.00</span></div>
+          <div class="guest" style="grid-template-columns:1fr 80px"><span>Sofia Brennick, NP</span><span class="amt mono">$102.00</span></div>
+          <div class="guest" style="grid-template-columns:1fr 80px"><span>Dr. Robert Ellery</span><span class="amt mono">$102.00</span></div>
+          <div class="guest" style="grid-template-columns:1fr 80px;color:var(--mute);text-decoration:line-through"><span>Dr. Grace Kinsale · no-show</span><span class="amt mono">—</span></div>
+        </div>
+        <div>
+          <div class="lbl" style="padding-bottom:8px;border-bottom:1px solid var(--ink)">Sent to compliance · 1</div>
+          <div style="border:1px solid var(--near);padding:14px;margin-top:12px;font-size:14px"><span class="tag near">Flag · P5</span><div style="margin-top:8px">Pinot Noir, $68 · alcohol at a speaker program</div></div>
+          <div class="lbl" style="margin-top:28px;padding-bottom:8px;border-bottom:1px solid var(--ink)">Written to Ramp</div>
+          <div style="font-size:14px;margin-top:10px;color:var(--ink2)">Receipt and attendee memo attached to the $612 charge ✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · QUEUE -->
+<section class="frame" data-phase="Oversight" data-title="Compliance queue"
+  data-who="Compliance · Priya Shah · desktop" data-q="What needs my decision?" data-show="A short queue. One item open with its evidence and two options. The rep can't approve their own; the role switch proves it." data-click="Evidence chips → receipt line, rule text" data-vo="Only the unclear cases go to compliance, with evidence attached.">
+  <div class="screen" style="overflow:hidden">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span class="on">Queue</span><span>Ledger</span><span>Rules</span><span>Audit</span></span><span class="sp"></span><span class="role" style="background:var(--ink);color:var(--lime)">COMPLIANCE · PRIYA SHAH</span></div>
+    <div style="padding:28px;max-width:640px">
+      <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">1 needs your decision</div>
+      <div style="font-size:15px;color:var(--ink2);margin-top:6px">14 dinners settled this week without you</div>
+      <div style="margin-top:28px">
+        <div class="guest sel" style="grid-template-columns:1fr auto"><span><b>Pinot Noir at the Dr. Patel dinner</b><br><span style="font-size:13px;color:var(--mute)">Jordan Lee · Nov 12 · $68</span></span><span class="tag ask">Needs your OK</span></div>
+        <div class="guest" style="grid-template-columns:1fr auto;color:var(--mute)"><span>Cleared · Dr. Hale dinner<br><span style="font-size:13px">Nov 11 · approved by you</span></span><span class="tag ok">Done</span></div>
+      </div>
+    </div>
+    <div class="panel find">
+      <div class="lbl">P5 · Alcohol · v1</div>
+      <h3>$68 of alcohol at a speaker program</h3>
+      <span class="tag near">Flag · approvable</span>
+      <div class="mt mono">
+        <div><span>Line</span><span>Pinot Noir, btl</span></div>
+        <div><span>Read confidence</span><span>0.97</span></div>
+        <div><span>Share per person</span><span>$11.33</span></div>
+      </div>
+      <div class="doc"><div class="ic"></div><div><b>HCP meals policy</b> · v1<br><span class="clause">§3.2 Alcohol</span></div></div>
+      <div class="lbl" style="margin-top:20px">Your call</div>
+      <div class="opt"><span><b>Approve</b> with a note</span><span class="tag ok">Recommended</span></div>
+      <div class="opt"><span>Deny and ask the rep to reimburse</span><span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · LEDGER -->
+<section class="frame" data-phase="Oversight" data-title="Ledger"
+  data-who="Compliance · desktop" data-q="Which doctors are near their cap?" data-show="Three numbers on top. Every doctor's bar, sorted by how close they are. Near and over float up; the rest stay quiet." data-click="A doctor → their year: every program, amount, rule" data-vo="">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span>Queue</span><span class="on">Ledger</span><span>Rules</span><span>Audit</span></span><span class="sp"></span><span class="role" style="background:var(--ink);color:var(--lime)">COMPLIANCE · PRIYA SHAH</span></div>
+    <div style="padding:28px">
+      <div style="display:grid;grid-template-columns:repeat(3,240px);gap:12px">
+        <div class="stat"><div class="lbl">Clinicians tracked</div><div class="v">48</div></div>
+        <div class="stat"><div class="lbl">Near cap · over 80%</div><div class="v" style="color:var(--near)">3</div></div>
+        <div class="stat"><div class="lbl">Over cap</div><div class="v">0</div></div>
+      </div>
+      <div style="margin-top:32px;max-width:820px">
+        <div class="lbl" style="padding-bottom:8px;border-bottom:1px solid var(--ink)">Sorted by closeness to cap</div>
+        <div class="guest" style="grid-template-columns:220px 1fr 80px 70px"><span><b>Dr. Ana Ruvane</b></span><div class="bar"><b style="width:77.6%"></b><s></s></div><span class="amt mono">$1,940</span><span class="tag near">Near</span></div>
+        <div class="guest" style="grid-template-columns:220px 1fr 80px 70px"><span>Dr. Mei Lindqvist</span><div class="bar"><b style="width:39.6%"></b><s></s></div><span class="amt mono">$990</span><span></span></div>
+        <div class="guest" style="grid-template-columns:220px 1fr 80px 70px"><span>Dr. Daniel Okafor</span><div class="bar"><b style="width:28.9%"></b><s></s></div><span class="amt mono">$712</span><span></span></div>
+        <div class="guest" style="grid-template-columns:220px 1fr 80px 70px"><span>Dr. Marcus Patel</span><div class="bar"><b style="width:16.1%"></b><s></s></div><span class="amt mono">$402</span><span></span></div>
+        <div class="guest" style="grid-template-columns:220px 1fr 80px 70px;color:var(--mute)"><span>+ 44 more, all under 50%</span><span></span><span></span><span></span></div>
+      </div>
+      <div style="font-size:12px;color:var(--mute);margin-top:14px">Seed clinicians are fictional demo data. Real registry lookups show zero history.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · NEW RULE -->
+<section class="frame" data-phase="Oversight" data-title="New rule"
+  data-who="Compliance · desktop" data-q="Can policy change without new software?" data-show="One text box in English. The compiled rule as a plain card. A replay over 20 past dinners: what would have changed. One Promote button." data-click="A changed dinner → before and after" data-vo="New regulations become new rule packs, not new software.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span>Queue</span><span>Ledger</span><span class="on">Rules</span><span>Audit</span></span><span class="sp"></span><span class="role" style="background:var(--ink);color:var(--lime)">COMPLIANCE · PRIYA SHAH</span></div>
+    <div style="padding:36px 28px;display:grid;grid-template-columns:1fr 1fr;gap:48px">
+      <div>
+        <div class="lbl">Write the rule in English</div>
+        <div style="border:1px solid var(--ink);background:#fff;padding:18px;font-size:20px;margin-top:10px;min-height:110px">Weekend dinners need manager approval</div>
+        <div class="lbl" style="margin-top:28px">Compiled · draft</div>
+        <div style="border:1px solid var(--line);background:#fff;padding:16px;margin-top:10px;font-size:15px"><span class="mono" style="color:var(--mute)">P7 · v1 draft</span><div style="margin-top:6px">If the dinner is on <b>Saturday or Sunday</b> → <span class="tag near">Flag</span></div><div style="font-size:13px;color:var(--ok);margin-top:10px">4 of 4 tests pass</div></div>
+      </div>
+      <div>
+        <div class="lbl">Replay over 20 past dinners</div>
+        <div style="font:500 44px 'JetBrains Mono';letter-spacing:-0.04em;margin-top:10px">2 <span style="font-size:18px;color:var(--mute)">would change</span></div>
+        <div style="margin-top:14px">
+          <div class="guest" style="grid-template-columns:1fr auto"><span>Dr. Hale · Sat Oct 3</span><span class="mono" style="font-size:13px">cleared → <span style="color:var(--near)">flag</span></span></div>
+          <div class="guest" style="grid-template-columns:1fr auto"><span>Dr. Ito · Sun Sep 20</span><span class="mono" style="font-size:13px">cleared → <span style="color:var(--near)">flag</span></span></div>
+        </div>
+        <div style="margin-top:28px"><span class="btn go">Promote to live</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · PROOF -->
+<section class="frame" data-phase="Oversight" data-title="Proof"
+  data-who="Judges · desktop" data-q="Can I trust it?" data-show="Reader accuracy with the misses shown. A 15-cell attack grid, each with Run. A real vs simulated table." data-click="Any attack cell → run it on your own sandbox" data-vo="The model reads receipts and registries. It never decides an amount.">
+  <div class="screen">
+    <div class="appbar"><span class="mark">Covers</span><span class="tabs"><span>Plans</span><span>Ledger</span><span>Rules</span><span class="on">Proof</span></span><span class="sp"></span><span class="role">JUDGE</span></div>
+    <div style="padding:28px">
+      <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">Models read. Code decides.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px">
+        <div class="stat"><div class="lbl">Receipt totals read right</div><div class="v">25/25</div></div>
+        <div class="stat"><div class="lbl">Alcohol lines caught</div><div class="v">47/47</div></div>
+        <div class="stat"><div class="lbl">Attacks stopped</div><div class="v">15/15</div></div>
+      </div>
+      <div class="lbl" style="margin-top:32px">Break it · 15 attacks · run any on your own copy</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px">
+        <div class="stat" style="font-size:13px">#1 Unapproved speaker<div class="tag ok" style="margin-top:8px">Stopped</div></div>
+        <div class="stat" style="font-size:13px">#4 Split the bill to dodge cap<div class="tag ok" style="margin-top:8px">Stopped</div></div>
+        <div class="stat" style="font-size:13px">#6 Same receipt twice<div class="tag ok" style="margin-top:8px">Stopped</div></div>
+        <div class="stat" style="font-size:13px">#8 Instructions in the venue name<div class="tag ok" style="margin-top:8px">Stopped</div></div>
+        <div class="stat" style="font-size:13px;color:var(--mute)">+ 11 more<div style="margin-top:8px">▸</div></div>
+      </div>
+      <div class="lbl" style="margin-top:28px;padding-bottom:8px;border-bottom:1px solid var(--ink)">Real vs simulated</div>
+      <div class="guest" style="grid-template-columns:1fr 160px"><span>Ramp fund, lock, receipt, memo</span><span class="tag ok">Real · sandbox</span></div>
+      <div class="guest" style="grid-template-columns:1fr 160px"><span>The card swipe itself</span><span class="tag near">Simulated</span></div>
+      <div class="guest" style="grid-template-columns:1fr 160px"><span>Seed doctors and their spend</span><span class="tag near">Simulated</span></div>
+    </div>
+  </div>
+</section>
+
+  </div>
+  <div class="notes" id="notes"></div>
+</main>
+
+<script>
+const frames = [...document.querySelectorAll('.frame')];
+const nav = document.getElementById('nav');
+let html = '<div class="brand">Covers storyboard<span>← → to step · click a moment</span></div>', last = '';
+frames.forEach((f, i) => {
+  if (f.dataset.phase !== last) { html += `<div class="phase lbl">${f.dataset.phase}</div>`; last = f.dataset.phase; }
+  html += `<a data-i="${i}"><span class="n">${i}</span><span>${f.dataset.title}</span></a>`;
+});
+nav.innerHTML = html;
+let cur = 0;
+function show(i) {
+  cur = Math.max(0, Math.min(frames.length - 1, i));
+  frames.forEach((f, j) => f.classList.toggle('on', j === cur));
+  nav.querySelectorAll('a').forEach(a => a.classList.toggle('on', +a.dataset.i === cur));
+  const d = frames[cur].dataset;
+  document.getElementById('notes').innerHTML = `
+    <div><span class="lbl">Who</span>${d.who}</div>
+    <div><span class="lbl">The one question</span>${d.q}</div>
+    <div><span class="lbl">Click in for</span>${d.click}</div>
+    <div><span class="lbl">On screen · voiceover</span>${d.show}${d.vo ? `<div class="vo" style="margin-top:6px">“${d.vo}”</div>` : ''}</div>
+    <div class="navbtns"><button onclick="show(cur-1)">←</button><button onclick="show(cur+1)">→</button></div>`;
+  document.getElementById('stage').scrollTop = 0;
+}
+nav.addEventListener('click', e => { const a = e.target.closest('a'); if (a) show(+a.dataset.i); });
+addEventListener('keydown', e => { if (e.key === 'ArrowRight') show(cur + 1); if (e.key === 'ArrowLeft') show(cur - 1); });
+show(0);
+</script>
+</body>
+</html>
