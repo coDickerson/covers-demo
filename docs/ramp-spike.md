@@ -32,7 +32,7 @@ The video and the proof page's real-vs-simulated table should say exactly that.
 | Attach receipt | `POST /receipts` multipart: `transaction_id`, `user_id`, `idempotency_key`, **`receipt`** = file | field must be `receipt`, not `file` (400 `DEVELOPER_7041`) |
 | Memo | `POST /memos/{transaction_id}` JSON `{ "memo": "..." }` | |
 
-Amounts are integer cents (`minor_unit_conversion_rate: 100`), matching our contract.
+Fund limits are integer cents (`minor_unit_conversion_rate: 100`); **transaction `amount` is in dollars** (612 = $612.00), so the client converts to cents.
 
 ## Open items
 

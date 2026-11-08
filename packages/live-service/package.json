@@ -13,7 +13,8 @@
   "dependencies": {
     "@covers/contract": "workspace:*",
     "@covers/engine": "workspace:*",
-    "postgres": "3.4.9"
+    "postgres": "3.4.9",
+    "@covers/integrations": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

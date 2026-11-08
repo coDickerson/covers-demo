@@ -16,3 +16,4 @@ export {
   type NppesSearch,
   type HcpQuery,
 } from './nppes';
+export { createRampClient, RampError, RESTAURANTS_CATEGORY, type RampClient, type RampConfig, type RampFund, type RampTransaction } from './ramp';

@@ -14,7 +14,20 @@ import { listAudit, write } from './gateway';
 import { ensureSession, getDoc, listDocs, putDoc, resetSession, type Seed } from './store';
 
 export type HcpSearch = (q: string) => Promise<Hcp[]>;
-export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; now?: () => string };
+
+/** The Ramp calls LiveService needs (implemented by @covers/integrations createRampClient). */
+export type RampPort = {
+  createFund(i: { displayName: string; limitCents: number; idempotencyKey: string }): Promise<{ fundId: string; cardId: string; lastFour: string; ownerUserId: string }>;
+  lock(fundId: string): Promise<void>;
+  unlock(fundId: string): Promise<void>;
+  transactions(cardId: string): Promise<{ id: string; amountCents: number; state: string }[]>;
+  setMemo(transactionId: string, memo: string): Promise<void>;
+};
+type RampLink = { fundId: string; cardId: string; lastFour: string; ownerUserId: string; limitCents: number };
+
+export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; now?: () => string };
+
+const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
 /** Turns the contract fixtures into store documents. */
 export function seedFromFixtures(): Seed {
@@ -123,6 +136,7 @@ export class LiveService implements CoversService {
     const parsed = PlanPatch.safeParse(patch); // unknown keys such as status or fundId are stripped
     if (!parsed.success) throw new CoversError('validation', parsed.error.message);
     const next: ProgramPlan = { ...current, ...parsed.data, status: 'draft' };
+    await this.lockFund(ctx, sid, id, 'Plan edited after the fund was issued');
     await write(this.sql, ctx, { action: 'plan.updated', planId: id, input: parsed.data, detail: `Edited: ${Object.keys(parsed.data).join(', ')}; back to draft` },
       (tx) => putDoc(tx, sid, 'plan', id, next));
     return next;
@@ -164,11 +178,78 @@ export class LiveService implements CoversService {
     if (plan.status !== 'cleared') throw new CoversError('invalid_state', `Plan is ${plan.status}; a fund is issued only for a cleared plan.`);
     const s = await this.settings(sid);
     const headcount = new Set(plan.inviteeNpis).size + 1 + plan.employeeCount; // invitees + speaker + employees
-    // Ramp sandbox not wired yet (A1 spike pending): an honest simulated fund.
-    const fund: FundResult = { fundId: `sim-fund-${randomUUID()}`, limitCents: (s.perPersonCapCents ?? 12_500) * headcount, simulated: true };
-    await write(this.sql, ctx, { action: 'fund.issued', planId: id, input: fund, detail: `Simulated fund, limit ${fund.limitCents} cents` },
+    const limitCents = (s.perPersonCapCents ?? 12_500) * headcount;
+
+    if (this.deps.ramp) {
+      try {
+        let link = await getDoc<RampLink>(this.sql, sid, 'rampFund', id);
+        let how: string;
+        if (link && link.limitCents === limitCents) {
+          await this.deps.ramp.unlock(link.fundId); // same plan re-cleared: reuse the fund
+          how = `Ramp fund …${link.lastFour} unlocked`;
+        } else {
+          if (link) await this.deps.ramp.lock(link.fundId); // cap changed: retire the old fund
+          const f = await this.deps.ramp.createFund({
+            displayName: `Covers: ${plan.title}`.slice(0, 80), limitCents, idempotencyKey: `covers-${sid}-${id}-${limitCents}`,
+          });
+          link = { ...f, limitCents };
+          how = `Ramp fund …${f.lastFour} created (restaurants only)`;
+        }
+        const fund: FundResult = { fundId: link.fundId, limitCents, simulated: false };
+        const saved = link;
+        await write(this.sql, ctx, { action: 'fund.issued', planId: id, input: fund, detail: `${how}, limit ${limitCents} cents` }, async (tx) => {
+          await putDoc(tx, sid, 'rampFund', id, saved);
+          await putDoc(tx, sid, 'plan', id, { ...plan, fundId: fund.fundId });
+        });
+        return fund;
+      } catch (e) {
+        // Never strand the demo: fall back to a simulated fund, and say so in the audit log.
+        await write(this.sql, ctx, { action: 'ramp.failed', planId: id, input: { step: 'issueFund' }, detail: errText(e) }, async () => {});
+      }
+    }
+
+    const fund: FundResult = { fundId: `sim-fund-${randomUUID()}`, limitCents, simulated: true };
+    await write(this.sql, ctx, { action: 'fund.issued', planId: id, input: fund, detail: `Simulated fund, limit ${limitCents} cents` },
       (tx) => putDoc(tx, sid, 'plan', id, { ...plan, fundId: fund.fundId }));
     return fund;
+  }
+
+  /** Locks the plan's Ramp fund, if any. Best effort: a Ramp failure is audited, never thrown. */
+  private async lockFund(ctx: Ctx, sid: string, planId: string, why: string) {
+    const link = this.deps.ramp ? await getDoc<RampLink>(this.sql, sid, 'rampFund', planId) : null;
+    if (!link || !this.deps.ramp) return;
+    try {
+      await this.deps.ramp.lock(link.fundId);
+      await write(this.sql, ctx, { action: 'fund.locked', planId, input: { fundId: link.fundId }, detail: `${why}: Ramp fund …${link.lastFour} locked` }, async () => {});
+    } catch (e) {
+      await write(this.sql, ctx, { action: 'ramp.failed', planId, input: { step: 'lock' }, detail: errText(e) }, async () => {});
+    }
+  }
+
+  /** After settlement, writes the attendee memo onto the Ramp charge. Best effort, audited. */
+  private async writeBackToRamp(ctx: Ctx, sid: string, plan: ProgramPlan, a: Attendance, st: Settlement) {
+    const link = this.deps.ramp ? await getDoc<RampLink>(this.sql, sid, 'rampFund', plan.id) : null;
+    if (!link || !this.deps.ramp) return;
+    try {
+      const charges = (await this.deps.ramp.transactions(link.cardId)).filter((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+      const charge = charges[0];
+      if (!charge) {
+        await write(this.sql, ctx, { action: 'ramp.no_transaction', planId: plan.id, input: { cardId: link.cardId }, detail: `No charge yet on card …${link.lastFour}` }, async () => {});
+        return;
+      }
+      const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
+      const memo = [
+        `Covers ${plan.id}: ${plan.title}`,
+        `${st.headcount} ate (${a.attendedNpis.length} HCPs incl. speaker, ${a.employeesPresent} employees, ${a.extraGuests} guests)`,
+        `${dollars(st.perPersonCents)} per person`,
+        `${st.openPayments.filter((r) => r.reportable).length} Open Payments rows drafted`,
+        `${st.exceptions.length} exception(s) to compliance`,
+      ].join(' | ');
+      await this.deps.ramp.setMemo(charge.id, memo);
+      await write(this.sql, ctx, { action: 'ramp.memo_written', planId: plan.id, input: { transactionId: charge.id, memo }, detail: `Memo written to Ramp charge ${dollars(charge.amountCents)}` }, async () => {});
+    } catch (e) {
+      await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'memo' }, detail: errText(e) }, async () => {});
+    }
   }
 
   // ---- after the dinner ----
@@ -222,6 +303,7 @@ export class LiveService implements CoversService {
       await putDoc(tx, sid, 'settlement', plan.id, st);
       await putDoc(tx, sid, 'plan', plan.id, { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' });
     });
+    await this.writeBackToRamp(ctx, sid, plan, a, st);
     return st;
   }
 
