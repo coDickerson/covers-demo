@@ -1,0 +1,23 @@
+{
+  "name": "@covers/evals",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "receipts:build": "tsx receipts/build.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@covers/contract": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "playwright": "1.65.0",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12"
+  }
+}

@@ -1,0 +1,4 @@
+# Rendered eval set is committed (deterministic). Root .gitignore ignores out/; re-include it here.
+!out/
+# Contact sheet is a 2.5 MB preview; regenerate with receipts:build.
+out/contact-sheet.png
