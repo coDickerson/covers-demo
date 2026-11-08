@@ -78,9 +78,19 @@ The story then reconciles exactly:
 
 **Variables are in Figma** (`Covers tokens`, mode `Light`, 38 variables), created by Claude Code in one call and read back to verify. Each has its CSS name set as its Web code syntax (`var(--color-status-over)`). Accent names: `color/accent` (lime fill), `color/on-accent` (text on lime), `color/accent-strong` (dark green for links and selected states). Code-only tokens (motion, `stamp/rotation`) are hidden from Figma's property pickers.
 
+## Sat Nov 7 — B2
+
+**Fixture-mode storage: Upstash Redis** (via Vercel → Storage), one JSON document per session with a 24 h expiry; plain memory on a laptop. Chosen over a table in A's Supabase so fixture mode survives anything that breaks live mode (resets, migrations, credentials). SpacetimeDB considered and rejected (built for real-time multiplayer; would move the logic into DB modules).
+
+**One API route.** The browser calls every method through `POST /api/covers/<method>`; ctx always comes from cookies, never the request body. Details in `docs/handoff-b.md`.
+
+**C1 merged early.** `a/main` merged into `main` at Nikhil's request (it touches only A's folders).
+
+**Live-mode wiring lives in `apps/web/lib/live.ts`, which A owns.** Env var `DATABASE_URL`.
+
 ## Pending
 
-- **Where `FixtureService` keeps judge data** — decide before B2 (Cole). Leaning: server-side key-value store, so the phone QR handoff works and pages call the server the same way in fixtures and live.
+- Vercel connection and the Upstash integration (Cole, dashboard).
 
 ## Additions to the contract at C0 (please review, Nikhil)
 
