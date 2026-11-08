@@ -1,0 +1,14 @@
+{
+ "namespace": "ramp-create-fund",
+ "key": {
+  "displayName": "Covers: Speaker dinner: Dr. Patel on catheter outcomes",
+  "limitCents": 87500
+ },
+ "value": {
+  "fundId": "599aa4a0-ec0c-432b-9f38-5092521472bb",
+  "cardId": "4fd6d889-7f40-4b3a-b95c-5360aabf5c17",
+  "lastFour": "5950",
+  "ownerUserId": "68b9bdd2-0bbc-443a-9f2b-3036cd3e4de6"
+ },
+ "recordedAt": "2026-11-08T02:32:50.566Z"
+}

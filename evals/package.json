@@ -8,7 +8,9 @@
     "test": "vitest run",
     "typecheck": "tsc -p .",
     "receipts:eval": "tsx receipts/run-reader.ts",
-    "proof": "tsx proof/build-proof.ts"
+    "proof": "tsx proof/build-proof.ts",
+    "demo:record": "COVERS_CACHE=record tsx cache/demo-run.ts",
+    "demo:replay": "COVERS_CACHE=1 tsx cache/demo-run.ts"
   },
   "dependencies": {
     "@covers/contract": "workspace:*",

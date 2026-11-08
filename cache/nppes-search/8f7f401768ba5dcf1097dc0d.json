@@ -1,0 +1,69 @@
+{
+ "namespace": "nppes-search",
+ "key": "john smith ca",
+ "value": [
+  {
+   "npi": "1033219522",
+   "name": "John Smith",
+   "credential": "D.D.S.",
+   "specialty": "Dentist, General Practice",
+   "state": "CA",
+   "recipientType": "physician",
+   "source": "nppes"
+  },
+  {
+   "npi": "1265573299",
+   "name": "John Smith",
+   "credential": "Ph.D., LCSW",
+   "specialty": "Social Worker, Clinical",
+   "state": "CA",
+   "recipientType": "non_hcp",
+   "source": "nppes"
+  },
+  {
+   "npi": "1821010398",
+   "name": "John Smith",
+   "credential": "P.A-C",
+   "specialty": "Physician Assistant",
+   "state": "CA",
+   "recipientType": "physician_assistant",
+   "source": "nppes"
+  },
+  {
+   "npi": "1093230252",
+   "name": "John Smith",
+   "specialty": "Rehabilitation Practitioner",
+   "state": "CA",
+   "recipientType": "non_hcp",
+   "source": "nppes"
+  },
+  {
+   "npi": "1952127466",
+   "name": "John Smith",
+   "credential": "R1585691024",
+   "specialty": "Counselor, Addiction (Substance Use Disorder)",
+   "state": "CA",
+   "recipientType": "non_hcp",
+   "source": "nppes"
+  },
+  {
+   "npi": "1457346843",
+   "name": "John Smith",
+   "credential": "MD",
+   "specialty": "Internal Medicine, Cardiovascular Disease",
+   "state": "CA",
+   "recipientType": "physician",
+   "source": "nppes"
+  },
+  {
+   "npi": "1821562786",
+   "name": "John Smith",
+   "credential": "SUDCC",
+   "specialty": "Rehabilitation Practitioner",
+   "state": "CA",
+   "recipientType": "non_hcp",
+   "source": "nppes"
+  }
+ ],
+ "recordedAt": "2026-11-08T02:33:02.127Z"
+}
