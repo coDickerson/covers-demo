@@ -1,5 +1,12 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"] },
-  "include": ["receipts/**/*.ts"]
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "receipts/**/*.ts",
+    "proof/**/*.ts"
+  ]
 }

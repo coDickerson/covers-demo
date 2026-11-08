@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CoversError, PlanInput, PlanPatch,
   type AuditEvent, type Attendance, type BreakItResult, type CapStatus, type CompileResult, type CoversService, type Ctx,
-  type Evaluation, type FundResult, type Hcp, type PlanView, type ProgramPlan, type ProofBundle, type Receipt,
+  type Evaluation, type FundResult, type Hcp, type PlanView, type ProgramPlan, type Receipt,
   type ReceiptImage, type ReceiptLine, type Rep, type ReplayDiff, type RulePack, type Settlement, type Speaker,
 } from '@covers/contract';
 import { cloneSeed, type Company, type LedgerSeed } from '@covers/contract/fixtures';
@@ -12,6 +12,10 @@ import { evaluate, settle, type Approval, type AttendanceHistory, type EngineSet
 import type { Sql } from './db';
 import { listAudit, write } from './gateway';
 import { hashImage } from './image-hash';
+import { looksLikeInstructions, runBreakItCase } from './breakit';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ProofBundle } from '@covers/contract';
 import { ensureSession, getDoc, listDocs, putDoc, resetSession, type Seed } from './store';
 
 export type HcpSearch = (q: string) => Promise<Hcp[]>;
@@ -36,7 +40,7 @@ export type ReceiptReaderPort = {
 type StoredImage = { base64: string; mime: string; hash: string };
 type RampLink = { fundId: string; cardId: string; lastFour: string; ownerUserId: string; limitCents: number };
 
-export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; maxReadsPerSession?: number; now?: () => string };
+export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; maxReadsPerSession?: number; proofPath?: string; now?: () => string };
 
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
@@ -133,6 +137,7 @@ export class LiveService implements CoversService {
     const plan: ProgramPlan = { ...parsed.data, id: `plan-${randomUUID()}`, status: 'draft' };
     await write(this.sql, ctx, { action: 'plan.created', planId: plan.id, input: plan, detail: plan.title },
       (tx) => putDoc(tx, sid, 'plan', plan.id, plan));
+    await this.noteSuspicious(ctx, plan.id, plan);
     return plan;
   }
 
@@ -150,7 +155,15 @@ export class LiveService implements CoversService {
     await this.lockFund(ctx, sid, id, 'Plan edited after the fund was issued');
     await write(this.sql, ctx, { action: 'plan.updated', planId: id, input: parsed.data, detail: `Edited: ${Object.keys(parsed.data).join(', ')}; back to draft` },
       (tx) => putDoc(tx, sid, 'plan', id, next));
+    await this.noteSuspicious(ctx, id, parsed.data);
     return next;
+  }
+
+  /** Free text that reads like instructions is recorded in the audit log. It is never interpreted. */
+  private async noteSuspicious(ctx: Ctx, planId: string, fields: { title?: string; purpose?: string; topic?: string; venue?: string }) {
+    const hits = (['title', 'purpose', 'topic', 'venue'] as const).filter((k) => fields[k] && looksLikeInstructions(fields[k]!));
+    if (hits.length === 0) return;
+    await write(this.sql, ctx, { action: 'input.suspicious', planId, input: hits, detail: `Instruction-like text in ${hits.join(', ')}; treated as data` }, async () => {});
   }
 
   /** Evaluates with the given approvals (default: stored ones) and stores approvals, evaluation and status together. */
@@ -386,8 +399,21 @@ export class LiveService implements CoversService {
   async promotePack(_ctx: Ctx, _packId: string): Promise<RulePack> { throw notYet('The Pack lab'); }
 
   // ---- judge tools ----
-  async runBreakIt(_ctx: Ctx, _caseId: number): Promise<BreakItResult> { throw notYet('Break-It'); } // A8
-  async getProof(): Promise<ProofBundle> { return cloneSeed().proof; } // placeholder until evals write proof/proof.json (A8)
+  async runBreakIt(ctx: Ctx, caseId: number): Promise<BreakItResult> {
+    await this.open(ctx);
+    const res = await runBreakItCase((extra) => new LiveService({ ...this.deps, ...extra }), this.sql, ctx, caseId);
+    await write(this.sql, ctx, { action: 'breakit.run', input: { caseId }, detail: `Case ${caseId}: ${res.passed ? 'passed' : 'FAILED'}. ${res.note}`.slice(0, 500) }, async () => {});
+    return res;
+  }
+
+  /** proof/proof.json written by `pnpm proof` (real numbers, misses included); the placeholder until then. */
+  async getProof(): Promise<ProofBundle> {
+    try {
+      return ProofBundle.parse(JSON.parse(readFileSync(this.deps.proofPath ?? join(import.meta.dirname, '..', '..', '..', 'proof', 'proof.json'), 'utf8')));
+    } catch {
+      return cloneSeed().proof;
+    }
+  }
 
   async reset(ctx: Ctx): Promise<void> { await resetSession(this.sql, ctx, this.seed()); }
 }
