@@ -1,5 +1,5 @@
 // Builds LiveService from environment variables (COVERS_MODE=live). Used by apps/web's server code.
-import { createNppesClient, createRampClient } from '@covers/integrations';
+import { createNppesClient, createRampClient, createReceiptReader } from '@covers/integrations';
 import { connect, migrate } from './db';
 import { LiveService } from './service';
 
@@ -15,6 +15,12 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
     })
     : undefined; // no Ramp credentials → simulated funds, labeled as such
   const nppes = createNppesClient();
-  const service = new LiveService({ sql, searchRegistry: (q) => nppes.searchHcps(q), ...(ramp ? { ramp } : {}) });
+  // Receipt photos are read only when an API key is configured; otherwise uploads refuse and samples still work.
+  const reader = env.ANTHROPIC_API_KEY ? createReceiptReader(env.COVERS_RECEIPT_MODEL ? { model: env.COVERS_RECEIPT_MODEL } : {}) : undefined;
+  const maxReads = env.COVERS_MAX_READS_PER_SESSION ? Number(env.COVERS_MAX_READS_PER_SESSION) : undefined;
+  const service = new LiveService({
+    sql, searchRegistry: (q) => nppes.searchHcps(q), ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}),
+    ...(maxReads ? { maxReadsPerSession: maxReads } : {}),
+  });
   return { service, close: () => sql.end() };
 }

@@ -6,11 +6,13 @@
   "scripts": {
     "receipts:build": "tsx receipts/build.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "receipts:eval": "tsx receipts/run-reader.ts"
   },
   "dependencies": {
     "@covers/contract": "workspace:*",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "@covers/integrations": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

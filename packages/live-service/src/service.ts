@@ -11,6 +11,7 @@ import { cloneSeed, type Company, type LedgerSeed } from '@covers/contract/fixtu
 import { evaluate, settle, type Approval, type AttendanceHistory, type EngineSettings, type LedgerEntry } from '@covers/engine';
 import type { Sql } from './db';
 import { listAudit, write } from './gateway';
+import { hashImage } from './image-hash';
 import { ensureSession, getDoc, listDocs, putDoc, resetSession, type Seed } from './store';
 
 export type HcpSearch = (q: string) => Promise<Hcp[]>;
@@ -22,10 +23,20 @@ export type RampPort = {
   unlock(fundId: string): Promise<void>;
   transactions(cardId: string): Promise<{ id: string; amountCents: number; state: string }[]>;
   setMemo(transactionId: string, memo: string): Promise<void>;
+  attachReceipt?(i: { transactionId: string; userId: string; bytes: Uint8Array; mime: string; idempotencyKey: string }): Promise<string>;
 };
+
+/** Reads a receipt photo (implemented by @covers/integrations createReceiptReader). */
+export type ReceiptReaderPort = {
+  read(image: { base64: string; mime: string }): Promise<{
+    lines: ReceiptLine[]; totalCents: number; printedCovers?: number; imageHash: string; model: string; promptVersion: string;
+    read: { notes: string };
+  }>;
+};
+type StoredImage = { base64: string; mime: string; hash: string };
 type RampLink = { fundId: string; cardId: string; lastFour: string; ownerUserId: string; limitCents: number };
 
-export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; now?: () => string };
+export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; maxReadsPerSession?: number; now?: () => string };
 
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
@@ -246,6 +257,13 @@ export class LiveService implements CoversService {
         `${st.exceptions.length} exception(s) to compliance`,
       ].join(' | ');
       await this.deps.ramp.setMemo(charge.id, memo);
+      const img = await getDoc<StoredImage>(this.sql, sid, 'receiptImage', plan.id);
+      if (img && this.deps.ramp.attachReceipt) {
+        await this.deps.ramp.attachReceipt({
+          transactionId: charge.id, userId: link.ownerUserId, bytes: Uint8Array.from(Buffer.from(img.base64, 'base64')),
+          mime: img.mime, idempotencyKey: `covers-${sid}-${plan.id}-${img.hash.slice(0, 16)}`,
+        });
+      }
       await write(this.sql, ctx, { action: 'ramp.memo_written', planId: plan.id, input: { transactionId: charge.id, memo }, detail: `Memo written to Ramp charge ${dollars(charge.amountCents)}` }, async () => {});
     } catch (e) {
       await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'memo' }, detail: errText(e) }, async () => {});
@@ -256,12 +274,42 @@ export class LiveService implements CoversService {
   async submitReceipt(ctx: Ctx, planId: string, image: ReceiptImage): Promise<Receipt> {
     const sid = await this.open(ctx);
     await this.plan(sid, planId);
-    if (!('sampleId' in image)) throw notYet('Reading uploaded receipt photos'); // A5
-    const sample = await getDoc<Receipt>(this.sql, sid, 'sampleReceipt', image.sampleId);
-    if (!sample) throw new CoversError('not_found', `Sample receipt ${image.sampleId} not found.`);
-    const receipt: Receipt = { ...sample, id: `rcpt-${randomUUID()}`, planId };
-    await write(this.sql, ctx, { action: 'receipt.read', planId, input: image, detail: `Sample ${image.sampleId}, ${receipt.lines.length} lines` },
-      (tx) => putDoc(tx, sid, 'receipt', planId, receipt));
+    if ('sampleId' in image) {
+      const sample = await getDoc<Receipt>(this.sql, sid, 'sampleReceipt', image.sampleId);
+      if (!sample) throw new CoversError('not_found', `Sample receipt ${image.sampleId} not found.`);
+      const receipt: Receipt = { ...sample, id: `rcpt-${randomUUID()}`, planId };
+      await write(this.sql, ctx, { action: 'receipt.read', planId, input: image, detail: `Sample ${image.sampleId}, ${receipt.lines.length} lines` },
+        (tx) => putDoc(tx, sid, 'receipt', planId, receipt));
+      return receipt;
+    }
+
+    const reader = this.deps.reader;
+    if (!reader) throw notYet('Reading uploaded receipt photos');
+    // Guardrails for a public link: a per-session cap on model calls, and no paying twice for the same photo.
+    const reads = (await listAudit(this.sql, sid)).filter((e) => e.action === 'receipt.read' && e.model).length;
+    if (reads >= (this.deps.maxReadsPerSession ?? 20)) throw new CoversError('rate_limited', 'This demo session has used its receipt reads. Reset to start over.');
+    const hash = hashImage(image.base64);
+    const seen = (await listDocs<StoredImage>(this.sql, sid, 'receiptImage')).some((i) => i.hash === hash);
+    if (seen) throw new CoversError('validation', 'This receipt photo was already submitted (duplicate).');
+
+    let result: Awaited<ReturnType<ReceiptReaderPort['read']>>;
+    try {
+      result = await reader.read(image);
+    } catch (e) {
+      throw new CoversError('validation', `Could not read the receipt: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const receipt: Receipt = {
+      id: `rcpt-${randomUUID()}`, planId, imageUrl: `upload://${hash.slice(0, 16)}`, lines: result.lines, totalCents: result.totalCents,
+      ...(result.printedCovers ? { printedCovers: result.printedCovers } : {}),
+    };
+    const lowConfidence = result.lines.filter((l) => l.confidence < 0.8).length;
+    await write(this.sql, ctx, {
+      action: 'receipt.read', planId, input: { imageHash: hash }, model: result.model, promptVersion: result.promptVersion,
+      detail: `${result.lines.length} lines, ${lowConfidence} need a check${result.read.notes ? `; reader notes: ${result.read.notes.slice(0, 200)}` : ''}`,
+    }, async (tx) => {
+      await putDoc(tx, sid, 'receiptImage', planId, { base64: image.base64, mime: image.mime, hash } satisfies StoredImage);
+      await putDoc(tx, sid, 'receipt', planId, receipt);
+    });
     return receipt;
   }
 

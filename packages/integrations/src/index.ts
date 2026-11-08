@@ -17,3 +17,4 @@ export {
   type HcpQuery,
 } from './nppes';
 export { createRampClient, RampError, RESTAURANTS_CATEGORY, type RampClient, type RampConfig, type RampFund, type RampTransaction } from './ramp';
+export { createReceiptReader, hashImage, ReceiptRead, ReceiptReadError, RECEIPT_PROMPT_VERSION, DEFAULT_RECEIPT_MODEL, type ReceiptReader, type ReadResult, type ParseFn } from './receipt-reader';
