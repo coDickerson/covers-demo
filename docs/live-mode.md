@@ -63,7 +63,13 @@ replay mode; `postgres` stays in `serverExternalPackages`. `live.ts` points `COV
 | `COVERS_CACHE_DIR` | (auto) | absolute path of the shipped `cache/` | Replay only |
 | `COVERS_MAX_READS_PER_SESSION` | (20) | (20) | Receipt reads per visitor |
 | `RAMP_FUND_URL` | (auto) | (auto) | "View in Ramp" link template with `{fundId}`; default `https://demo.ramp.com/funds/issued#/d/funds/{fundId}` |
-| `SLACK_WEBHOOK_URL` | optional | only while recording | Slack pings: blocked, cleared (with the card), settled. Off when unset and always off in replay. Every judge click on the public site would ping, so leave it unset there |
+| `SLACK_WEBHOOK_URL` | optional | only while recording | Slack pings: blocked, cleared (with the card), close out (once the card is charged), settled. Off when unset and always off in replay. Every judge click on the public site would ping, so leave it unset there |
+| `COVERS_APP_URL` | optional | the site's URL | Buttons in the Slack pings: "Open in Covers" → `/plans/{id}`, "Close it out" → `/m/{id}`. No buttons when unset |
+
+**The morning-after ping, live.** Nothing in the app knows when dinner happened, so a small watcher checks Ramp:
+`packages/live-service/scripts/watch-charges.ts` looks at every issued, unsettled Ramp fund every 5 seconds and, the first
+time its card has a charge, pings the rep to close out. For the video: issue a card on the site, start the watcher, then
+create a charge on that card in Ramp's sandbox (⌘J → Add transactions); the ping arrives within seconds.
 
 Send `DATABASE_URL` and the keys privately (not in GitHub). Set the API key's monthly spend limit in the Anthropic Console.
 
