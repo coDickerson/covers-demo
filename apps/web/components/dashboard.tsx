@@ -8,6 +8,7 @@ import { STEPS, usd, type Role } from '../lib/dinner';
 import { cardLimitOf, dayOf, headcountOf, standing, venueOf, nameOf, type Tone } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell } from './bell';
+import { tokens } from '../lib/tokens';
 import { useRuns, type Run } from './run-provider';
 
 type Row = { view: PlanView; receipt: Receipt | null; settlement: Settlement | null; state: ReturnType<typeof standing> };
@@ -26,6 +27,13 @@ function Head({ title }: { title: string }) {
 }
 
 function DinnerRow({ row, role, run }: { row: Row; role: Role; run: Run | undefined }) {
+  const walking = !!run && run.seen === run.at;
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!walking) { setFrame(0); return; }
+    const timer = setInterval(() => setFrame((f) => (f % 4) + 1), tokens['motion/duration/fast'] / 2);
+    return () => clearInterval(timer);
+  }, [walking]);
   const { view: { plan }, settlement, receipt, state } = row;
   const step = run?.step ?? state.step;
   const done = !run && state.who === null, need = !run && state.who === role;
@@ -44,7 +52,7 @@ function DinnerRow({ row, role, run }: { row: Row; role: Role; run: Run | undefi
             {i < 6 && <i className={`absolute top-1/2 left-1/2 h-px w-full ${past ? 'bg-ink-primary' : 'bg-border'}`} />}
             {here ? (
               <span className="relative flex flex-col items-center">
-                <Bell frame={run ? (run.at + 1 + run.seen) % 4 + 1 : 0} className="w-6" />
+                <Bell frame={frame} className="w-6" />
                 {need && <i className="absolute -top-1 -right-3 size-4 bg-status-over text-center text-micro leading-4 font-bold text-bg-surface not-italic">!</i>}
                 <small className="text-micro font-strong">{s}</small>
               </span>

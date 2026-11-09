@@ -7,11 +7,12 @@ import { covers, CoversClientError } from '../lib/client';
 import { buildCard } from '../lib/doc-cards';
 import { AUDIT_LABEL } from '../lib/documents';
 import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
-import { cardLimitOf, dayOf, headcountOf, layoutPath, nameOf, restingStation, speakerOf, STEP_KEYS, stationsFor, type DinnerState, type DocRef, type Station } from '../lib/map';
+import { cardLimitOf, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, speakerOf, STEP_KEYS, stationsFor, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
 import { DocCard } from './doc-card';
-import { useRuns, type Stage } from './run-provider';
+import { tokens } from '../lib/tokens';
+import { useRuns, WALK_MS, type Stage } from './run-provider';
 
 const primary = 'cursor-pointer border border-ink-primary bg-accent px-4 py-2.5 font-strong text-on-accent disabled:cursor-default disabled:opacity-60';
 const secondary = 'cursor-pointer border border-ink-primary px-4 py-2.5 font-strong hover:bg-bg-surface';
@@ -21,51 +22,53 @@ const MARK_WORD: Record<Station['mark'], string> = { clear: 'Clear', blocked: 'B
 const CARD_EDGE: Record<Station['mark'], string> = { clear: 'border-ink-primary', blocked: 'border-status-over', flagged: 'border-status-near', waiting: 'border-border', none: 'border-border' };
 const TONE_TEXT = { '': '', ok: 'text-status-ok', near: 'text-status-near', over: 'text-status-over' } as const;
 
-/** The bell on the path. Its stride follows distance, so the legs never slide; its feet stay on the line. */
-function Walker({ pathRef, trailRef, target, startAtZero, stopLengths, alert, onClick }: {
-  pathRef: React.RefObject<SVGPathElement | null>; trailRef: React.RefObject<SVGPathElement | null>; target: number; startAtZero: boolean; stopLengths: number[]; alert: boolean; onClick: () => void;
+/** The bell on the path: legs follow distance at a walking pace, the body bobs, it leans with the slope and hops on arrival. */
+function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick }: {
+  pathRef: React.RefObject<SVGPathElement | null>; trailRef: React.RefObject<SVGPathElement | null>; target: number; startAtZero: boolean; paced: boolean; alert: boolean; onClick: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const flip = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const position = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
 
   useLayoutEffect(() => {
-    const path = pathRef.current, trail = trailRef.current, el = box.current;
-    if (!path || !el) return;
+    const path = pathRef.current, trail = trailRef.current, el = box.current, sprite = body.current;
+    if (!path || !el || !sprite) return;
     const total = path.getTotalLength();
     if (!total) return;
     if (trail) trail.style.strokeDasharray = String(total);
+    let facing = 1;
     const place = (length: number) => {
       position.current = length;
-      const p = path.getPointAtLength(length);
-      const nearest = Math.min(...stopLengths.slice(1, -1).map((s) => Math.abs((s / 100) * total - length)));
-      const lift = 9 * Math.max(0, 1 - nearest / 40); // steps up onto the station square
-      el.style.transform = `translate(${p.x}px, ${p.y - lift}px) translate(-50%, -100%)`;
+      const p = path.getPointAtLength(length), ahead = path.getPointAtLength(Math.min(total, length + 3)), behind = path.getPointAtLength(Math.max(0, length - 3));
+      const lean = Math.max(-16, Math.min(16, (Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * 180) / Math.PI));
+      el.style.transform = `translate(${p.x}px, ${p.y - 9}px) translate(-50%, -100%)`;
+      sprite.style.transform = `rotate(${lean}deg) scaleX(${facing})`;
       if (trail) trail.style.strokeDashoffset = String(total - length);
     };
     const to = (target / 100) * total;
     if (position.current === null) { place(startAtZero ? 0 : to); if (!startAtZero) return; }
     const from = position.current!;
+    facing = to < from ? -1 : 1;
     if (Math.abs(to - from) < 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { place(to); setFrame(0); return; }
-    if (flip.current) flip.current.style.transform = `scaleX(${to >= from ? 1 : -1})`;
-    const duration = Math.min(1400, Math.max(350, Math.abs(to - from) * 2.2)), start = performance.now();
+    const duration = paced ? WALK_MS - tokens['motion/duration/fast'] / 2 : Math.min(1500, Math.max(420, Math.abs(to - from) * 3)), start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration), eased = t * t * (3 - 2 * t), length = from + (to - from) * eased;
+      const t = Math.min(1, (now - start) / duration), eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2, length = from + (to - from) * eased;
       place(length);
-      setFrame(t < 1 ? (Math.floor(length / 14) % (BELL_FRAMES - 1)) + 1 : 0);
-      if (t < 1) raf = requestAnimationFrame(tick);
+      if (t < 1) { setFrame((Math.floor(Math.abs(length - from) / 18) % (BELL_FRAMES - 1)) + 1); raf = requestAnimationFrame(tick); return; }
+      setFrame(0);
+      sprite.animate([{ translate: '0 0' }, { translate: '0 -12px' }, { translate: '0 0' }], { duration: tokens['motion/duration/slow'] / 1.6, easing: EASE_STANDARD });
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, pathRef, trailRef, startAtZero, stopLengths]);
+  }, [target, pathRef, trailRef, startAtZero, paced]);
 
   return (
     <div ref={box} data-testid="bell" className="absolute top-0 left-0 z-10 w-9.5">
       <div className="relative">
         <button onClick={onClick} disabled={!alert} aria-label={alert ? 'Open the decision' : 'Covers guide'} className={`block w-full ${alert ? 'cursor-pointer' : 'cursor-default'}`}>
-          <div ref={flip}><Bell frame={frame} className="block w-full" /></div>
+          <div ref={body} className="origin-bottom"><Bell frame={frame} className={`block w-full ${frame === 2 || frame === 4 ? '-translate-y-0.75' : ''}`} /></div>
         </button>
         {alert && <i className="pointer-events-none absolute -top-1.5 -right-3 size-4.5 bg-status-over text-center text-small leading-4.5 font-bold text-bg-surface not-italic">!</i>}
       </div>
@@ -156,7 +159,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   const confirm = () => act(() => covers.confirmAttendance({ planId, attendedNpis: everyone.filter((id) => id !== 'rep' && !absent.has(id)), employeesPresent: absent.has('rep') ? 0 : 1, extraGuests: 0, confirmedBy: plan.repId }), (s) => [pace(s, 5)]);
   const decide = (verdict: 'approve' | 'deny') => act(() => (verdict === 'approve' ? covers.approveException : covers.denyException)(planId, flag!.id, note.trim() || (verdict === 'approve' ? 'Approved' : 'Denied')), (s) => (s.view.plan.status === 'closed' ? [pace(s, 6)] : []));
   const switchRole = (r: Role) => { setRoleCookie(r); setRole(r); setViewing(null); setDecisionOpen(true); setError(null); };
-  const reset = () => act(async () => { await covers.reset(); setAbsent(new Set()); setRound(null); });
+  const reset = () => act(async () => { await covers.reset(); switchRole('rep'); setAbsent(new Set()); setRound(null); });
   const addStationNote = async (s: Station) => {
     const text = stationNote.trim();
     if (!text) return;
@@ -280,7 +283,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                     </div>
                   );
                 })}
-                <Walker key={`bell-${shown}-${size.w}-${size.h}`} pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={!!run && run.step === shown} stopLengths={geometry.stops} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
+                <Walker key={`bell-${shown}-${size.w}-${size.h}`} pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={!!run && run.step === shown} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
               </>
             )}
             {arrow('l', prev)}{arrow('r', next)}

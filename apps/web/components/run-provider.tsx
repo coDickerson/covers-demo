@@ -11,7 +11,7 @@ type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[])
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const WALK = tokens['motion/duration/slow'] * 2;
+export const WALK_MS = tokens['motion/duration/slow'] * 2.5; // the bell's walking pace between stations
 const DWELL = tokens['motion/duration/slow'];
 
 export function RunProvider({ children }: { children: React.ReactNode }) {
@@ -24,7 +24,7 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
       await sleep(DWELL);
       for (let i = 0; i < names.length; i++) {
         set({ step, at: i, seen: i, label: names[i]! });
-        await sleep(WALK);
+        await sleep(WALK_MS);
         set({ step, at: i, seen: i + 1, label: names[i]! });
         await sleep(DWELL);
       }

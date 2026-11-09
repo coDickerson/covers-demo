@@ -2,6 +2,7 @@
 // Pure functions over contract types, so fixtures and live mode behave the same.
 import type { AuditEvent, CheckResult, DinnerStep, Evaluation, PlanView, ProgramPlan, Receipt, Settlement, StepNote } from '@covers/contract';
 import { fixtures } from '@covers/contract/fixtures';
+import { tokens } from './tokens';
 import { afterChecks, afterMark, beforeChecks, beforeMark, CHECKERS, openFlag, STEPS, stepOf, usd, type CheckerId, type Mark, type Role } from './dinner';
 
 export type DinnerState = { view: PlanView; rounds: Evaluation[]; receipt: Receipt | null; settlement: Settlement | null; notes: StepNote[]; audit: AuditEvent[] };
@@ -139,7 +140,10 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
   }
 }
 
-const RAIL = { left: 0.12, right: 0.88, high: 0.3, low: 0.58, side: 0.44 };
+/** The standard easing token, for animations started from script. */
+export const EASE_STANDARD = `cubic-bezier(${tokens['motion/ease/standard']})`;
+
+const RAIL = { left: 0.12, right: 0.88, high: 0.36, low: 0.54, side: 0.45 };
 
 /** Spreads stations across the given area on a path that swings between two heights. `stops` are percent along the path: start, each station, end. */
 export function layoutPath(count: number, width: number, height: number): { d: string; points: { x: number; y: number }[]; stops: number[] } {
