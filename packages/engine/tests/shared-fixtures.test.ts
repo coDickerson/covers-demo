@@ -88,3 +88,30 @@ describe('shared seed: after the dinner (clean receipt, Dr. Kinsale no-show)', (
     expect(st.exceptions.map((e) => e.ruleId)).toEqual(['P5.alcohol']);
   });
 });
+
+describe('shared seed: the other three dinners on the dashboard', () => {
+  const plan = (id: string) => f.plans.find((p) => p.id === id)!;
+  const problems = (id: string) => evaluate(input(plan(id))).checks.filter((c) => c.outcome !== 'pass').map((c) => c.ruleId);
+
+  it('uses only seed people: every invitee and speaker is a fictional seed record', () => {
+    const seeded = new Set([...f.hcps.map((h) => h.npi), ...f.speakers.map((s) => s.hcp.npi)]);
+    for (const p of f.plans) {
+      expect(f.reps.some((r) => r.id === p.repId), p.id).toBe(true);
+      expect(speakerOf(p), p.id).not.toBeNull();
+      for (const npi of p.inviteeNpis) expect(seeded.has(npi), `${p.id} ${npi}`).toBe(true);
+      expect(p.inviteeNpis, p.id).not.toContain(speakerOf(p)!.hcp.npi);
+    }
+  });
+
+  it('clears Dr. Okafor on device safety and Dr. Lindqvist on vascular access with no issues', () => {
+    for (const id of ['plan-okafor', 'plan-lindqvist']) {
+      expect(evaluate(input(plan(id))).status, id).toBe('cleared');
+      expect(problems(id), id).toEqual([]);
+    }
+  });
+
+  it('blocks Dr. Ortwell on valve durability for one reason only: her speaker training expired', () => {
+    expect(evaluate(input(plan('plan-ortwell'))).status).toBe('blocked');
+    expect(problems('plan-ortwell')).toEqual(['P1.speaker-status']);
+  });
+});

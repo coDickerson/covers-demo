@@ -12,5 +12,47 @@
     "employeeCount": 1,
     "estimatedPerPerson": 11000,
     "status": "draft"
+  },
+  {
+    "id": "plan-okafor",
+    "title": "Speaker dinner: Dr. Okafor on device safety",
+    "purpose": "Review of post-market device safety reporting for cardiology clinicians.",
+    "topic": "Device safety",
+    "repId": "rep-casey-tran",
+    "speakerId": "spk-okafor",
+    "venue": "The Larder, Oakland",
+    "date": "2026-11-05T19:00:00-08:00",
+    "inviteeNpis": ["9000000004", "9000000005", "9000000006", "9000000002"],
+    "employeeCount": 1,
+    "estimatedPerPerson": 10500,
+    "status": "draft"
+  },
+  {
+    "id": "plan-lindqvist",
+    "title": "Speaker dinner: Dr. Lindqvist on vascular access",
+    "purpose": "Technique and complication data for vascular access in interventional procedures.",
+    "topic": "Vascular access",
+    "repId": "rep-jordan-lee",
+    "speakerId": "spk-lindqvist",
+    "venue": "Harbor Room, San Francisco",
+    "date": "2026-11-06T19:00:00-08:00",
+    "inviteeNpis": ["9000000101", "9000000003", "9000000006", "9000000005"],
+    "employeeCount": 1,
+    "estimatedPerPerson": 10000,
+    "status": "draft"
+  },
+  {
+    "id": "plan-ortwell",
+    "title": "Speaker dinner: Dr. Ortwell on valve durability",
+    "purpose": "Long-term durability data for transcatheter valves.",
+    "topic": "Valve durability",
+    "repId": "rep-jordan-lee",
+    "speakerId": "spk-ortwell",
+    "venue": "Foxglove, San Francisco",
+    "date": "2026-11-17T19:00:00-08:00",
+    "inviteeNpis": ["9000000003", "9000000005", "9000000002"],
+    "employeeCount": 1,
+    "estimatedPerPerson": 10500,
+    "status": "draft"
   }
 ]
