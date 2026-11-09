@@ -91,6 +91,7 @@ export const CheckResult = z.object({
   citation: Citation,
   evidence: z.array(z.string()), // ids of the facts used (registry record, roster row, ledger entry)
   approval: z.object({ by: z.string(), note: z.string(), at: IsoDateTime }).optional(), // set when a flag is approved; blocks are never approvable
+  denial: z.object({ by: z.string(), note: z.string(), at: IsoDateTime }).optional(), // added Nov 8: set when a flag is denied; a check carries at most one of approval / denial
 });
 export type CheckResult = z.infer<typeof CheckResult>;
 

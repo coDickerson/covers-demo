@@ -17,7 +17,12 @@ export interface CoversService {
   getPlan(ctx: Ctx, id: string): Promise<PlanView>; // plan + latest stored evaluation; never re-evaluates, writes no audit event
   updatePlan(ctx: Ctx, id: string, patch: PlanPatch): Promise<ProgramPlan>; // any edit sets status back to 'draft'
   evaluatePlan(ctx: Ctx, id: string): Promise<Evaluation>;
-  approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>; // flags only, by anyone except the plan's rep
+  // Exceptions: flags only, decided by anyone except the plan's rep. The latest decision on a check wins.
+  // Before the dinner they act on the latest evaluation; once attendance is confirmed they act on the settlement's
+  // exceptions (added Nov 8), and the plan closes when every exception is decided. Both return the latest evaluation.
+  approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>;
+  denyException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>; // added Nov 8. Before the dinner a denied flag blocks the plan
+  listEvaluations(ctx: Ctx, id: string): Promise<Evaluation[]>; // added Nov 8: every evaluation round, oldest first; writes no audit event
   issueFund(ctx: Ctx, id: string): Promise<FundResult>; // refuses unless status is 'cleared'
 
   // after the dinner

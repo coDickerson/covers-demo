@@ -169,6 +169,26 @@ describe('evaluate: approvals', () => {
     expect(ev.status).toBe('needs_approval');
   });
 
+  it('a denied flag blocks the plan and records the denial instead of an approval', () => {
+    const ev = evaluate({
+      ...baseInput(PLAN_WITHOUT_RUVANE), ledger: nearLedger,
+      approvals: [{ checkId: flagId, by: 'compliance-priya', note: 'ok', at: '2026-11-08T13:00:00-08:00' }],
+      denials: [{ checkId: flagId, by: 'compliance-priya', note: 'no', at: '2026-11-08T13:05:00-08:00' }],
+    });
+    expect(find(ev, flagId)?.denial).toEqual({ by: 'compliance-priya', note: 'no', at: '2026-11-08T13:05:00-08:00' });
+    expect(find(ev, flagId)?.approval).toBeUndefined();
+    expect(ev.status).toBe('blocked');
+  });
+
+  it('ignores a denial by the plan rep', () => {
+    const ev = evaluate({
+      ...baseInput(PLAN_WITHOUT_RUVANE), ledger: nearLedger,
+      denials: [{ checkId: flagId, by: 'rep-jordan', note: 'self', at: '2026-11-08T13:00:00-08:00' }],
+    });
+    expect(find(ev, flagId)?.denial).toBeUndefined();
+    expect(ev.status).toBe('needs_approval');
+  });
+
   it('never lets an approval clear a block', () => {
     const ev = evaluate({
       ...baseInput(),

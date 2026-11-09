@@ -34,6 +34,13 @@ export async function putDocs(tx: Tx, sessionId: string, rows: { kind: string; i
     on conflict (session_id, kind, id) do update set data = excluded.data, updated_at = now()`;
 }
 
+/** Reads the documents with this id across several kinds in one query. Kinds with no document are absent from the map. */
+export async function getDocsById(sql: Sql | Tx, sessionId: string, kinds: string[], id: string): Promise<Map<string, unknown>> {
+  const rows = await sql<{ kind: string; data: unknown }[]>`
+    select kind, data from docs where session_id = ${sessionId} and id = ${id} and kind = any(${kinds})`;
+  return new Map(rows.map((r) => [r.kind, r.data]));
+}
+
 /** Reads every document of the given kinds in one query, grouped by kind. */
 export async function loadKinds(sql: Sql | Tx, sessionId: string, kinds: string[]): Promise<Map<string, unknown[]>> {
   const rows = await sql<{ kind: string; data: unknown }[]>`

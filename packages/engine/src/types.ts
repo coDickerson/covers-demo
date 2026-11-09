@@ -45,6 +45,8 @@ export type EvaluateInput = {
   ledger: LedgerEntry[];
   history: AttendanceHistory[];
   approvals?: Approval[];
+  /** Flags compliance denied. Same shape as approvals; a denied flag blocks the plan until the plan changes. */
+  denials?: Approval[];
   settings?: Partial<EngineSettings>;
   /** Promoted Pack-lab packs (A7), applied after P1–P6. */
   customPacks?: CustomPack[];

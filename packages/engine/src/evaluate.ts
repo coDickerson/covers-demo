@@ -95,20 +95,29 @@ export function evaluate(input: EvaluateInput): Evaluation {
     }
   }
 
-  // Approved flags carry who approved them. Blocks and the rep's own approvals are ignored.
+  // Decided flags carry who decided them. Blocks and the rep's own decisions are ignored.
   const approvals = (input.approvals ?? []).filter((a) => a.by !== plan.repId);
-  const byCheck = new Map(approvals.map((a) => [a.checkId, a]));
+  const denials = (input.denials ?? []).filter((a) => a.by !== plan.repId);
+  const approvedBy = new Map(approvals.map((a) => [a.checkId, a]));
+  const deniedBy = new Map(denials.map((a) => [a.checkId, a]));
   const finalChecks = checks.list.map((c) => {
-    const a = c.outcome === 'flag' ? byCheck.get(c.id) : undefined;
+    if (c.outcome !== 'flag') return c;
+    const d = deniedBy.get(c.id);
+    if (d) return { ...c, denial: { by: d.by, note: d.note, at: d.at } };
+    const a = approvedBy.get(c.id);
     return a ? { ...c, approval: { by: a.by, note: a.note, at: a.at } } : c;
   });
-  return { planId: plan.id, status: statusOf(finalChecks, approvals, plan.repId), checks: finalChecks, caps, evaluatedAt: input.now };
+  return { planId: plan.id, status: statusOf(finalChecks, approvals, plan.repId, denials), checks: finalChecks, caps, evaluatedAt: input.now };
 }
 
-/** Any block → blocked; else any unapproved flag → needs_approval; else cleared. Reps cannot approve their own plan. */
-export function statusOf(checks: readonly CheckResult[], approvals: readonly Approval[], repId: string): PlanStatus {
+/**
+ * Any block or denied flag → blocked; else any unapproved flag → needs_approval; else cleared.
+ * Reps cannot decide their own plan's flags.
+ */
+export function statusOf(checks: readonly CheckResult[], approvals: readonly Approval[], repId: string, denials: readonly Approval[] = []): PlanStatus {
   const approved = new Set(approvals.filter((a) => a.by !== repId).map((a) => a.checkId));
-  if (checks.some((c) => c.outcome === 'block')) return 'blocked';
+  const denied = new Set(denials.filter((a) => a.by !== repId).map((a) => a.checkId));
+  if (checks.some((c) => c.outcome === 'block' || (c.outcome === 'flag' && denied.has(c.id)))) return 'blocked';
   if (checks.some((c) => c.outcome === 'flag' && !approved.has(c.id))) return 'needs_approval';
   return 'cleared';
 }

@@ -17,7 +17,10 @@ import { isLabPack, labTests, nextPackId, pastDinners, toCustom, type LabCompile
 import { readFileSync } from 'node:fs';
 import bundledProof from '../../../proof/proof.json';
 import { ProofBundle } from '@covers/contract';
-import { ensureSession, getDoc, listDocs, loadKinds, putDoc, putDocs, resetSession, type Seed } from './store';
+import { ensureSession, getDoc, getDocsById, listDocs, loadKinds, putDoc, putDocs, resetSession, type Seed } from './store';
+
+type Decisions = { approvals?: Approval[]; denials?: Approval[] };
+type Verdict = 'approved' | 'denied';
 
 export type HcpSearch = (q: string) => Promise<Hcp[]>;
 
@@ -177,17 +180,24 @@ export class LiveService implements CoversService {
     await write(this.sql, ctx, { action: 'input.suspicious', planId, input: hits, detail: `Instruction-like text in ${hits.join(', ')}; treated as data` }, async () => {});
   }
 
-  /** Evaluates with the given approvals (default: stored ones) and stores approvals, evaluation and status together. */
-  private async runEvaluation(ctx: Ctx, sid: string, plan: ProgramPlan, action: string, detail: string, newApprovals?: Approval[]) {
+  /**
+   * Evaluates with the given decisions (default: the stored ones) and stores decisions, evaluation, the round history
+   * and status together. Approvals, denials and rounds come back in one query.
+   */
+  private async runEvaluation(ctx: Ctx, sid: string, plan: ProgramPlan, action: string, detail: string, next: Decisions = {}) {
     const [stored, facts] = await Promise.all([
-      newApprovals ? Promise.resolve(null) : getDoc<Approval[]>(this.sql, sid, 'approvals', plan.id),
+      getDocsById(this.sql, sid, ['approvals', 'denials', 'evaluationRounds'], plan.id),
       this.facts(sid, plan),
     ]);
-    const approvals = newApprovals ?? stored ?? [];
-    const ev = evaluate({ ...facts, approvals });
-    await write(this.sql, ctx, { action, planId: plan.id, input: { plan, approvals }, detail: `${detail} → ${ev.status}` }, (tx) => putDocs(tx, sid, [
-      ...(newApprovals ? [{ kind: 'approvals', id: plan.id, data: newApprovals }] : []),
+    const approvals = next.approvals ?? (stored.get('approvals') as Approval[] | undefined) ?? [];
+    const denials = next.denials ?? (stored.get('denials') as Approval[] | undefined) ?? [];
+    const rounds = (stored.get('evaluationRounds') as Evaluation[] | undefined) ?? [];
+    const ev = evaluate({ ...facts, approvals, denials });
+    await write(this.sql, ctx, { action, planId: plan.id, input: { plan, approvals, denials }, detail: `${detail} → ${ev.status}` }, (tx) => putDocs(tx, sid, [
+      ...(next.approvals ? [{ kind: 'approvals', id: plan.id, data: next.approvals }] : []),
+      ...(next.denials ? [{ kind: 'denials', id: plan.id, data: next.denials }] : []),
       { kind: 'evaluation', id: plan.id, data: ev },
+      { kind: 'evaluationRounds', id: plan.id, data: [...rounds, ev] },
       { kind: 'plan', id: plan.id, data: { ...plan, status: ev.status } },
     ]));
     return ev;
@@ -199,16 +209,71 @@ export class LiveService implements CoversService {
   }
 
   async approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
+    return this.decide(ctx, id, checkId, note, 'approved');
+  }
+
+  async denyException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
+    return this.decide(ctx, id, checkId, note, 'denied');
+  }
+
+  async listEvaluations(ctx: Ctx, id: string): Promise<Evaluation[]> {
     const sid = await this.open(ctx);
-    const plan = await this.plan(sid, id);
-    if (ctx.actorId === plan.repId) throw new CoversError('forbidden', 'A rep cannot approve an exception on their own plan.');
-    const latest = await getDoc<Evaluation>(this.sql, sid, 'evaluation', id);
+    const got = await getDocsById(this.sql, sid, ['plan', 'evaluationRounds', 'evaluation'], id);
+    if (!got.has('plan')) throw new CoversError('not_found', `Plan ${id} not found.`);
+    const rounds = got.get('evaluationRounds') as Evaluation[] | undefined;
+    const latest = got.get('evaluation') as Evaluation | undefined;
+    return rounds ?? (latest ? [latest] : []); // sessions from before rounds were kept have only the latest
+  }
+
+  /**
+   * Approves or denies a flag. Once attendance is confirmed and the check is one of the settlement's exceptions, the
+   * decision is recorded on the settlement and the plan closes when every exception is decided. Otherwise it applies
+   * to the latest evaluation, which is re-run with the decision.
+   */
+  private async decide(ctx: Ctx, id: string, checkId: string, note: string, verdict: Verdict): Promise<Evaluation> {
+    const sid = await this.open(ctx);
+    const got = await getDocsById(this.sql, sid, ['plan', 'settlement', 'evaluation', 'approvals', 'denials'], id);
+    const plan = got.get('plan') as ProgramPlan | undefined;
+    if (!plan) throw new CoversError('not_found', `Plan ${id} not found.`);
+    const verb = verdict === 'approved' ? 'approve' : 'deny';
+    if (ctx.actorId === plan.repId) throw new CoversError('forbidden', `A rep cannot ${verb} an exception on their own plan.`);
+    const decision = { by: ctx.actorId, note, at: this.now() };
+    const latest = got.get('evaluation') as Evaluation | undefined;
+
+    const settlement = got.get('settlement') as Settlement | undefined;
+    const exception = settlement?.exceptions.find((c) => c.id === checkId);
+    if (settlement && exception) {
+      if (exception.outcome !== 'flag') throw new CoversError('invalid_state', `Only flags can be decided; this exception is ${exception.outcome}.`);
+      const mark = (c: Settlement['checks'][number]) => {
+        if (c.id !== checkId) return c;
+        const { approval: _a, denial: _d, ...rest } = c;
+        return verdict === 'approved' ? { ...rest, approval: decision } : { ...rest, denial: decision };
+      };
+      const st: Settlement = { ...settlement, checks: settlement.checks.map(mark), exceptions: settlement.exceptions.map(mark) };
+      const open = st.exceptions.filter((c) => !c.approval && !c.denial).length;
+      const status = open === 0 ? 'closed' : 'reconciling';
+      await write(this.sql, ctx, {
+        action: `exception.${verdict}`, planId: id, packId: exception.packId, ruleId: exception.ruleId, input: { checkId, note, verdict },
+        detail: `${verdict === 'approved' ? 'Approved' : 'Denied'} ${checkId} after the dinner: ${note} → ${status}`,
+      }, (tx) => putDocs(tx, sid, [
+        { kind: 'settlement', id, data: st },
+        { kind: 'plan', id, data: { ...plan, status } },
+      ]));
+      if (!latest) throw new CoversError('invalid_state', 'This plan has no evaluation.');
+      return latest;
+    }
+
     const check = latest?.checks.find((c) => c.id === checkId);
     if (!check) throw new CoversError('not_found', `Check ${checkId} is not on the latest evaluation.`);
-    if (check.outcome !== 'flag') throw new CoversError('invalid_state', `Only flags can be approved; this check is ${check.outcome}.`);
-    const approvals = (await getDoc<Approval[]>(this.sql, sid, 'approvals', id)) ?? [];
-    const next = [...approvals.filter((a) => a.checkId !== checkId), { checkId, by: ctx.actorId, note, at: this.now() }];
-    return this.runEvaluation(ctx, sid, plan, 'exception.approved', `Approved ${checkId}: ${note}`, next);
+    if (check.outcome !== 'flag') throw new CoversError('invalid_state', `Only flags can be decided; this check is ${check.outcome}.`);
+    const entry = { checkId, ...decision };
+    const without = (xs: Approval[] | undefined) => (xs ?? []).filter((a) => a.checkId !== checkId);
+    const approvals = without(got.get('approvals') as Approval[] | undefined);
+    const denials = without(got.get('denials') as Approval[] | undefined);
+    const nextDecisions: Decisions = verdict === 'approved'
+      ? { approvals: [...approvals, entry], denials }
+      : { approvals, denials: [...denials, entry] };
+    return this.runEvaluation(ctx, sid, plan, `exception.${verdict}`, `${verdict === 'approved' ? 'Approved' : 'Denied'} ${checkId}: ${note}`, nextDecisions);
   }
 
   async issueFund(ctx: Ctx, id: string): Promise<FundResult> {
