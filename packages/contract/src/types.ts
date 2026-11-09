@@ -76,6 +76,31 @@ export const Citation = z.object({
 });
 export type Citation = z.infer<typeof Citation>;
 
+// Added Nov 8. What a person writes or ticks on a step of a dinner. Notes go on the record (and the audit log); they never
+// change an outcome. The steps match the app's route; target names the square (a checker or a check id), if any.
+export const DinnerStep = z.enum(['propose', 'check', 'fund', 'dinner', 'close_out', 'settle', 'report']);
+export type DinnerStep = z.infer<typeof DinnerStep>;
+
+export const StepNoteInput = z.object({
+  step: DinnerStep,
+  target: z.string().min(1).max(200).optional(),
+  text: z.string().max(2000).optional(),
+  checked: z.boolean().optional(),
+}).refine((n) => n.text !== undefined || n.checked !== undefined, { message: 'A note needs text, a checkbox value, or both.' });
+export type StepNoteInput = z.infer<typeof StepNoteInput>;
+
+export const StepNote = z.object({
+  id: z.string(),
+  planId: z.string(),
+  step: DinnerStep,
+  target: z.string().optional(),
+  text: z.string().optional(),
+  checked: z.boolean().optional(),
+  by: z.string(),
+  at: IsoDateTime,
+});
+export type StepNote = z.infer<typeof StepNote>;
+
 // Added Nov 8. The source texts citations point to. Government texts are quoted exactly from the original (public
 // domain); the company policy is the fictional demo policy. checkedOn is when the text was last compared with the source.
 export const DocumentPassage = z.object({ id: z.string(), label: z.string(), text: z.string() });

@@ -3,7 +3,7 @@
 import type {
   AuditEvent, Attendance, BreakItResult, CapStatus, CompileResult, Ctx, Evaluation, FundResult,
   Hcp, PlanInput, PlanPatch, PlanView, PolicyDocument, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
-  RulePack, Settlement, Speaker,
+  RulePack, Settlement, Speaker, StepNote, StepNoteInput,
 } from './types';
 
 export interface CoversService {
@@ -31,6 +31,10 @@ export interface CoversService {
   fixLine(ctx: Ctx, receiptId: string, lineId: string, patch: Partial<ReceiptLine>): Promise<Receipt>;
   confirmAttendance(ctx: Ctx, a: Attendance): Promise<Settlement>; // ctx.actorId and a.confirmedBy must be the plan's rep
   getSettlement(ctx: Ctx, planId: string): Promise<Settlement | null>;
+
+  // notes on the record (added Nov 8): anyone on the dinner may add them; they never change an outcome
+  addNote(ctx: Ctx, planId: string, note: StepNoteInput): Promise<StepNote>;
+  listNotes(ctx: Ctx, planId: string): Promise<StepNote[]>; // oldest first; writes no audit event
 
   // compliance views
   listPlans(ctx: Ctx): Promise<ProgramPlan[]>;

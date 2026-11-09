@@ -2,7 +2,7 @@
 // every write through the audit gateway. Ramp, the receipt reader and the Pack lab plug in later (A5–A7).
 import { randomUUID } from 'node:crypto';
 import {
-  CoversError, PlanInput, PlanPatch,
+  CoversError, PlanInput, PlanPatch, StepNoteInput, type StepNote,
   type AuditEvent, type Attendance, type BreakItResult, type CapStatus, type CompileResult, type CoversService, type Ctx,
   type Evaluation, type FundResult, type Hcp, type PlanView, type PolicyDocument, type ProgramPlan, type Receipt,
   type ReceiptImage, type ReceiptLine, type Rep, type ReplayDiff, type RulePack, type Settlement, type Speaker,
@@ -575,6 +575,31 @@ export class LiveService implements CoversService {
   }
 
   async listDocuments(): Promise<PolicyDocument[]> { return cloneSeed().documents; }
+
+  // ---- notes on the record ----
+  async addNote(ctx: Ctx, planId: string, input: StepNoteInput): Promise<StepNote> {
+    const sid = await this.open(ctx);
+    const parsed = StepNoteInput.safeParse(input);
+    if (!parsed.success) throw new CoversError('validation', parsed.error.issues.map((i) => i.message).join('; '));
+    const got = await getDocsById(this.sql, sid, ['plan', 'notes'], planId);
+    if (!got.has('plan')) throw new CoversError('not_found', `Plan ${planId} not found.`);
+    const notes = (got.get('notes') as StepNote[] | undefined) ?? [];
+    const note: StepNote = { id: `note-${randomUUID()}`, planId, ...parsed.data, by: ctx.actorId, at: this.now() };
+    const what = [note.checked !== undefined ? (note.checked ? 'ticked' : 'unticked') : '', note.text ? `"${note.text.slice(0, 80)}"` : ''].filter(Boolean).join(', ');
+    await write(this.sql, ctx, { action: 'note.added', planId, input: note, detail: `${note.step}${note.target ? ` · ${note.target}` : ''}: ${what}` },
+      (tx) => putDoc(tx, sid, 'notes', planId, [...notes, note]));
+    if (note.text && looksLikeInstructions(note.text)) {
+      await write(this.sql, ctx, { action: 'input.suspicious', planId, input: { noteId: note.id }, detail: 'Instruction-like text in a note; treated as data' }, async () => {});
+    }
+    return note;
+  }
+
+  async listNotes(ctx: Ctx, planId: string): Promise<StepNote[]> {
+    const sid = await this.open(ctx);
+    const got = await getDocsById(this.sql, sid, ['plan', 'notes'], planId);
+    if (!got.has('plan')) throw new CoversError('not_found', `Plan ${planId} not found.`);
+    return (got.get('notes') as StepNote[] | undefined) ?? [];
+  }
 
   async reset(ctx: Ctx): Promise<void> { await resetSession(this.sql, ctx, this.seed()); }
 }

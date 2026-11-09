@@ -305,6 +305,22 @@ export function runContractSuite(name: string, make: Make) {
         }
       });
 
+      it('keeps notes and checkboxes per step, oldest first, without changing the outcome', async () => {
+        const ev = await svc.evaluatePlan(rep, IDS.demoPlan);
+        expect(await svc.listNotes(rep, IDS.demoPlan)).toEqual([]);
+        const a = S.StepNote.parse(await svc.addNote(rep, IDS.demoPlan, { step: 'check', target: 'Annual limit', text: 'Asked Dr. Ruvane about her other programs' }));
+        const b = S.StepNote.parse(await svc.addNote(cmp, IDS.demoPlan, { step: 'check', target: 'Red flags', checked: true }));
+        expect(a).toMatchObject({ planId: IDS.demoPlan, step: 'check', by: IDS.rep });
+        expect(b).toMatchObject({ checked: true, by: IDS.compliance });
+        expect((await svc.listNotes(cmp, IDS.demoPlan)).map((n) => n.id)).toEqual([a.id, b.id]);
+        expect((await svc.getPlan(rep, IDS.demoPlan)).evaluation?.status).toBe(ev.status);
+      });
+
+      it('refuses an empty note and a note on an unknown plan', async () => {
+        await expectRefusal(svc.addNote(rep, IDS.demoPlan, { step: 'check' }), 'validation');
+        await expectRefusal(svc.addNote(rep, 'plan-nope', { step: 'check', text: 'x' }), 'not_found');
+      });
+
       it('lists the source documents, and every citation with a docId opens a stored passage', async () => {
         const docs = z.array(S.PolicyDocument).parse(await svc.listDocuments());
         expect(docs.length).toBeGreaterThan(0);
