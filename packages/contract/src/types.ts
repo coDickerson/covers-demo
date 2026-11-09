@@ -71,8 +71,27 @@ export const Citation = z.object({
   packId: z.string(),
   ruleId: z.string(),
   version: z.string(),
+  docId: z.string().optional(), // added Nov 8: the stored document this rule rests on (see listDocuments)
+  passageId: z.string().optional(), // added Nov 8: the passage in that document to open and highlight
 });
 export type Citation = z.infer<typeof Citation>;
+
+// Added Nov 8. The source texts citations point to. Government texts are quoted exactly from the original (public
+// domain); the company policy is the fictional demo policy. checkedOn is when the text was last compared with the source.
+export const DocumentPassage = z.object({ id: z.string(), label: z.string(), text: z.string() });
+export type DocumentPassage = z.infer<typeof DocumentPassage>;
+
+export const PolicyDocument = z.object({
+  id: z.string(),
+  title: z.string(),
+  publisher: z.string(),
+  kind: z.enum(['statute', 'regulation', 'guidance', 'agency_page', 'company_policy']),
+  url: z.string().optional(),
+  checkedOn: IsoDate,
+  note: z.string().optional(),
+  passages: z.array(DocumentPassage).min(1),
+});
+export type PolicyDocument = z.infer<typeof PolicyDocument>;
 
 export const CheckSubject = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('plan') }),

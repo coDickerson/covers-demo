@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CoversError, PlanInput, PlanPatch,
   type AuditEvent, type Attendance, type BreakItResult, type CapStatus, type CompileResult, type CoversService, type Ctx,
-  type Evaluation, type FundResult, type Hcp, type PlanView, type ProgramPlan, type Receipt,
+  type Evaluation, type FundResult, type Hcp, type PlanView, type PolicyDocument, type ProgramPlan, type Receipt,
   type ReceiptImage, type ReceiptLine, type Rep, type ReplayDiff, type RulePack, type Settlement, type Speaker,
 } from '@covers/contract';
 import { cloneSeed, type Company, type LedgerSeed } from '@covers/contract/fixtures';
@@ -573,6 +573,8 @@ export class LiveService implements CoversService {
     const parsed = ProofBundle.safeParse(raw);
     return parsed.success ? parsed.data : cloneSeed().proof;
   }
+
+  async listDocuments(): Promise<PolicyDocument[]> { return cloneSeed().documents; }
 
   async reset(ctx: Ctx): Promise<void> { await resetSession(this.sql, ctx, this.seed()); }
 }

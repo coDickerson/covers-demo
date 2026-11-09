@@ -305,6 +305,17 @@ export function runContractSuite(name: string, make: Make) {
         }
       });
 
+      it('lists the source documents, and every citation with a docId opens a stored passage', async () => {
+        const docs = z.array(S.PolicyDocument).parse(await svc.listDocuments());
+        expect(docs.length).toBeGreaterThan(0);
+        const passage = (c: S.Citation) => docs.find((d) => d.id === c.docId)?.passages.find((p) => p.id === c.passageId);
+        const before = await svc.evaluatePlan(rep, IDS.demoPlan);
+        await readyForAttendance();
+        const st = await svc.confirmAttendance(rep, kinsaleNoShow());
+        const cited = [...before.checks, ...st.checks].map((c) => c.citation).filter((c) => c.docId);
+        for (const c of cited) expect(passage(c), `${c.ruleId} → ${c.docId}#${c.passageId}`).toBeDefined();
+      });
+
       it('returns a proof bundle with 15 Break-It cases', async () => {
         const proof = S.ProofBundle.parse(await svc.getProof());
         expect(proof.breakIt).toHaveLength(15);

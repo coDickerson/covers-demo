@@ -2,7 +2,7 @@
 // Fake NPIs start with 9 (real NPIs start with 1 or 2), so they can never match a real doctor.
 // Parsed with the contract schemas at import time, so a bad edit fails loudly.
 import { z } from 'zod';
-import { Cents, Citation, Hcp, ProgramPlan, ProofBundle, Receipt, Rep, RulePack, Speaker } from '../src/types';
+import { Cents, Citation, Hcp, PolicyDocument, ProgramPlan, ProofBundle, Receipt, Rep, RulePack, Speaker } from '../src/types';
 import companyJson from './company.json';
 import usersJson from './users.json';
 import repsJson from './reps.json';
@@ -14,6 +14,7 @@ import receiptsJson from './receipts.json';
 import packsJson from './packs.json';
 import citationsJson from './citations.json';
 import proofJson from './proof.placeholder.json';
+import documentsJson from './documents.json';
 
 // Fixture-only shapes (not part of CoversService).
 export const Company = z.object({
@@ -47,6 +48,7 @@ export const fixtures = {
   packs: z.array(RulePack).parse(packsJson),
   citations: z.record(z.string(), Citation).parse(citationsByPack),
   proof: ProofBundle.parse(proofJson),
+  documents: z.array(PolicyDocument).parse(documentsJson), // added Nov 8: sources citations point to
 } as const;
 
 export type Fixtures = typeof fixtures;

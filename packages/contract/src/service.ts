@@ -2,7 +2,7 @@
 // Refusals reject with CoversError (see types.ts).
 import type {
   AuditEvent, Attendance, BreakItResult, CapStatus, CompileResult, Ctx, Evaluation, FundResult,
-  Hcp, PlanInput, PlanPatch, PlanView, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
+  Hcp, PlanInput, PlanPatch, PlanView, PolicyDocument, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
   RulePack, Settlement, Speaker,
 } from './types';
 
@@ -46,5 +46,6 @@ export interface CoversService {
   // judge tools
   runBreakIt(ctx: Ctx, caseId: number): Promise<BreakItResult>;
   getProof(): Promise<ProofBundle>;
+  listDocuments(): Promise<PolicyDocument[]>; // added Nov 8: every source a citation can point to; no ctx, same for everyone
   reset(ctx: Ctx): Promise<void>;
 }
