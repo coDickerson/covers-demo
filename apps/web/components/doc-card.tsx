@@ -18,10 +18,10 @@ function Row({ r }: { r: DocRow }) {
   );
 }
 
-export function DocCard({ model: m, back, onDoc, onBack, onClose }: { model: DocCardModel; back?: string; onDoc: (r: DocRef) => void; onBack: () => void; onClose: () => void }) {
+export function DocCard({ model: m, back, onDoc, onBack, onClose }: { model: DocCardModel; back?: string; onDoc: (r: DocRef) => void; onBack?: () => void; onClose?: () => void }) {
   return (
     <div role="dialog" aria-label={m.head} className="absolute top-1/2 left-1/2 z-30 flex size-170 max-h-[96%] -translate-x-1/2 -translate-y-1/2 flex-col gap-2.5 border border-ink-primary bg-bg-surface px-6 pt-5 pb-4.5">
-      <button aria-label="Close" onClick={onClose} className="absolute top-2.5 right-3.5 cursor-pointer text-heading leading-none">×</button>
+      {onClose && <button aria-label="Close" onClick={onClose} className="absolute top-2.5 right-3.5 cursor-pointer text-heading leading-none">×</button>}
       <div className="flex gap-2 overflow-hidden pr-7 font-mono text-micro whitespace-nowrap text-ink-muted">
         {back && <><button onClick={onBack} className="cursor-pointer text-ink-primary underline">← {back}</button><span>·</span></>}<span>{m.eye}</span>
       </div>

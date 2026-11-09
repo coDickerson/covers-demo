@@ -8,16 +8,17 @@ import { nameOf } from '../lib/map';
 export const setRoleCookie = (role: Role) => { document.cookie = `covers_role=${role}; path=/; samesite=lax; max-age=86400`; };
 export const readRole = (): Role => (document.cookie.includes('covers_role=compliance') ? 'compliance' : 'rep');
 
-const NEXT = ['Doctors', 'Rules', 'Documents', 'Proof'];
+const TABS = [['Dinners', '/'], ['Doctors', '/doctors'], ['Rules', '/rules'], ['Documents', '/documents'], ['Proof', '/proof']] as const;
+export type Tab = (typeof TABS)[number][0];
 
-export function AppBar({ role, onRole }: { role: Role; onRole: (r: Role) => void }) {
+export function AppBar({ role, onRole, active = 'Dinners' }: { role: Role; onRole: (r: Role) => void; active?: Tab | null }) {
   return (
     <nav className="flex h-13 items-center gap-6 rounded-pill border border-border bg-bg-surface pr-2 pl-6">
       <Link href="/" className="text-amount font-bold tracking-tight">Covers</Link>
-      <Link href="/" className="font-strong underline decoration-2 underline-offset-8">Dinners</Link>
-      {NEXT.map((n) => <span key={n} title="Not built yet" className="text-ink-muted">{n}</span>)}
+      {TABS.map(([name, href]) => <Link key={name} href={href} aria-current={active === name ? 'page' : undefined} className={active === name ? 'font-strong underline decoration-2 underline-offset-8' : 'text-ink-muted hover:text-ink-primary'}>{name}</Link>)}
       <span className="flex-1" />
-      <button className="cursor-pointer text-ink-secondary" title="Switch who is acting in this sandbox" onClick={() => onRole(role === 'rep' ? 'compliance' : 'rep')}>
+      <Link href="/plans/new" className="text-small text-ink-muted hover:text-ink-primary">+ New dinner</Link>
+      <button className="cursor-pointer pr-3 text-ink-secondary" title="Switch who is acting in this sandbox" onClick={() => onRole(role === 'rep' ? 'compliance' : 'rep')}>
         {role === 'rep' ? `${nameOf(IDS.rep)} · Rep` : `${nameOf(IDS.compliance)} · Compliance`}
       </button>
     </nav>

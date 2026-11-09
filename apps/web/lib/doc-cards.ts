@@ -21,7 +21,7 @@ const POLICY = (label: string, at: string): DocRef => ({ label, doc: 'halden-pol
 const CFR: DocRef = { label: '42 CFR 403.904', doc: 'cfr-403-904', at: 'g1' };
 const RECIPIENTS: DocRef = { label: 'Covered recipients', doc: 'cms-glossary', at: 'covered-recipients' };
 
-function storedCard(doc: PolicyDocument, at?: string): DocCardModel {
+export function storedCard(doc: PolicyDocument, at?: string): DocCardModel {
   const passage = doc.passages.find((p) => p.id === at) ?? doc.passages[0]!;
   const fictional = doc.kind === 'company_policy';
   return {

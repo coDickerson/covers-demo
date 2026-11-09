@@ -9,9 +9,14 @@ export type DinnerState = { view: PlanView; rounds: Evaluation[]; receipt: Recei
 export type Tone = '' | 'ok' | 'near' | 'over';
 /** A document to open: 'receipt', 'ledger', 'roster', 'npi', 'ramp', 'attend', 'rows', 'audit', or a stored document id. */
 export type DocRef = { label: string; doc: string; at?: string };
-export type Station = { name: string; kind: string; mark: Mark; word?: string; card: [string, string, Tone?][]; found: string; looked: DocRef[] };
+export type Station = { name: string; kind: string; mark: Mark; word?: string; card: [string, string, Tone?][]; found: string; looked: DocRef[]; think?: string[]; checks?: CheckResult[] };
 
 const CONFIDENCE_GATE = 0.8; // same as the engine's default
+/** What the agent looks at, line by line, while it is at a station. */
+export const thinkingLines = (s: Station) => s.think?.length ? s.think : s.card.map(([a, b]) => (b ? `${a}: ${b}` : a));
+/** The step of the map an audit action belongs to. */
+export const AUDIT_STEP: Record<string, number> = { 'plan.created': 0, 'plan.updated': 1, 'plan.evaluated': 1, 'fund.issued': 2, 'receipt.read': 4, 'receipt.line_fixed': 4, 'attendance.confirmed': 5, 'exception.approved': 6, 'exception.denied': 6 };
+
 export const STEP_KEYS: DinnerStep[] = ['propose', 'check', 'fund', 'dinner', 'close_out', 'settle', 'report'];
 
 const NAMES = new Map<string, string>([
@@ -73,7 +78,7 @@ function checkerStation(id: CheckerId, name: string, kind: string, checks: Check
   const tone = MARK_TONE[mark] ?? '';
   const card: Station['card'] = !checks.length ? [[idle, '']] : trouble.length ? trouble.slice(0, 2).map((c) => [c.message, '', tone]) : [[`${checks.length} passed`, '']];
   const sources = new Map(shown.map(sourceOf).map((r) => [`${r.doc}:${r.at}`, r]));
-  return { name, kind, mark, card, found: checks.length ? shown.map((c) => c.message).join(' ') : idle, looked: [...evidenceRefs(shown), ...sources.values()] };
+  return { name, kind, mark, card, checks, think: checks.map((c) => c.message), found: checks.length ? shown.map((c) => c.message).join(' ') : idle, looked: [...evidenceRefs(shown), ...sources.values()] };
 }
 
 const done = (name: string, kind: string, card: Station['card'], found: string, looked: DocRef[] = []): Station => ({ name, kind, mark: 'clear', word: 'Done', card, found, looked });
@@ -143,13 +148,13 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
 /** The standard easing token, for animations started from script. */
 export const EASE_STANDARD = `cubic-bezier(${tokens['motion/ease/standard']})`;
 
-const RAIL = { left: 0.12, right: 0.88, high: 0.36, low: 0.54, side: 0.45 };
+const RAIL = { left: 0.12, right: 0.88, high: 0.36, low: 0.54, side: 0.45, inset: 72 }; // inset keeps the path clear of the side arrows
 
 /** Spreads stations across the given area on a path that swings between two heights. `stops` are percent along the path: start, each station, end. */
 export function layoutPath(count: number, width: number, height: number): { d: string; points: { x: number; y: number }[]; stops: number[] } {
   const gap = ((RAIL.right - RAIL.left) * width) / Math.max(1, count - 1);
   const points = Array.from({ length: count }, (_, i) => ({ x: RAIL.left * width + i * gap, y: (i % 2 ? RAIL.high : RAIL.low) * height }));
-  const all = [{ x: 0, y: RAIL.side * height }, ...points, { x: width, y: RAIL.side * height }];
+  const all = [{ x: RAIL.inset, y: RAIL.side * height }, ...points, { x: width - RAIL.inset, y: RAIL.side * height }];
   let d = `M${all[0]!.x} ${all[0]!.y}`, length = 0;
   const lengths = [0];
   for (let i = 1; i < all.length; i++) {

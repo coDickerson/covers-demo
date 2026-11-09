@@ -1,7 +1,8 @@
 // The one place that picks which CoversService answers. Server-only.
 //   COVERS_MODE=fixtures (default) → FixtureService on Upstash (Vercel) or memory (laptop)
 //   COVERS_MODE=live               → Person A's LiveService (lib/live.ts)
-import type { CoversService } from '@covers/contract';
+import { ProofBundle, type CoversService } from '@covers/contract';
+import proofJson from '../../../proof/proof.json';
 import { FixtureService } from './fixtures/fixture-service';
 import { storeFromEnv } from './store';
 
@@ -17,7 +18,7 @@ export function getService(): Promise<CoversService> {
     const svc =
       mode === 'live'
         ? import('./live').then((m) => m.createLiveService())
-        : Promise.resolve<CoversService>(new FixtureService(storeFromEnv()));
+        : Promise.resolve<CoversService>(new FixtureService(storeFromEnv(), () => ProofBundle.parse(proofJson)));
     g.__coversService = { mode, svc };
   }
   return g.__coversService.svc;

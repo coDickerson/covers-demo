@@ -3,7 +3,7 @@ import { IDS } from '@covers/contract/fixtures';
 import { FixtureService } from '../lib/fixtures/fixture-service';
 import { MemoryStore } from '../lib/store';
 import { buildCard } from '../lib/doc-cards';
-import { layoutPath, restingStation, sourceOf, standing, stationsFor, type DinnerState } from '../lib/map';
+import { layoutPath, restingStation, sourceOf, standing, stationsFor, thinkingLines, type DinnerState } from '../lib/map';
 
 const rep = { sessionId: 'm', actorId: IDS.rep };
 const id = IDS.demoPlan;
@@ -21,6 +21,7 @@ describe('the dinner map reads real results', () => {
     const annual = stationsFor(1, s);
     expect(annual.find((x) => x.name === 'Annual limit')?.mark).toBe('blocked');
     expect(restingStation(annual)).toBe(3);
+    expect(thinkingLines(annual[1]!).length).toBe(s.view.plan.inviteeNpis.length);
     expect(standing(s.view, s.receipt, s.settlement)).toMatchObject({ step: 1, who: 'rep', tone: 'over' });
 
     const plan = s.view.plan;

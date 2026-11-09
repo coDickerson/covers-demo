@@ -4,30 +4,36 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { tokens } from '../lib/tokens';
 
-export type Stage = { step: number; names: string[] };
-/** `at` is the station the bell is heading for (-1 = the start of the path); `seen` is how many stations have shown their result. */
-export type Run = { step: number; at: number; seen: number; label: string };
+/** `start` picks up partway along a step's stations. `exit` walks to the end of the path before the next stage begins. */
+export type Stage = { step: number; names: string[]; lines: number[]; start?: number; exit?: boolean };
+/** `at` is the station the bell is heading for (-1 = the start of the path); `seen` is how many stations have shown their result; `line` is how far through its thinking the current station is. */
+export type Run = { step: number; at: number; seen: number; line: number; label: string; exit?: boolean };
 type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[]) => Promise<void> };
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const WALK_MS = tokens['motion/duration/slow'] * 2.5; // the bell's walking pace between stations
 const DWELL = tokens['motion/duration/slow'];
+const THINK = tokens['motion/duration/fast'];
 
 export function RunProvider({ children }: { children: React.ReactNode }) {
   const [runs, setRuns] = useState<Record<string, Run>>({});
   const play = useCallback(async (planId: string, stages: Stage[]) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const set = (run: Run) => setRuns((r) => ({ ...r, [planId]: run }));
-    for (const { step, names } of stages) {
-      set({ step, at: -1, seen: 0, label: names[0] ?? '' });
-      await sleep(DWELL);
+    for (const { step, names, lines, start = 0, exit } of stages) {
+      if (!start) { set({ step, at: -1, seen: 0, line: 0, label: names[0] ?? '' }); await sleep(DWELL); }
       for (let i = 0; i < names.length; i++) {
-        set({ step, at: i, seen: i, label: names[i]! });
+        set({ step, at: start + i, seen: start + i, line: 0, label: names[i]! });
         await sleep(WALK_MS);
-        set({ step, at: i, seen: i + 1, label: names[i]! });
+        for (let line = 1; line <= (lines[i] ?? 0); line++) {
+          set({ step, at: start + i, seen: start + i, line, label: names[i]! });
+          await sleep(THINK);
+        }
+        set({ step, at: start + i, seen: start + i + 1, line: 0, label: names[i]! });
         await sleep(DWELL);
       }
+      if (exit) { set({ step, at: start + names.length - 1, seen: start + names.length, line: 0, label: names[names.length - 1] ?? '', exit: true }); await sleep(WALK_MS); }
     }
     setRuns((r) => { const { [planId]: _done, ...rest } = r; return rest; });
   }, []);

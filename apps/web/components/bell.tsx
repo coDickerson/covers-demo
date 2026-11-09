@@ -1,7 +1,7 @@
 // The guide: a small cloche that walks the path. Drawn from a pixel grid, colored by tokens.
 const FILL: Record<string, string> = { K: 'var(--color-ink-primary)', G: 'var(--color-border)', W: 'var(--color-bg-surface)' };
 const BODY = ['.....KK.....', '.....KK.....', '...KKKKKK...', '..KGGGGGGK..', '.KGWGGGGGGK.', '.KGGKGGKGGK.', '.KGGGGGGGGK.', 'KKKKKKKKKKKK'];
-const LEGS = [['....K..K....', '....K..K....', '....KK.KK...'], ['....K..K....', '...K....K...', '..KK.....KK.'], ['....K..K....', '....K..K....', '....KK.K....'], ['....K..K....', '....K...K...', '...KK....KK.'], ['....K..K....', '....K..K....', '....K..KK...']];
+const LEGS = [['....K..K....', '....K..K....', '....KK.KK...'], ['....K..K....', '...K....K...', '...KK...KK..'], ['....K..K....', '....K..KK...', '....KK......'], ['....K..K....', '...K....K...', '...KK...KK..'], ['....K..K....', '....KK.K....', '.......KK...']]; // feet point forward; the legs take turns
 export const BELL_FRAMES = LEGS.length;
 
 export function Bell({ frame = 0, className = '' }: { frame?: number; className?: string }) {
