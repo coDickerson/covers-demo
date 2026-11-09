@@ -218,6 +218,9 @@ export const Settlement = z.object({
     amountCents: Cents,
     source: z.enum(['ramp', 'simulated']),
     transactionId: z.string().optional(),
+    merchantName: z.string().optional(),
+    categoryId: z.number().int().optional(), // Ramp's merchant category (sk_category_id); 19 = Restaurants
+    categoryName: z.string().optional(),
   }).optional(),
 });
 export type Settlement = z.infer<typeof Settlement>;

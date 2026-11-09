@@ -15,7 +15,7 @@ function fakeRamp(over: Partial<Record<string, (c: Call) => [number, unknown]>> 
     'PATCH /limits/fund-1': () => [200, { id: 'fund-1', cards: [{ card_id: 'card-1', last_four: '1273' }] }],
     'POST /limits/fund-1/suspension': () => [200, {}],
     'POST /limits/fund-1/unsuspension': () => [200, {}],
-    'GET /transactions': () => [200, { data: [{ id: 'tx-1', amount: 612, state: 'CLEARED', merchant_name: 'Alder & Vine', user_transaction_time: 't' }] }],
+    'GET /transactions': () => [200, { data: [{ id: 'tx-1', amount: 612, state: 'CLEARED', merchant_name: 'Alder & Vine', user_transaction_time: 't', sk_category_id: 19, sk_category_name: 'Restaurants' }] }],
     'POST /memos/tx-1': () => [200, { memo: 'x' }],
     'POST /receipts': () => [201, { id: 'rcpt-1' }],
     ...over,
@@ -61,7 +61,7 @@ describe('Ramp client', () => {
 
   it('converts transaction amounts from dollars to integer cents', async () => {
     const { client } = fakeRamp();
-    expect(await client.transactions('card-1')).toEqual([{ id: 'tx-1', amountCents: 61_200, state: 'CLEARED', merchantName: 'Alder & Vine', at: 't' }]);
+    expect(await client.transactions('card-1')).toEqual([{ id: 'tx-1', amountCents: 61_200, state: 'CLEARED', merchantName: 'Alder & Vine', at: 't', categoryId: 19, categoryName: 'Restaurants' }]);
   });
 
   it('uploads the receipt in a field named "receipt" and writes the memo', async () => {

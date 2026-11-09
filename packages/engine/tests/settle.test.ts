@@ -25,6 +25,20 @@ describe('settle: the card charge', () => {
     expect(s.perPersonCents).toBe(10_200);
   });
 
+  it('passes P6.card-merchant at a restaurant and flags any other merchant category', () => {
+    const at = (categoryId: number, categoryName: string) =>
+      settle(input({ charge: { amountCents: 61_200, source: 'ramp', merchantName: 'Somewhere', categoryId, categoryName } }));
+    expect(find(at(19, 'Restaurants'), 'P6.card-merchant:plan')?.outcome).toBe('pass');
+    const gym = at(15, 'Clothing');
+    expect(find(gym, 'P6.card-merchant:plan')?.outcome).toBe('flag');
+    expect(find(gym, 'P6.card-merchant:plan')?.message).toContain('not a restaurant');
+    expect(gym.perPersonCents).toBe(10_200);
+  });
+
+  it('does not check the merchant when Ramp sent no category', () => {
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'ramp' } })), 'P6.card-merchant:plan')).toBeUndefined();
+  });
+
   it('does not check a simulated charge, and omits the charge when none is given', () => {
     expect(find(settle(input({ charge: { amountCents: 61_200, source: 'simulated' } })), 'P6.card-charge:plan')).toBeUndefined();
     expect(settle(input()).charge).toBeUndefined();

@@ -31,6 +31,8 @@ export type EngineSettings = {
   confidenceGate: number;
   /** Lines + tax + tip must equal the printed total within this many cents. */
   reconcileToleranceCents: number;
+  /** P6: Ramp card categories (sk_category_id) that count as a restaurant. */
+  restaurantCategoryIds: readonly number[];
   /** P6: CMS Open Payments thresholds for the program year. */
   openPayments: { programYear: number; smallPaymentCents: number; aggregateCents: number };
   enabledPacks: readonly PackId[];

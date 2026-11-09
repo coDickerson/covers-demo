@@ -24,7 +24,11 @@ export type RampConfig = {
 };
 
 export type RampFund = { fundId: string; cardId: string; lastFour: string; ownerUserId: string };
-export type RampTransaction = { id: string; amountCents: number; state: string; merchantName: string; at: string };
+export type RampTransaction = {
+  id: string; amountCents: number; state: string; merchantName: string; at: string;
+  /** Ramp's merchant category (sk_category_id / sk_category_name); 19 = Restaurants. */
+  categoryId?: number; categoryName?: string;
+};
 
 const SCOPES = [
   'users:read', 'cards:read', 'limits:read', 'limits:write', 'transactions:read',
@@ -105,6 +109,8 @@ export function createRampClient(cfg: RampConfig) {
       return rows.map((t: any) => ({
         id: t.id, amountCents: Math.round(Number(t.amount) * 100), state: t.state, merchantName: t.merchant_name ?? '',
         at: t.user_transaction_time ?? '',
+        ...(typeof t.sk_category_id === 'number' ? { categoryId: t.sk_category_id } : {}),
+        ...(t.sk_category_name ? { categoryName: t.sk_category_name } : {}),
       }));
     },
 

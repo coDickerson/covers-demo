@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: EngineSettings = {
   repeatTopicThreshold: 2, // a third same-topic program in 12 months is flagged
   confidenceGate: 0.8,
   reconcileToleranceCents: 1,
+  restaurantCategoryIds: [19], // Ramp's "Restaurants" category, confirmed in the sandbox (docs/ramp-spike.md)
   // CMS Open Payments, program year 2026: $13.82 per payment, $138.13 aggregate.
   // Source: cms.gov/openpayments/program-participants/reporting-entities/data-collection (checked Nov 7 and Nov 8 2026).
   openPayments: { programYear: 2026, smallPaymentCents: 1_382, aggregateCents: 13_813 },

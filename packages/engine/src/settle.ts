@@ -48,6 +48,14 @@ export function settle(input: SettleInput): Settlement {
         : `The card was charged ${formatCents(input.charge.amountCents)} but the receipt's printed total is ${formatCents(total)}.`,
       [`receipt:${receipt.id}`, ...(input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : [])]);
   }
+  // The charge should be at a restaurant. Ramp stores a restaurants-only restriction but the sandbox does not enforce it.
+  if (input.charge?.source === 'ramp' && input.charge.categoryId !== undefined) {
+    const ok = s.restaurantCategoryIds.includes(input.charge.categoryId);
+    const where = `${input.charge.merchantName || 'the merchant'} (${input.charge.categoryName || `category ${input.charge.categoryId}`})`;
+    checks.add('P6.card-merchant', { kind: 'plan' }, ok ? 'pass' : 'flag',
+      ok ? `The card was charged at ${where}, a restaurant.` : `The card was charged at ${where}, which is not a restaurant.`,
+      input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : []);
+  }
   if (receipt.printedCovers !== undefined) {
     const ok = receipt.printedCovers === headcount;
     checks.add('P6.covers', { kind: 'plan' }, ok ? 'pass' : 'flag',

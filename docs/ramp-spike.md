@@ -48,9 +48,13 @@ Fund limits are integer cents (`minor_unit_conversion_rate: 100`); **transaction
 
 4. **"View in Ramp" link (checked Nov 8):** `https://demo.ramp.com/funds/issued#/d/funds/{fundId}` opens the fund's panel;
    `{fundId}` is the limit id the API returns. LiveService builds it from `RAMP_BASE_URL`; `RAMP_FUND_URL` overrides it.
+5. **Lock and limit are enforced (tested Nov 8, same card, `stored_controls`).** With the fund locked, 2 charges were declined
+   (Peacefood Cafe $11.34, Pendo $47.25; reason "Other"). Unlocked, an $823.56 charge (Crunch Fitness) against $754.38 left was
+   declined with reason "Card limit". So "no money moves until the plan clears" and "the card can't exceed the cap" both hold.
 
 ## Sandbox objects created by this spike
-- Fund `599aa4a0-ec0c-432b-9f38-5092521472bb` "Covers: Speaker dinner: Dr. Patel on catheter outcomes", card …5950: now has the
-  5 test charges above ($120.62). Don't use this fund for the dinner demo; a fresh session creates its own fund.
+- Fund `599aa4a0-ec0c-432b-9f38-5092521472bb` "Covers: Speaker dinner: Dr. Patel on catheter outcomes", card …5950: has the
+  5 approved test charges above ($120.62) and 3 declined ones, and is **locked**. Don't use it for the dinner demo; a fresh
+  session creates its own fund.
 - Fund `de822829-8120-41ad-9086-cfd2801e30c5` "Covers spike: Speaker dinner (plan-demo)", owner Sawyer Maloney, card …1273
 - Transaction `0474c975-c5d1-447c-a24c-32e137084eb1` ($612.00, cleared) with receipt and memo

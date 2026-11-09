@@ -18,7 +18,7 @@ function fakeRamp(opts: { failCreate?: boolean; charges?: boolean } = {}) {
     },
     async lock(id) { log.push(`lock ${id}`); },
     async unlock(id) { log.push(`unlock ${id}`); },
-    async transactions() { return opts.charges === false ? [] : [{ id: 'tx-1', amountCents: 61_200, state: 'CLEARED' }]; },
+    async transactions() { return opts.charges === false ? [] : [{ id: 'tx-1', amountCents: 61_200, state: 'CLEARED', merchantName: 'Alder & Vine', categoryId: 19, categoryName: 'Restaurants' }]; },
     async setMemo(_tx, memo) { memos.push(memo); },
   };
   return { ramp, log, memos };
@@ -120,8 +120,9 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
 
   it('records the Ramp charge on the settlement and checks it against the printed total', async () => {
     const st = await settleWith(new LiveService({ sql, ramp: fakeRamp().ramp }), ctx());
-    expect(st.charge).toEqual({ amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' });
+    expect(st.charge).toEqual({ amountCents: 61_200, source: 'ramp', transactionId: 'tx-1', merchantName: 'Alder & Vine', categoryId: 19, categoryName: 'Restaurants' });
     expect(st.checks.find((x) => x.ruleId === 'P6.card-charge')?.outcome).toBe('pass');
+    expect(st.checks.find((x) => x.ruleId === 'P6.card-merchant')?.outcome).toBe('pass');
   });
 
   it('flags a card charge that does not match the receipt', async () => {
@@ -130,6 +131,14 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     const check = st.exceptions.find((x) => x.ruleId === 'P6.card-charge');
     expect(check?.outcome).toBe('flag');
     expect(check?.message).toContain('$640');
+  });
+
+  it('flags a dinner charge that was not at a restaurant', async () => {
+    const f = fakeRamp(); f.ramp.transactions = async () => [{ id: 'tx-3', amountCents: 61_200, state: 'CLEARED', merchantName: '305 Fitness', categoryId: 15, categoryName: 'Clothing' }];
+    const st = await settleWith(new LiveService({ sql, ramp: f.ramp }), ctx());
+    const check = st.exceptions.find((x) => x.ruleId === 'P6.card-merchant');
+    expect(check?.outcome).toBe('flag');
+    expect(check?.message).toContain('305 Fitness');
   });
 
   it('without Ramp, labels the printed total as a simulated charge', async () => {

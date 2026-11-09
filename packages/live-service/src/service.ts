@@ -29,7 +29,7 @@ export type RampPort = {
   createFund(i: { displayName: string; limitCents: number; idempotencyKey: string }): Promise<{ fundId: string; cardId: string; lastFour: string; ownerUserId: string }>;
   lock(fundId: string): Promise<void>;
   unlock(fundId: string): Promise<void>;
-  transactions(cardId: string): Promise<{ id: string; amountCents: number; state: string }[]>;
+  transactions(cardId: string): Promise<{ id: string; amountCents: number; state: string; merchantName?: string; categoryId?: number; categoryName?: string }[]>;
   setMemo(transactionId: string, memo: string): Promise<void>;
   attachReceipt?(i: { transactionId: string; userId: string; bytes: Uint8Array; mime: string; idempotencyKey: string }): Promise<string>;
 };
@@ -460,7 +460,14 @@ export class LiveService implements CoversService {
     if (!link || !this.deps.ramp) return { amountCents: receipt.totalCents, source: 'simulated' };
     try {
       const charge = (await this.deps.ramp.transactions(link.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
-      if (charge) return { amountCents: charge.amountCents, source: 'ramp', transactionId: charge.id };
+      if (charge) {
+        return {
+          amountCents: charge.amountCents, source: 'ramp', transactionId: charge.id,
+          ...(charge.merchantName ? { merchantName: charge.merchantName } : {}),
+          ...(charge.categoryId !== undefined ? { categoryId: charge.categoryId } : {}),
+          ...(charge.categoryName ? { categoryName: charge.categoryName } : {}),
+        };
+      }
       await write(this.sql, ctx, { action: 'ramp.no_transaction', planId: plan.id, input: { cardId: link.cardId }, detail: `No charge yet on card …${link.lastFour}` }, async () => {});
     } catch (e) {
       await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'transactions' }, detail: errText(e) }, async () => {});
