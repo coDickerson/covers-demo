@@ -1,0 +1,97 @@
+[
+  {
+    "id": "halden-policy",
+    "title": "HCP meals and speaker policy",
+    "publisher": "Halden Medical",
+    "kind": "company_policy",
+    "checkedOn": "2026-11-08",
+    "note": "Fictional demo policy. §1–§4 follow the prototype's wording; §5–§6 were added for the card-charge and receipt checks.",
+    "passages": [
+      { "id": "s1-speakers", "label": "§1 Speakers", "text": "Only approved, trained speakers under an active contract may present, and only on topics they are approved for." },
+      { "id": "s2-meals", "label": "§2 Meals", "text": "Out-of-office dinners may not exceed $125 per person, including food, beverage, tax and tip." },
+      { "id": "s3-annual", "label": "§3 Annual limit", "text": "Meals provided to any one health care professional may not exceed $2,000 in a calendar year." },
+      { "id": "s4-repeat", "label": "§4 Repeat attendance", "text": "A third program on the same topic within 12 months goes to compliance." },
+      { "id": "s5-card", "label": "§5 Card charge", "text": "The dinner card is used only at a restaurant, and the amount charged must match the itemized receipt. Any difference goes to compliance." },
+      { "id": "s6-receipts", "label": "§6 Receipts", "text": "A receipt line the reader is not confident about is confirmed by a person before it is used." }
+    ]
+  },
+  {
+    "id": "oig-speaker-programs",
+    "title": "Special Fraud Alert: Speaker Programs",
+    "publisher": "HHS Office of Inspector General",
+    "kind": "guidance",
+    "url": "https://oig.hhs.gov/documents/special-fraud-alerts/865/SpecialFraudAlertSpeakerPrograms.pdf",
+    "checkedOn": "2026-11-08",
+    "note": "November 16, 2020. Quoted from the PDF.",
+    "passages": [
+      { "id": "scope", "label": "Who it covers", "text": "This Special Fraud Alert highlights the fraud and abuse risks associated with the offer, payment, solicitation, or receipt of remuneration relating to speaker programs by pharmaceutical and medical device companies." },
+      { "id": "alcohol", "label": "Suspect characteristic: alcohol", "text": "Alcohol is available or a meal exceeding modest value is provided to the attendees of the program (the concern is heightened when the alcohol is free);" },
+      { "id": "venue", "label": "Suspect characteristic: location", "text": "The program is held at a location that is not conducive to the exchange of educational information (e.g., restaurants or entertainment or sports venues);" },
+      { "id": "repeat", "label": "Suspect characteristic: repeat attendance", "text": "HCPs attend programs on the same or substantially the same topics more than once (as either a repeat attendee or as an attendee after being a speaker on the same or substantially the same topic);" },
+      { "id": "guests", "label": "Suspect characteristic: attendees", "text": "Attendees include individuals who don’t have a legitimate business reason to attend the program, including, for example, friends, significant others, or family members of the speaker or HCP attendee; employees or medical professionals who are members of the speaker’s own medical practice; staff of facilities for which the speaker is a medical director; and other individuals with no use for the information;" },
+      { "id": "selection", "label": "Suspect characteristic: speaker selection", "text": "The company’s sales or marketing business units influence the selection of speakers or the company selects HCP speakers or attendees based on past or expected revenue that the speakers or attendees have or will generate by prescribing or ordering the company’s product(s) (e.g., a return on investment analysis is considered in identifying participants);" },
+      { "id": "training", "label": "Footnote 2: speaker training", "text": "Though not addressed in this Special Fraud Alert, remuneration paid by drug and device companies relating to the training of HCP speakers also may raise fraud and abuse risks." }
+    ]
+  },
+  {
+    "id": "ca-hsc-119402",
+    "title": "Health and Safety Code §119402",
+    "publisher": "State of California",
+    "kind": "statute",
+    "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=119402",
+    "checkedOn": "2026-11-08",
+    "note": "Applies to medical device makers through the definitions in §119400.",
+    "passages": [
+      { "id": "d1", "label": "(d)(1) Annual dollar limit", "text": "Each pharmaceutical company shall establish explicitly in its Comprehensive Compliance Program a specific annual dollar limit on gifts, promotional materials, or items or activities that the pharmaceutical company may give or otherwise provide to an individual medical or health care professional in accordance with the “Compliance Program Guidance for Pharmaceutical Manufacturers” and with the “Code on Interactions with Health Care Professionals.”" }
+    ]
+  },
+  {
+    "id": "ca-hsc-119400",
+    "title": "Health and Safety Code §119400 (definitions)",
+    "publisher": "State of California",
+    "kind": "statute",
+    "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=119400",
+    "checkedOn": "2026-11-08",
+    "passages": [
+      { "id": "a2", "label": "(a)(2) Prescription devices", "text": "Any drug or device that, pursuant to federal or state law, may be dispensed only by prescription, or that is furnished pursuant to Section 4006 of the Business and Professions Code." },
+      { "id": "c", "label": "(c) Pharmaceutical company", "text": "“Pharmaceutical company” means an entity that is engaged in the production, preparation, propagation, compounding, conversion, or processing of dangerous drugs, either directly or indirectly, by extraction from substances of natural origin or independently by means of chemical synthesis or by a combination of extraction and chemical synthesis. “Pharmaceutical company” also means an entity engaged in the packaging, repackaging, labeling, relabeling, or distribution of dangerous drugs. “Pharmaceutical company” also includes a person who engages in pharmaceutical detailing, promotional activities, or other marketing of a dangerous drug in this state on behalf of a pharmaceutical company. “Pharmaceutical company” does not include a licensed pharmacist." }
+    ]
+  },
+  {
+    "id": "cfr-403-904",
+    "title": "42 CFR §403.904 Reports of payments or other transfers of value to covered recipients",
+    "publisher": "Centers for Medicare & Medicaid Services",
+    "kind": "regulation",
+    "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-A/part-403/subpart-I/section-403.904",
+    "checkedOn": "2026-11-08",
+    "passages": [
+      { "id": "g1", "label": "(g)(1) Food and beverage in a group setting", "text": "When allocating the cost of food and beverage among covered recipients in a group setting where the cost of each individual covered recipient's meal is not separately identifiable, such as a platter provided to physicians in a group practice setting, applicable manufacturers must calculate the value per person by dividing the entire cost of the food or beverage by the total number of individuals who partook in the meal (including both covered recipients and non-covered recipients, such as office staff). The per person value of the meal must be reported as a payment or other transfer of value only for covered recipients who actually partook in the food or beverage." }
+    ]
+  },
+  {
+    "id": "cms-thresholds",
+    "title": "Open Payments: Reporting Thresholds",
+    "publisher": "Centers for Medicare & Medicaid Services",
+    "kind": "agency_page",
+    "url": "https://www.cms.gov/openpayments/program-participants/reporting-entities/data-collection",
+    "checkedOn": "2026-11-08",
+    "passages": [
+      { "id": "rule", "label": "How the thresholds work", "text": "For a calendar year (January 1 – December 31), if a small payment or other transfer of value is less than the minimum amount listed below, it is excluded from the reporting requirements under Open Payments. However, if the amount transferred to, requested by, or designated on behalf of a covered recipient exceeds an aggregate total annual amount for the calendar year, all payments or other transfers of value must be reported." },
+      { "id": "py2026", "label": "Program Year 2026 (table)", "text": "Data Collection Period: January 1, 2026 – December 31, 2026. Small Payment or Other Transfer of Value that must be reported: $13.82. Total Annual Amount of Payments or Transfers of Value that must be reported: $138.13." }
+    ]
+  },
+  {
+    "id": "cms-glossary",
+    "title": "Open Payments Glossary & Acronyms",
+    "publisher": "Centers for Medicare & Medicaid Services",
+    "kind": "agency_page",
+    "url": "https://www.cms.gov/priorities/key-initiatives/open-payments/glossary-acronyms",
+    "checkedOn": "2026-11-08",
+    "passages": [
+      { "id": "covered-recipients", "label": "Covered Recipients", "text": "Any physician, physician assistant, nurse practitioner, clinical nurse specialist, certified registered nurse anesthetist, or certified nurse-midwife who is not a bona fide employee of the applicable manufacturer that is reporting the payment; or a teaching hospital, which is any institution that received a payment under 1886(d)(5)(B), 1886(h), or 1886(s) of the Act during the last calendar year for which such information is available." },
+      { "id": "physician", "label": "Physician", "text": "For the purposes of Open Payments, a “physician” is any of the following types of professionals that are legally authorized by the state to practice, regardless of whether they are Medicare, Medicaid, or Children's health Insurance Program (CHIP) providers: Doctors of Medicine or Osteopathic Medicine; Doctors of Dental Medicine or Dental Surgery; Doctors of Podiatric Medicine; Doctors of Optometry; Chiropractors. Note: Medical residents are excluded from the definition of physicians for the purpose of this program." },
+      { "id": "npp", "label": "Non-Physician Practitioner Covered Recipient", "text": "For the purpose of the Open Payments program, NPPs include: physician assistants, nurse practitioners, clinical nurse specialists, certified registered nurse anesthetists, anesthesiologist assistants and certified nurse midwives. The non-physician practitioner terms are defined in the Final Rule. (See 42 CFR 403.902)" },
+      { "id": "npi", "label": "National Provider Identifier (NPI)", "text": "The NPI is a unique identification number for covered health care providers. The NPI is a 10-position numeric identifier, with a check digit in the 10th position and no intelligence about the health care provider in the number. (See 45 CFR 162.406)" }
+    ]
+  }
+]

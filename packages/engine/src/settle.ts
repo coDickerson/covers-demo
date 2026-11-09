@@ -40,6 +40,22 @@ export function settle(input: SettleInput): Settlement {
   checks.add('P6.reconcile', { kind: 'plan' }, off <= s.reconcileToleranceCents ? 'pass' : 'flag',
     off <= s.reconcileToleranceCents ? `Receipt lines add up to the printed ${formatCents(total)}.`
       : `Receipt lines add up to ${formatCents(linesSum)} but the printed total is ${formatCents(total)}.`, [`receipt:${receipt.id}`]);
+  // The card charge read from Ramp should equal the printed total. A simulated charge is the printed total, so it is not checked.
+  if (input.charge?.source === 'ramp') {
+    const ok = input.charge.amountCents === total;
+    checks.add('P6.card-charge', { kind: 'plan' }, ok ? 'pass' : 'flag',
+      ok ? `The card charge of ${formatCents(input.charge.amountCents)} matches the printed total.`
+        : `The card was charged ${formatCents(input.charge.amountCents)} but the receipt's printed total is ${formatCents(total)}.`,
+      [`receipt:${receipt.id}`, ...(input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : [])]);
+  }
+  // The charge should be at a restaurant. Ramp stores a restaurants-only restriction but the sandbox does not enforce it.
+  if (input.charge?.source === 'ramp' && input.charge.categoryId !== undefined) {
+    const ok = s.restaurantCategoryIds.includes(input.charge.categoryId);
+    const where = `${input.charge.merchantName || 'the merchant'} (${input.charge.categoryName || `category ${input.charge.categoryId}`})`;
+    checks.add('P6.card-merchant', { kind: 'plan' }, ok ? 'pass' : 'flag',
+      ok ? `The card was charged at ${where}, a restaurant.` : `The card was charged at ${where}, which is not a restaurant.`,
+      input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : []);
+  }
   if (receipt.printedCovers !== undefined) {
     const ok = receipt.printedCovers === headcount;
     checks.add('P6.covers', { kind: 'plan' }, ok ? 'pass' : 'flag',
@@ -128,5 +144,6 @@ export function settle(input: SettleInput): Settlement {
   return {
     planId: plan.id, perPersonCents, headcount, byPerson, checks: all, caps, openPayments,
     exceptions: all.filter((c) => c.outcome !== 'pass'),
+    ...(input.charge ? { charge: input.charge } : {}),
   };
 }

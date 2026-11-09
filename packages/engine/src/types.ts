@@ -1,4 +1,5 @@
-import type { Attendance, Hcp, ProgramPlan, Receipt, Speaker } from '@covers/contract';
+import type { Attendance, Hcp, ProgramPlan, Receipt, Settlement, Speaker } from '@covers/contract';
+import type { CustomPack } from './custom';
 
 export const PACK_IDS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'] as const;
 export type PackId = (typeof PACK_IDS)[number];
@@ -30,6 +31,8 @@ export type EngineSettings = {
   confidenceGate: number;
   /** Lines + tax + tip must equal the printed total within this many cents. */
   reconcileToleranceCents: number;
+  /** P6: Ramp card categories (sk_category_id) that count as a restaurant. */
+  restaurantCategoryIds: readonly number[];
   /** P6: CMS Open Payments thresholds for the program year. */
   openPayments: { programYear: number; smallPaymentCents: number; aggregateCents: number };
   enabledPacks: readonly PackId[];
@@ -44,9 +47,17 @@ export type EvaluateInput = {
   ledger: LedgerEntry[];
   history: AttendanceHistory[];
   approvals?: Approval[];
+  /** Flags compliance denied. Same shape as approvals; a denied flag blocks the plan until the plan changes. */
+  denials?: Approval[];
   settings?: Partial<EngineSettings>;
+  /** Promoted Pack-lab packs (A7), applied after P1–P6. */
+  customPacks?: CustomPack[];
   /** Caller-supplied clock, so the engine stays pure. ISO datetime. */
   now: string;
 };
 
-export type SettleInput = Omit<EvaluateInput, 'approvals'> & { receipt: Receipt; attendance: Attendance };
+export type SettleInput = Omit<EvaluateInput, 'approvals'> & {
+  receipt: Receipt; attendance: Attendance;
+  /** The card charge, when known. A charge read from Ramp is checked against the printed total (P6.card-charge). */
+  charge?: Settlement['charge'];
+};

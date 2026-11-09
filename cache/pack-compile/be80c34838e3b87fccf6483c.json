@@ -1,0 +1,129 @@
+{
+ "namespace": "pack-compile",
+ "key": {
+  "model": "claude-opus-5-5",
+  "english": "Weekend dinners need manager approval",
+  "existing": [
+   {
+    "id": "P1",
+    "name": "Speaker eligibility",
+    "english": "The speaker's status is approved, the topic is on their approved list, and their contract is active on the dinner date. Otherwise block."
+   },
+   {
+    "id": "P2",
+    "name": "HCP identity",
+    "english": "Every invitee resolves to an NPI and a recipient type. A weak match becomes a pick-list, never a guess. Otherwise flag."
+   },
+   {
+    "id": "P3",
+    "name": "Per-person meal cap",
+    "english": "The estimated per-person cost, including tax and tip, is at or under the company cap. Block before the dinner; after the dinner, an actual per-person cost over the cap goes to compliance."
+   },
+   {
+    "id": "P4",
+    "name": "Annual cap per HCP",
+    "english": "Each HCP's year-to-date spend plus this dinner stays under their annual cap. Block that HCP if over; flag when above 80% of the cap."
+   },
+   {
+    "id": "P5",
+    "name": "OIG red flags",
+    "english": "Flag alcohol on the receipt, an HCP attending the same topic for the third time in 12 months, and non-HCP guests such as spouses."
+   },
+   {
+    "id": "P6",
+    "name": "Open Payments draft",
+    "english": "Per-person value is the printed total, including tax and tip, divided by everyone who ate. Draft a food-and-beverage row only for covered recipients who attended, including the speaker. No-shows get no row. Drafted, humans file."
+   }
+  ]
+ },
+ "value": {
+  "output": {
+   "name": "Weekend dinners",
+   "citationLabel": "Company compliance policy: weekend speaker dinners require manager approval (fictional company policy)",
+   "rules": [
+    {
+     "id": "weekend",
+     "when": [
+      {
+       "field": "dayOfWeek",
+       "op": "in",
+       "values": [
+        "sat",
+        "sun"
+       ]
+      }
+     ],
+     "outcome": "flag",
+     "message": "Dinners on a Saturday or Sunday need manager approval before they go ahead."
+    }
+   ],
+   "tests": [
+    {
+     "name": "Saturday dinner is flagged",
+     "facts": {
+      "dayOfWeek": "sat",
+      "localHour": 19,
+      "estimatedPerPersonCents": 8500,
+      "inviteeCount": 8,
+      "employeeCount": 2,
+      "headcount": 11,
+      "topic": "Cardiac rhythm management update",
+      "venue": "Harbor Grill"
+     },
+     "expected": "flag"
+    },
+    {
+     "name": "Sunday dinner is flagged",
+     "facts": {
+      "dayOfWeek": "sun",
+      "localHour": 18,
+      "estimatedPerPersonCents": 7000,
+      "inviteeCount": 5,
+      "employeeCount": 1,
+      "headcount": 7,
+      "topic": "Spinal implant outcomes",
+      "venue": "Oak Room"
+     },
+     "expected": "flag"
+    },
+    {
+     "name": "Friday late dinner is not a weekend (edge case)",
+     "facts": {
+      "dayOfWeek": "fri",
+      "localHour": 21,
+      "estimatedPerPersonCents": 8000,
+      "inviteeCount": 6,
+      "employeeCount": 1,
+      "headcount": 8,
+      "topic": "Cardiac rhythm management update",
+      "venue": "Harbor Grill"
+     },
+     "expected": "pass"
+    },
+    {
+     "name": "Monday dinner passes",
+     "facts": {
+      "dayOfWeek": "mon",
+      "localHour": 19,
+      "estimatedPerPersonCents": 9000,
+      "inviteeCount": 10,
+      "employeeCount": 2,
+      "headcount": 13,
+      "topic": "Glucose monitoring advances",
+      "venue": "The Bistro"
+     },
+     "expected": "pass"
+    }
+   ],
+   "conflictsWithExisting": [],
+   "unsupported": null
+  },
+  "model": "claude-opus-5-5",
+  "promptVersion": "pack-v1",
+  "usage": {
+   "inputTokens": 3272,
+   "outputTokens": 649
+  }
+ },
+ "recordedAt": "2026-11-08T02:33:01.918Z"
+}

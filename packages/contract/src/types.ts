@@ -71,8 +71,52 @@ export const Citation = z.object({
   packId: z.string(),
   ruleId: z.string(),
   version: z.string(),
+  docId: z.string().optional(), // added Nov 8: the stored document this rule rests on (see listDocuments)
+  passageId: z.string().optional(), // added Nov 8: the passage in that document to open and highlight
 });
 export type Citation = z.infer<typeof Citation>;
+
+// Added Nov 8. What a person writes or ticks on a step of a dinner. Notes go on the record (and the audit log); they never
+// change an outcome. The steps match the app's route; target names the square (a checker or a check id), if any.
+export const DinnerStep = z.enum(['propose', 'check', 'fund', 'dinner', 'close_out', 'settle', 'report']);
+export type DinnerStep = z.infer<typeof DinnerStep>;
+
+export const StepNoteInput = z.object({
+  step: DinnerStep,
+  target: z.string().min(1).max(200).optional(),
+  text: z.string().max(2000).optional(),
+  checked: z.boolean().optional(),
+}).refine((n) => n.text !== undefined || n.checked !== undefined, { message: 'A note needs text, a checkbox value, or both.' });
+export type StepNoteInput = z.infer<typeof StepNoteInput>;
+
+export const StepNote = z.object({
+  id: z.string(),
+  planId: z.string(),
+  step: DinnerStep,
+  target: z.string().optional(),
+  text: z.string().optional(),
+  checked: z.boolean().optional(),
+  by: z.string(),
+  at: IsoDateTime,
+});
+export type StepNote = z.infer<typeof StepNote>;
+
+// Added Nov 8. The source texts citations point to. Government texts are quoted exactly from the original (public
+// domain); the company policy is the fictional demo policy. checkedOn is when the text was last compared with the source.
+export const DocumentPassage = z.object({ id: z.string(), label: z.string(), text: z.string() });
+export type DocumentPassage = z.infer<typeof DocumentPassage>;
+
+export const PolicyDocument = z.object({
+  id: z.string(),
+  title: z.string(),
+  publisher: z.string(),
+  kind: z.enum(['statute', 'regulation', 'guidance', 'agency_page', 'company_policy']),
+  url: z.string().optional(),
+  checkedOn: IsoDate,
+  note: z.string().optional(),
+  passages: z.array(DocumentPassage).min(1),
+});
+export type PolicyDocument = z.infer<typeof PolicyDocument>;
 
 export const CheckSubject = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('plan') }),
@@ -91,6 +135,7 @@ export const CheckResult = z.object({
   citation: Citation,
   evidence: z.array(z.string()), // ids of the facts used (registry record, roster row, ledger entry)
   approval: z.object({ by: z.string(), note: z.string(), at: IsoDateTime }).optional(), // set when a flag is approved; blocks are never approvable
+  denial: z.object({ by: z.string(), note: z.string(), at: IsoDateTime }).optional(), // added Nov 8: set when a flag is denied; a check carries at most one of approval / denial
 });
 export type CheckResult = z.infer<typeof CheckResult>;
 
@@ -114,7 +159,21 @@ export const Evaluation = z.object({
 export type Evaluation = z.infer<typeof Evaluation>;
 
 // What getPlan returns: the plan plus its latest stored evaluation (null if never evaluated). Reading never re-evaluates.
-export const PlanView = z.object({ plan: ProgramPlan, evaluation: Evaluation.nullable() });
+// Added Nov 8. The moment the dinner's card is charged: what the phone notification says ("charged $612 at Alder & Vine,
+// snap the receipt and tap who came"). Recorded once, the first time Covers sees a charge on the plan's card.
+export const CloseOut = z.object({
+  chargedCents: Cents,
+  merchantName: z.string().optional(),
+  transactionId: z.string().optional(),
+  seenAt: IsoDateTime,
+});
+export type CloseOut = z.infer<typeof CloseOut>;
+
+export const PlanView = z.object({
+  plan: ProgramPlan,
+  evaluation: Evaluation.nullable(),
+  closeOut: CloseOut.nullable().optional(), // added Nov 8: set once the card has been charged (see checkForCharge)
+});
 export type PlanView = z.infer<typeof PlanView>;
 
 export const ReceiptLine = z.object({
@@ -167,6 +226,16 @@ export const Settlement = z.object({
   caps: z.array(CapStatus),
   openPayments: z.array(OpenPaymentsRow),
   exceptions: z.array(CheckResult), // what goes to finance
+  // Added Nov 8. The dinner's card charge. 'ramp' = read from the fund's card in Ramp; 'simulated' = no card data,
+  // so the printed total stands in (label it as simulated). Absent when a Ramp fund exists but no charge was found.
+  charge: z.object({
+    amountCents: Cents,
+    source: z.enum(['ramp', 'simulated']),
+    transactionId: z.string().optional(),
+    merchantName: z.string().optional(),
+    categoryId: z.number().int().optional(), // Ramp's merchant category (sk_category_id); 19 = Restaurants
+    categoryName: z.string().optional(),
+  }).optional(),
 });
 export type Settlement = z.infer<typeof Settlement>;
 

@@ -135,6 +135,15 @@ export function runContractSuite(name: string, make: Make) {
         expect((await demoPlan(rep)).fundId).toBe(fund.fundId);
       });
 
+      it('has no close-out notice before the card is charged', async () => {
+        await removeRuvane(rep);
+        await svc.evaluatePlan(rep, IDS.demoPlan);
+        await svc.issueFund(rep, IDS.demoPlan);
+        expect(await svc.checkForCharge(rep, IDS.demoPlan)).toBeNull();
+        expect(S.PlanView.parse(await svc.getPlan(rep, IDS.demoPlan)).closeOut ?? null).toBeNull();
+        await expectRefusal(svc.checkForCharge(rep, 'plan-nope'), 'not_found');
+      });
+
       it('refuses to issue a fund for a plan that is not cleared', async () => {
         await svc.evaluatePlan(rep, IDS.demoPlan);
         await expectRefusal(svc.issueFund(rep, IDS.demoPlan), 'invalid_state');
@@ -188,6 +197,33 @@ export function runContractSuite(name: string, make: Make) {
         await expectRefusal(svc.approveException(cmp, IDS.demoPlan, block!.id, 'override'), 'invalid_state');
       });
 
+      it('lets compliance deny a flag; the latest decision replaces an approval', async () => {
+        const flag = ruvaneRepeatFlag(await svc.evaluatePlan(rep, IDS.demoPlan));
+        await svc.approveException(cmp, IDS.demoPlan, flag.id, 'First look');
+        const ev = S.Evaluation.parse(await svc.denyException(cmp, IDS.demoPlan, flag.id, 'Third program on this topic'));
+        const denied = ev.checks.find((c) => c.id === flag.id);
+        expect(denied?.denial).toMatchObject({ by: IDS.compliance, note: 'Third program on this topic' });
+        expect(denied?.approval).toBeUndefined();
+        expect(ev.status).toBe('blocked');
+      });
+
+      it('refuses when the rep denies their own exception, and never denies a block', async () => {
+        const ev = await svc.evaluatePlan(rep, IDS.demoPlan);
+        await expectRefusal(svc.denyException(rep, IDS.demoPlan, ruvaneRepeatFlag(ev).id, 'self'), 'forbidden');
+        await expectRefusal(svc.denyException(cmp, IDS.demoPlan, ev.checks.find((c) => c.outcome === 'block')!.id, 'x'), 'invalid_state');
+      });
+
+      it('keeps every evaluation round, oldest first, so the original block stays visible after the fix', async () => {
+        expect(await svc.listEvaluations(rep, IDS.demoPlan)).toEqual([]);
+        await svc.evaluatePlan(rep, IDS.demoPlan);
+        await removeRuvane(rep);
+        await svc.evaluatePlan(rep, IDS.demoPlan);
+        const rounds = z.array(S.Evaluation).parse(await svc.listEvaluations(cmp, IDS.demoPlan));
+        expect(rounds.map((r) => r.status)).toEqual(['blocked', 'cleared']);
+        expect(rounds[0]!.checks.some((c) => c.outcome === 'block' && c.subject.kind === 'hcp' && c.subject.npi === IDS.ruvane)).toBe(true);
+        expect(rounds[1]).toEqual((await svc.getPlan(rep, IDS.demoPlan)).evaluation);
+      });
+
       it('writes an audit event when a plan is evaluated', async () => {
         await svc.evaluatePlan(rep, IDS.demoPlan);
         const events = z.array(S.AuditEvent).parse(await svc.listAudit(cmp, { planId: IDS.demoPlan }));
@@ -229,6 +265,25 @@ export function runContractSuite(name: string, make: Make) {
         expect(S.Settlement.parse(await svc.getSettlement(rep, IDS.demoPlan))).toEqual(st);
       });
 
+      it('lets compliance decide the wine after the dinner; the plan closes once every exception is decided', async () => {
+        await readyForAttendance();
+        const st = S.Settlement.parse(await svc.confirmAttendance(rep, kinsaleNoShow()));
+        const wine = st.exceptions.find((c) => c.packId === 'P5' && c.subject.kind === 'line');
+        expect(wine, 'the wine is an exception').toBeDefined();
+        expect(st.exceptions.every((c) => c.outcome === 'flag')).toBe(true);
+        expect((await svc.getPlan(rep, IDS.demoPlan)).plan.status).toBe('reconciling');
+
+        await expectRefusal(svc.approveException(rep, IDS.demoPlan, wine!.id, 'self'), 'forbidden');
+        await svc.denyException(cmp, IDS.demoPlan, wine!.id, 'Rep reimburses the wine');
+        for (const c of st.exceptions.filter((x) => x.id !== wine!.id)) await svc.approveException(cmp, IDS.demoPlan, c.id, 'Reviewed');
+
+        const after = S.Settlement.parse(await svc.getSettlement(cmp, IDS.demoPlan));
+        expect(after.exceptions.find((c) => c.id === wine!.id)?.denial).toMatchObject({ by: IDS.compliance, note: 'Rep reimburses the wine' });
+        expect(after.exceptions.every((c) => c.approval || c.denial)).toBe(true);
+        expect((await svc.getPlan(cmp, IDS.demoPlan)).plan.status).toBe('closed');
+        expect(after.perPersonCents).toBe(st.perPersonCents); // deciding never changes the money
+      });
+
       it('returns no settlement before attendance is confirmed', async () => {
         expect(await svc.getSettlement(rep, IDS.demoPlan)).toBeNull();
       });
@@ -257,6 +312,33 @@ export function runContractSuite(name: string, make: Make) {
         for (const id of ['P1', 'P2', 'P3', 'P4', 'P5', 'P6']) {
           expect(packs.find((p) => p.id === id)?.status, id).toBe('live');
         }
+      });
+
+      it('keeps notes and checkboxes per step, oldest first, without changing the outcome', async () => {
+        const ev = await svc.evaluatePlan(rep, IDS.demoPlan);
+        expect(await svc.listNotes(rep, IDS.demoPlan)).toEqual([]);
+        const a = S.StepNote.parse(await svc.addNote(rep, IDS.demoPlan, { step: 'check', target: 'Annual limit', text: 'Asked Dr. Ruvane about her other programs' }));
+        const b = S.StepNote.parse(await svc.addNote(cmp, IDS.demoPlan, { step: 'check', target: 'Red flags', checked: true }));
+        expect(a).toMatchObject({ planId: IDS.demoPlan, step: 'check', by: IDS.rep });
+        expect(b).toMatchObject({ checked: true, by: IDS.compliance });
+        expect((await svc.listNotes(cmp, IDS.demoPlan)).map((n) => n.id)).toEqual([a.id, b.id]);
+        expect((await svc.getPlan(rep, IDS.demoPlan)).evaluation?.status).toBe(ev.status);
+      });
+
+      it('refuses an empty note and a note on an unknown plan', async () => {
+        await expectRefusal(svc.addNote(rep, IDS.demoPlan, { step: 'check' }), 'validation');
+        await expectRefusal(svc.addNote(rep, 'plan-nope', { step: 'check', text: 'x' }), 'not_found');
+      });
+
+      it('lists the source documents, and every citation with a docId opens a stored passage', async () => {
+        const docs = z.array(S.PolicyDocument).parse(await svc.listDocuments());
+        expect(docs.length).toBeGreaterThan(0);
+        const passage = (c: S.Citation) => docs.find((d) => d.id === c.docId)?.passages.find((p) => p.id === c.passageId);
+        const before = await svc.evaluatePlan(rep, IDS.demoPlan);
+        await readyForAttendance();
+        const st = await svc.confirmAttendance(rep, kinsaleNoShow());
+        const cited = [...before.checks, ...st.checks].map((c) => c.citation).filter((c) => c.docId);
+        for (const c of cited) expect(passage(c), `${c.ruleId} → ${c.docId}#${c.passageId}`).toBeDefined();
       });
 
       it('returns a proof bundle with 15 Break-It cases', async () => {

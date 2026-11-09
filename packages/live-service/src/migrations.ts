@@ -1,4 +1,9 @@
--- Covers live-service schema. Every row is scoped to a visitor session (per-visitor sandbox).
+// Migrations are bundled as code (not read from disk) so they survive Next.js/Vercel bundling.
+// Append new entries; never edit an applied one.
+export const MIGRATIONS: { name: string; sql: string }[] = [
+  {
+    name: '001_init.sql',
+    sql: `-- Covers live-service schema. Every row is scoped to a visitor session (per-visitor sandbox).
 
 create table if not exists sessions (
   id          text primary key,
@@ -59,3 +64,6 @@ begin
   perform set_config('covers.allow_purge', 'off', true);
   return n;
 end $$;
+`,
+  },
+];

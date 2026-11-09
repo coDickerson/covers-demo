@@ -18,7 +18,8 @@
     "react-dom": "19.3.1",
     "@upstash/redis": "1.41.0",
     "zod": "4.6.7",
-    "@covers/live-service": "workspace:*"
+    "@covers/live-service": "workspace:*",
+    "@covers/integrations": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

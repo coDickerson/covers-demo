@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { evaluate, PACK_IDS, settle, splitEvenly, type PackId } from '../src/index';
-import { ATTENDANCE, CLEAN_RECEIPT, HCPS, LEDGER, PLAN, PLAN_WITHOUT_RUIZ, baseInput } from './scenario';
+import { ATTENDANCE, CLEAN_RECEIPT, HCPS, LEDGER, PLAN, PLAN_WITHOUT_RUVANE, baseInput } from './scenario';
 
 const ids = fc.uniqueArray(fc.string({ minLength: 1, maxLength: 6 }), { minLength: 1, maxLength: 20 });
 const total = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -29,7 +29,7 @@ describe('splitEvenly invariants', () => {
 });
 
 const settleInput = (receiptTotal: number, attended: string[], employees: number, guests: number) => ({
-  ...baseInput(PLAN_WITHOUT_RUIZ),
+  ...baseInput(PLAN_WITHOUT_RUVANE),
   receipt: { ...CLEAN_RECEIPT, totalCents: receiptTotal, lines: [{ ...CLEAN_RECEIPT.lines[0]!, amountCents: receiptTotal }] },
   attendance: { ...ATTENDANCE, attendedNpis: attended, employeesPresent: employees, extraGuests: guests },
 });
@@ -63,7 +63,7 @@ describe('settle invariants', () => {
 describe('determinism', () => {
   it('the same input gives byte-identical output', () => {
     expect(JSON.stringify(evaluate(baseInput()))).toBe(JSON.stringify(evaluate(baseInput())));
-    const s = () => JSON.stringify(settle({ ...baseInput(PLAN_WITHOUT_RUIZ), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE }));
+    const s = () => JSON.stringify(settle({ ...baseInput(PLAN_WITHOUT_RUVANE), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE }));
     expect(s()).toBe(s());
   });
 
@@ -78,16 +78,16 @@ describe('pack independence', () => {
   const without = (p: PackId) => PACK_IDS.filter((x) => x !== p);
 
   it('switching one pack off removes exactly that pack’s checks and leaves the rest byte-identical', () => {
-    for (const plan of [PLAN, PLAN_WITHOUT_RUIZ]) {
+    for (const plan of [PLAN, PLAN_WITHOUT_RUVANE]) {
       const all = evaluate(baseInput(plan));
       for (const p of PACK_IDS) {
         const off = evaluate({ ...baseInput(plan), settings: { enabledPacks: without(p) } });
         expect(off.checks).toEqual(all.checks.filter((c) => c.packId !== p));
         expect(off.caps).toEqual(all.caps);
       }
-      const s = settle({ ...baseInput(PLAN_WITHOUT_RUIZ), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE });
+      const s = settle({ ...baseInput(PLAN_WITHOUT_RUVANE), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE });
       for (const p of PACK_IDS) {
-        const off = settle({ ...baseInput(PLAN_WITHOUT_RUIZ), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, settings: { enabledPacks: without(p) } });
+        const off = settle({ ...baseInput(PLAN_WITHOUT_RUVANE), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, settings: { enabledPacks: without(p) } });
         expect(off.checks).toEqual(s.checks.filter((c) => c.packId !== p));
         expect(off.byPerson).toEqual(s.byPerson);
       }

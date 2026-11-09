@@ -1,0 +1,145 @@
+{
+ "namespace": "receipt-read",
+ "key": {
+  "model": "claude-sonnet-5-5",
+  "image": "db850fb029d2ecc6fce57e5ca26f965b873daa2f9dadc356b0d27bf221ebe20e"
+ },
+ "value": {
+  "read": {
+   "lines": [
+    {
+     "text": "2 Burrata",
+     "amount_cents": 3600,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "2 Caesar Salad",
+     "amount_cents": 3200,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "2 Filet Mignon 8 oz (med rare)",
+     "amount_cents": 12400,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "2 Pan-Roasted Halibut",
+     "amount_cents": 9200,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "2 Roasted Half Chicken",
+     "amount_cents": 7600,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "1 Truffle Fries",
+     "amount_cents": 1400,
+     "category": "food",
+     "confidence": 0.97
+    },
+    {
+     "text": "1 Btl Napa Valley Cabernet Sauvignon 2021",
+     "amount_cents": 10000,
+     "category": "alcohol",
+     "confidence": 0.97
+    },
+    {
+     "text": "Sales Tax 8.875%",
+     "amount_cents": 4207,
+     "category": "tax",
+     "confidence": 0.97
+    },
+    {
+     "text": "Tip",
+     "amount_cents": 9593,
+     "category": "tip",
+     "confidence": 0.95
+    }
+   ],
+   "printed_total_cents": 61200,
+   "printed_covers": 6,
+   "notes": "Subtotal printed as 474.00 matches item sum. Subtotal 474.00 + tax 42.07 + tip 95.93 = 612.00, matching the total. No instruction-like text on the receipt."
+  },
+  "lines": [
+   {
+    "id": "l1",
+    "text": "2 Burrata",
+    "amountCents": 3600,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l2",
+    "text": "2 Caesar Salad",
+    "amountCents": 3200,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l3",
+    "text": "2 Filet Mignon 8 oz (med rare)",
+    "amountCents": 12400,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l4",
+    "text": "2 Pan-Roasted Halibut",
+    "amountCents": 9200,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l5",
+    "text": "2 Roasted Half Chicken",
+    "amountCents": 7600,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l6",
+    "text": "1 Truffle Fries",
+    "amountCents": 1400,
+    "category": "food",
+    "confidence": 0.97
+   },
+   {
+    "id": "l7",
+    "text": "1 Btl Napa Valley Cabernet Sauvignon 2021",
+    "amountCents": 10000,
+    "category": "alcohol",
+    "confidence": 0.97
+   },
+   {
+    "id": "l8",
+    "text": "Sales Tax 8.875%",
+    "amountCents": 4207,
+    "category": "tax",
+    "confidence": 0.97
+   },
+   {
+    "id": "l9",
+    "text": "Tip",
+    "amountCents": 9593,
+    "category": "tip",
+    "confidence": 0.95
+   }
+  ],
+  "totalCents": 61200,
+  "printedCovers": 6,
+  "imageHash": "db850fb029d2ecc6fce57e5ca26f965b873daa2f9dadc356b0d27bf221ebe20e",
+  "model": "claude-sonnet-5-5",
+  "promptVersion": "receipt-v1",
+  "usage": {
+   "inputTokens": 3456,
+   "outputTokens": 479
+  }
+ },
+ "recordedAt": "2026-11-08T02:32:54.245Z"
+}

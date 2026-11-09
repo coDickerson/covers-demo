@@ -2,13 +2,48 @@ import { describe, expect, it } from 'vitest';
 import { CoversError, Settlement } from '@covers/contract';
 import { settle, splitEvenly } from '../src/index';
 import {
-  ATTENDANCE, BAKER, CHEN, CLEAN_RECEIPT, KIM, NGUYEN, OKAFOR, PATEL, PLAN_WITHOUT_RUIZ, baseInput,
+  ATTENDANCE, BAKER, CHEN, CLEAN_RECEIPT, KINSALE, NGUYEN, OKAFOR, PATEL, PLAN_WITHOUT_RUVANE, baseInput,
 } from './scenario';
 
 const input = (over: Partial<Parameters<typeof settle>[0]> = {}) => ({
-  ...baseInput(PLAN_WITHOUT_RUIZ), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, ...over,
+  ...baseInput(PLAN_WITHOUT_RUVANE), receipt: CLEAN_RECEIPT, attendance: ATTENDANCE, ...over,
 });
 const find = (s: Settlement, id: string) => s.checks.find((c) => c.id === id);
+
+describe('settle: the card charge', () => {
+  it('passes P6.card-charge when the Ramp charge matches the printed total, and keeps the charge', () => {
+    const s = settle(input({ charge: { amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' } }));
+    expect(find(s, 'P6.card-charge:plan')?.outcome).toBe('pass');
+    expect(s.charge).toEqual({ amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' });
+    expect(() => Settlement.parse(s)).not.toThrow();
+  });
+
+  it('flags a Ramp charge that differs from the printed total, without changing the split', () => {
+    const s = settle(input({ charge: { amountCents: 64_000, source: 'ramp' } }));
+    expect(find(s, 'P6.card-charge:plan')?.outcome).toBe('flag');
+    expect(s.exceptions.some((c) => c.id === 'P6.card-charge:plan')).toBe(true);
+    expect(s.perPersonCents).toBe(10_200);
+  });
+
+  it('passes P6.card-merchant at a restaurant and flags any other merchant category', () => {
+    const at = (categoryId: number, categoryName: string) =>
+      settle(input({ charge: { amountCents: 61_200, source: 'ramp', merchantName: 'Somewhere', categoryId, categoryName } }));
+    expect(find(at(19, 'Restaurants'), 'P6.card-merchant:plan')?.outcome).toBe('pass');
+    const gym = at(15, 'Clothing');
+    expect(find(gym, 'P6.card-merchant:plan')?.outcome).toBe('flag');
+    expect(find(gym, 'P6.card-merchant:plan')?.message).toContain('not a restaurant');
+    expect(gym.perPersonCents).toBe(10_200);
+  });
+
+  it('does not check the merchant when Ramp sent no category', () => {
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'ramp' } })), 'P6.card-merchant:plan')).toBeUndefined();
+  });
+
+  it('does not check a simulated charge, and omits the charge when none is given', () => {
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'simulated' } })), 'P6.card-charge:plan')).toBeUndefined();
+    expect(settle(input()).charge).toBeUndefined();
+  });
+});
 
 describe('settle: the scripted dinner', () => {
   const s = settle(input());
@@ -25,11 +60,11 @@ describe('settle: the scripted dinner', () => {
     expect(s.byPerson.reduce((a, p) => a + p.amountCents, 0)).toBe(61_200);
   });
 
-  it('leaves the no-show Dr. Kim unchanged and drafts no Open Payments row for her', () => {
-    const kim = s.caps.find((c) => c.npi === KIM.npi);
+  it('leaves the no-show Dr. Kinsale unchanged and drafts no Open Payments row for her', () => {
+    const kim = s.caps.find((c) => c.npi === KINSALE.npi);
     expect(kim).toMatchObject({ ytdCents: 52_000, projectedCents: 52_000 });
-    expect(s.openPayments.some((r) => r.npi === KIM.npi)).toBe(false);
-    expect(s.byPerson.some((p) => p.npi === KIM.npi)).toBe(false);
+    expect(s.openPayments.some((r) => r.npi === KINSALE.npi)).toBe(false);
+    expect(s.byPerson.some((p) => p.npi === KINSALE.npi)).toBe(false);
   });
 
   it('adds each attendee share to their annual total, including the speaker', () => {
@@ -93,7 +128,7 @@ describe('settle: after-dinner rules', () => {
   });
 
   it('flags someone who ate but was not on the plan', () => {
-    const s = settle(input({ attendance: { ...ATTENDANCE, attendedNpis: [...ATTENDANCE.attendedNpis, KIM.npi.replace('202', '299')] } }));
+    const s = settle(input({ attendance: { ...ATTENDANCE, attendedNpis: [...ATTENDANCE.attendedNpis, KINSALE.npi.replace('202', '299')] } }));
     expect(s.checks.some((c) => c.ruleId === 'P2.uninvited' && c.outcome === 'flag')).toBe(true);
   });
 
