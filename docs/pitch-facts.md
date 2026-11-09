@@ -28,6 +28,9 @@ If a line isn't in this file, check it before it goes on screen.
   the company has to report it to the federal Open Payments database."*
 - Ramp does **not** enforce the restaurants-only setting in the sandbox (5 non-restaurant test charges were approved; see
   `docs/ramp-spike.md`). Say *"restricted to restaurants in Ramp"*, never *"only works at restaurants"*.
+- Ramp **does** enforce the lock and the limit (tested Nov 8). On a locked fund, 2 test charges were declined, a café
+  included. On the unlocked fund, an $823.56 charge against $754.38 left was declined with reason "Card limit".
+  So say: *"Until the plan clears, the card is locked, and Ramp declines it. After it clears, Ramp holds it to the limit."*
 
 ## Hard question 1: "The OIG alert lists restaurants as a suspect location. Why build for restaurant dinners?"
 
@@ -45,14 +48,15 @@ Longer:
 
 ## Hard question 2: "Ramp doesn't enforce restaurants-only. What actually stops misuse?"
 
-Short answer: *Covers doesn't trust the card's settings alone. It checks what actually happened against the plan, and anything
-that doesn't match goes to compliance with evidence.*
+Short answer: *The parts Ramp does enforce, the lock and the limit, are what Covers relies on to stop money moving. For
+everything else, Covers checks what actually happened against the plan, and anything that doesn't match goes to compliance
+with evidence.*
 
 Longer:
-- No money moves until every check passes: the fund is created or unlocked only for a cleared plan, and editing the plan locks it again.
+- No money moves until every check passes: the fund is created or unlocked only for a cleared plan, and editing the plan locks it
+  again. We tested it: Ramp declines charges on a locked fund, and declines a charge over the fund's limit ("Card limit").
 - After the dinner, Covers reads the actual charge back from Ramp and compares it with the receipt (P6.card-charge); a
   mismatch is an exception for compliance, not a silent difference.
 - Honest gap: Covers doesn't yet check the charge's merchant category. Ramp returns it with each transaction, so a
   "not a restaurant" flag is a small addition if we want it.
-- Not yet tested in the sandbox: whether Ramp declines a charge on a locked fund or above the fund's limit. Don't claim
-  either until it's tried.
+- Video shot: the fund's "Declined transactions" tab in Ramp, showing a charge declined while the plan was blocked.
