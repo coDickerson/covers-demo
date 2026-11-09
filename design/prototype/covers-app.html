@@ -234,6 +234,35 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #flowwrap { position: absolute; left: 0; top: 72px; width: 1600px; height: 828px; overflow: hidden; }
 #flow { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; font-size: 16px; transform: scale(.92); transform-origin: 50% 0; overflow: hidden; }
 #flow .top b, #flow .top .s { display: none; }
+#log .entry { padding: 0; }
+#log .eh { display: block; width: 100%; padding: 10px 6px; }
+#log .eh:hover { background: var(--paper); }
+#log .entry.you .eh:hover { background: transparent; }
+#log .who { display: flex; gap: 8px; align-items: baseline; }
+#log .who .when { margin-left: auto; font-weight: 500; }
+#log .who .chev { width: 10px; font-size: 11px; transition: transform 160ms var(--ease); }
+#log .entry.open .chev { transform: rotate(90deg); }
+#log .res { font-weight: 700; } #log .res.clear { color: var(--ok); } #log .res.blocked { color: var(--over); } #log .res.flagged { color: var(--near); }
+#log .txt { display: block; font-size: 16px; line-height: 1.38; }
+#log .ed { padding: 0 6px 14px; background: var(--paper); border-top: 1px dashed var(--line); }
+#log .ed .sec { margin-top: 10px; } #log .ed .sec p, #log .ed li { font-size: 15px; }
+#log .goto { display: block; margin-top: 12px; font-size: 15px; font-weight: 600; }
+.step-h { position: sticky; top: -8px; background: var(--white); z-index: 1; }
+.arrow { position: absolute; top: 400px; width: 84px; height: 120px; display: flex; align-items: center; justify-content: center; color: var(--ink); z-index: 8; transition: top 280ms var(--ease), left 280ms var(--ease), right 280ms var(--ease), color 200ms var(--ease), opacity 200ms var(--ease); }
+.arrow.l { left: 48px; } .arrow.r { right: 48px; }
+.arrow svg { width: 52px; height: 90px; overflow: visible; }
+.arrow.r svg { transform: scaleX(-1); }
+.arrow path { fill: none; stroke: currentColor; stroke-width: 8; stroke-linecap: square; stroke-linejoin: miter; }
+.arrow:hover:not(.off) { transform: scale(1.08); }
+.arrow.off { color: var(--line); cursor: default; border: 0; padding: 0; }
+.arrow .tip { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; color: inherit; font-size: 16px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 140ms var(--ease); }
+.arrow:hover .tip, .arrow:focus-visible .tip { opacity: 1; }
+#flow.col .arrow { top: 652px; width: 64px; height: 90px; }
+#flow.col .arrow svg { width: 38px; height: 66px; }
+#flow.col .arrow.l { left: 12px; } #flow.col .arrow.r { right: 412px; }
+.row { border-bottom: 0; }
+.what { height: 48px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid var(--line); }
+.say { height: 48px; line-height: 47px; margin-left: 34px; padding-left: 0; border-bottom: 1px solid var(--line); }
 #mockctl .reset { margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--line); }
 </style>
 <div id="stage" class="both">
@@ -248,7 +277,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <div class="ask" id="ask"></div><div id="cap"></div><div id="exp"></div>
       <div class="tiny"><button id="skip">Skip ahead</button><button id="replay">Restart this dinner</button></div>
     </div>
-    <button id="trailbtn">Audit trail</button><aside id="col"><div id="colhead"></div><div id="colbody"><div id="log"></div></div></aside>
+    <button class="arrow l" id="navb" data-nav="-1"><svg viewBox="0 0 56 96" aria-hidden="true"><path d="M44 8 L12 48 L44 88"/></svg><span class="tip"></span></button><button class="arrow r" id="navf" data-nav="1"><svg viewBox="0 0 56 96" aria-hidden="true"><path d="M44 8 L12 48 L44 88"/></svg><span class="tip"></span></button><button id="trailbtn">Audit trail</button><aside id="col"><div id="colhead"></div><div id="colbody"><div id="log"></div></div></aside>
   </div></div>
   <div id="mockctl"><span>Mock only · Columns:</span><button data-cols="bands">Bands</button><button data-cols="names">Step name</button><button data-cols="both" class="on">Both</button><button class="reset" data-reset="1">Reset demo</button></div>
 </div>
@@ -418,7 +447,17 @@ const alive = id => { if (id !== runId) throw new Stop(); };
 const isPaused = () => working && (exp !== null || view !== cur) && !fast;
 const hold = async id => { while (isPaused()) { await new Promise(r => setTimeout(r, 80)); alive(id); } };
 const wait = async (ms, id) => { alive(id); if (!fast) await new Promise(r => setTimeout(r, ms * speed)); await hold(id); alive(id); };
-function route() { $('route').innerHTML = NAMES.map((n, i) => { const done = i < cur || (i === cur && sv.step >= 7); return `<div class="stop ${done ? 'done open' : i === cur ? 'now open' : ''} ${i === view && view !== cur ? 'view' : ''}" data-s="${i}"><i></i><span>${n}</span></div>`; }).join(''); }
+function route() { $('route').innerHTML = NAMES.map((n, i) => { const done = i < cur || (i === cur && sv.step >= 7); return `<div class="stop ${done ? 'done open' : i === cur ? 'now open' : ''} ${i === view && view !== cur ? 'view' : ''}" data-s="${i}"><i></i><span>${n}</span></div>`; }).join(''); arrows(); }
+function arrows() {
+  const set = (el, on, tip) => { el.classList.toggle('off', !on); el.setAttribute('aria-disabled', String(!on)); el.setAttribute('aria-label', tip); el.querySelector('.tip').textContent = tip; };
+  set($('navb'), view > 0, view > 0 ? NAMES[view - 1] : 'This is the first step');
+  const finished = sv.step >= 7 && view === cur, can = view < cur;
+  set($('navf'), can, can ? NAMES[view + 1] : finished ? 'This is the last step' : `Finish ${NAMES[view]} first`);
+}
+function navStep(dir) {
+  const to = view + dir; if (dir < 0 ? view <= 0 : view >= cur) return;
+  exp = null; prevExp = null; $('exp').classList.remove('in'); jumpTo(to); arrows();
+}
 function layout(i) {
   S = sc[i].st; const n = S.length, w = Math.min(230, 950 / Math.max(1, n - 1) - 14);
   S.forEach((s, k) => { s.x = 115 + k * 950 / (n - 1); s.y = k % 2 ? 565 : 525; s.w = w; });
@@ -455,17 +494,40 @@ async function reveal(k, r, id) {
   if (show.dots) for (const e of c.querySelectorAll('.dots i')) { e.classList.add('y'); await wait(90, id); }
   for (const e of c.querySelectorAll('.r')) { e.classList.add('in'); await wait(show.dots ? 60 : 200, id); }
 }
-function entry(who, cls) { const e = document.createElement('div'); e.className = 'entry ' + (cls || ''); e.innerHTML = `<div class="who"><span>${who}</span><span>${whenOf(cur)}</span></div><p></p>`; $('log').append(e); $('trailbtn').textContent = `Audit trail · ${$('log').querySelectorAll('.entry').length}`; return e.querySelector('p'); }
-const follow = () => { $('colbody').scrollTop = 1e6; };
+let EVENTS = [], openEv = null;
+function entry(who, cls, meta = {}) {
+  const n = EVENTS.length, e = document.createElement('div'); e.className = 'entry ' + (cls || '');
+  EVENTS.push({ step: cur, who, when: whenOf(cur), el: e, ...meta });
+  e.innerHTML = `<button class="eh" data-ev="${n}" aria-expanded="false"><span class="who"><span>${who}</span><span class="res"></span><span class="when">${whenOf(cur)}</span><span class="chev">▸</span></span><span class="txt"></span></button><div class="ed" hidden></div>`;
+  $('log').append(e); $('trailbtn').textContent = `Audit trail · ${$('log').querySelectorAll('.entry').length}`; return e.querySelector('.txt');
+}
+const follow = () => { if (openEv === null) $('colbody').scrollTop = 1e6; };
+function evHtml(ev) {
+  const s = ev.k !== undefined ? sc[ev.step]?.st[ev.k] : null; let h = ev.input ? sec('Your input', `<p>${esc(ev.input)}</p>`) : '';
+  if (!s) return h + sec('Step', `<p>${NAMES[ev.step]}. Recorded by ${ev.who}, ${ev.when}.</p>`);
+  const r = ev.r ?? 0, data = roundData(s, r);
+  h += sec('What it found', `<p>${data.found || s.found}</p>`);
+  if (s.looked?.length) h += sec('What it looked at', `<ul>${s.looked.map(l => `<li>${lnk(l)}</li>`).join('')}</ul>`);
+  if (s.suggest && (r === 0 || !s.r)) h += sec('What Covers suggested', `<p>${s.suggest}</p>`) + sec('Why', `<p>${s.why}</p>`) + sec('Other options', `<p>${s.alt}</p>`);
+  if (s.decideKey && sc[ev.step].decided[s.decideKey]) h += sec('What was decided', `<p>${sc[ev.step].decided[s.decideKey]}</p>`);
+  if (s.src?.length) h += sec('Source', `<p>${s.src.map(lnk).join(', ')}</p>`);
+  return h + `<button class="lnk goto" data-goto="${ev.step}:${ev.k}">Show on the map</button>`;
+}
+function toggleEv(n) {
+  if (openEv !== null) { const o = EVENTS[openEv].el; o.classList.remove('open'); o.querySelector('.ed').hidden = true; o.querySelector('.eh').setAttribute('aria-expanded', 'false'); }
+  if (openEv === n) { openEv = null; return; }
+  openEv = n; const ev = EVENTS[n], d = ev.el.querySelector('.ed'); d.innerHTML = evHtml(ev); d.hidden = false; ev.el.classList.add('open'); ev.el.querySelector('.eh').setAttribute('aria-expanded', 'true');
+  ev.el.scrollIntoView({ block: 'nearest' });
+}
 async function type(p, text, id) { if (fast || reduce) { p.textContent = text; if (!replay) $('cap').textContent = text; follow(); return; } for (let n = 0; n <= text.length; n += 3) { await hold(id); alive(id); p.textContent = text.slice(0, n); $('cap').textContent = text.slice(0, n); follow(); await new Promise(r => setTimeout(r, 12)); } p.textContent = text; $('cap').textContent = text; follow(); }
-function say(who, text, cls) { trailLog.push([whenOf(cur), who, text]); return entry(who, cls); }
-const you = text => { say(actor(), text, 'you').textContent = text; follow(); };
+function say(who, text, cls, meta) { trailLog.push([whenOf(cur), who, text]); return entry(who, cls, meta); }
+const you = (text, meta) => { say(actor(), text, 'you', meta).textContent = text; follow(); };
 async function visit(k, r, id) {
   const s = S[k], data = roundData(s, r); await walk(s.len, id); setOn(k); await reveal(k, r, id);
-  if (data.log) await type(say(s.actor || s.name, data.log), data.log, id);
-  setMark(k, data.mark); if (data.mark === 'blocked' || data.mark === 'flagged') $('cd'+k).classList.add(data.mark);
+  let ev = null; if (data.log) { const p = say(s.actor || s.name, data.log, '', { k, r }); ev = EVENTS[EVENTS.length - 1]; await type(p, data.log, id); }
+  setMark(k, data.mark); if (ev && data.mark !== 'wait') { const res = ev.el.querySelector('.res'); res.textContent = WORD[data.mark]; res.classList.add(data.mark); } if (data.mark === 'blocked' || data.mark === 'flagged') $('cd'+k).classList.add(data.mark);
   sc[cur].done[k] = sc[cur].done[k] || []; sc[cur].done[k][r] = data.mark;
-  if (replay && sc[cur].input[k]?.saved) you(`${s.name}: ${sc[cur].input[k].text}`);
+  if (replay && sc[cur].input[k]?.saved) you(`${s.name}: ${sc[cur].input[k].text}`, { k, r, input: sc[cur].input[k].text });
   await wait(170, id);
 }
 async function pass(r, id, from = 0, to = S.length) { for (let k = from; k < to; k++) await visit(k, r, id); setOn(-1); }
@@ -484,7 +546,7 @@ async function enter(i, id) {
   if (i > 0 && !fast) { sn.classList.add('out'); await wait(320, id); }
   layout(i); route(); reached = 0; place(0); drawSprite(0);
   sn.classList.remove('out'); sn.classList.add('pre'); void sn.offsetWidth; sn.classList.remove('pre');
-  const h = document.createElement('div'); h.className = 'step-h'; h.textContent = NAMES[i]; $('log').append(h);
+  const h = document.createElement('div'); h.className = 'step-h'; h.textContent = `${NAMES[i]} · ${whenOf(i)}`; $('log').append(h);
   await wait(260, id);
 }
 const decide = (key, text) => { sc[cur].decided[key] = `${text} (${whenOf(cur)})`; };
@@ -500,13 +562,13 @@ async function run() {
     await enter(1, id); await pass(0, id);
     if (dn.issue) {
       const k = dn.issue.kind, a = S.findIndex(s => s.decideKey === 'issue'), who = dn.issue.who;
-      const p = say('Covers', k === 'annual' ? `One thing blocks the card, so I’m stopping here. I recommend removing ${short(who)}.` : `One thing blocks the card, so I’m stopping here. ${short(dn.speaker)} needs current training.`);
+      const p = say('Covers', k === 'annual' ? `One thing blocks the card, so I’m stopping here. I recommend removing ${short(who)}.` : `One thing blocks the card, so I’m stopping here. ${short(dn.speaker)} needs current training.`, '', { k: a, r: 0 });
       await walk(S[a].len, id, 900); setOn(a); $('badge').classList.add('in');
       await type(p, trailLog[trailLog.length-1][2], id);
       await A(k === 'annual' ? simpleAsk(`${short(who)} would pass the annual limit`, `${whole(ANNUAL-YTD[who])} left and tonight costs ${whole(dn.est)}. Removing them is the one change that clears this.`, [[`Remove ${short(who)} · Recommended`, 1], ['Ask for an exception<br>Can’t be approved', null]]) : simpleAsk(`${short(dn.speaker)}’s speaker training has expired`, 'Nobody can present without current training. Add the renewed certificate to clear this.', [['Add renewed certificate · Recommended', 1], ['Ask for an exception<br>Can’t be approved', null]]));
       $('badge').classList.remove('in'); sv.resolved = true; persist();
       const text = k === 'annual' ? `Removed ${short(who)} from the dinner.` : `Added ${short(dn.speaker)}’s renewed training certificate.`;
-      decide('issue', `${dn.rep}: ${text}`); you(text);
+      decide('issue', `${dn.rep}: ${text}`); you(text, { k: a, r: 0 });
       S.forEach((_, n) => setMark(n, 'wait')); speed = .45;
       await type(say('Covers', 'The plan changed, so every check runs again.'), 'The plan changed, so every check runs again.', id);
       reached = 0; trail.style.strokeDashoffset = total; await walk(0, id, 1500); await pass(1, id); speed = .7;
@@ -514,7 +576,7 @@ async function run() {
     await walk(total, id, 500); await type(say('Covers', 'Every check passes, so the card can be set up.'), 'Every check passes, so the card can be set up.', id);
 
     await enter(2, id); await pass(0, id, 0, 3);
-    await A(simpleAsk(`Issue the ${whole(C().limit)} card?`, `${C().people.length} people at $125, restaurants only.`, [['Issue the card', 1]])); you('Issued the card.');
+    await A(simpleAsk(`Issue the ${whole(C().limit)} card?`, `${C().people.length} people at $125, restaurants only.`, [['Issue the card', 1]])); you('Issued the card.', { k: 3 });
     await pass(0, id, 3, 4); await walk(total, id);
 
     await enter(3, id); await pass(0, id); await walk(total, id);
@@ -616,7 +678,7 @@ function saveInput(k) {
   const c = [...$('exp').querySelectorAll('[data-c]')].filter(e => e.checked).map(e => +e.dataset.c), t = $('xi')?.value.trim() || '';
   const text = def.t === 'checks' ? c.map(n => def.opts[n]).join('; ') : t; if (!text) return;
   sc[i].input[k] = { c, t, text, saved: true }; persist();
-  you(`${S[k].name}: ${text}`);
+  const r0 = sc[i].done[k] ? sc[i].done[k].length - 1 : 0; you(`${S[k].name}: ${text}`, { k, r: r0, input: text, step: i });
   const d = sc[i].done[k];
   if (d) { const r = d.length - 1, card = $('cd'+k); fillCard(k, r); card.classList.add('in'); card.querySelectorAll('.r').forEach(e => e.classList.add('in')); card.querySelectorAll('.dots i').forEach(e => e.classList.add('y')); if (d[r] === 'blocked' || d[r] === 'flagged') card.classList.add(d[r]); }
   justSaved = k; openDetail(k, exp.kind === 'st' ? exp.r : undefined, false); justSaved = null;
@@ -644,13 +706,13 @@ function barHtml() { const items = role === 'rep' ? ['Dinners','Documents'] : ['
 function render() { barHtml(); $('flowwrap').hidden = !showing; $('page').hidden = !!showing; $('mockctl').hidden = !!showing; if (showing) return; $('page').innerHTML = tab === 'Dinners' ? dinnersHtml() : `<div class="stub"><h1>${tab}</h1><p>Not mocked yet.</p></div>`; }
 function leaveFlow() { runId++; working = false; fast = false; replay = false; pending = null; stash = null; exp = null; prevExp = null; $('exp').classList.remove('in'); $('ask').classList.remove('in'); $('badge').classList.remove('in'); showing = null; }
 function openDinner(d) {
-  leaveFlow(); dn = d; sv = saveOf(d); showing = d.id; sc = {}; trailLog = []; S = []; $('ftitle').textContent = `${d.t} · ${d.day} · ${d.venue}`; $('log').innerHTML = ''; $('cap').textContent = ''; $('trailbtn').textContent = 'Audit trail'; setCol(false);
+  leaveFlow(); dn = d; sv = saveOf(d); showing = d.id; sc = {}; trailLog = []; EVENTS = []; openEv = null; S = []; $('ftitle').textContent = `${d.t} · ${d.day} · ${d.venue}`; $('log').innerHTML = ''; $('cap').textContent = ''; $('trailbtn').textContent = 'Audit trail'; setCol(false);
   replay = sv.started || sv.step > 0; replayUntil = sv.step; fast = replay; if (!sv.started) { sv.started = true; persist(); }
   render(); run();
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('button, .stop'); if (!t) { if (exp && !e.target.closest('#exp')) closeExp(); return; } const ds = t.dataset;
+  const t = e.target.closest('button, .stop'); if (!t) { if (exp && !e.target.closest('#exp') && !e.target.closest('#col')) closeExp(); return; } const ds = t.dataset;
   if (ds.cols) { stage.className = ds.cols; document.querySelectorAll('[data-cols]').forEach(b => b.classList.toggle('on', b === t)); return; }
   if (ds.reset) { saves = {}; persist(); filter = null; doneOpen = false; return render(); }
   if (ds.home) { leaveFlow(); tab = 'Dinners'; filter = null; return render(); }
@@ -663,6 +725,9 @@ document.addEventListener('click', e => {
   if (ds.ans && pending) return pending.done(ds.ans);
   if (ds.v && pending) { sv.verdict = ds.v; sv.note = ($('noteIn')?.value || '').trim().replace(/"/g, ''); persist(); return pending.done(ds.v); }
   if (ds.tog && pending) { sv.absent.includes(ds.tog) ? sv.absent.splice(sv.absent.indexOf(ds.tog), 1) : sv.absent.push(ds.tog); persist(); return restoreAsk(); }
+  if (ds.nav) return navStep(+ds.nav);
+  if (ds.ev !== undefined) return toggleEv(+ds.ev);
+  if (ds.goto) { const [i, k] = ds.goto.split(':').map(Number); if (i !== view) jumpTo(i); return openDetail(k); }
   if (ds.see) return setCol(true);
   if (ds.col !== undefined) return setCol(false);
   if (ds.close !== undefined) return closeExp();
