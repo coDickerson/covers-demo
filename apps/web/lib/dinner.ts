@@ -1,7 +1,6 @@
 // The single dinner screen's logic: which step a dinner is on and what each of the six checkers says.
 // Pure functions over contract types, so fixtures and live mode behave the same.
 import type { CheckResult, Evaluation, PlanView, Receipt, Settlement } from '@covers/contract';
-import type { DocKey } from './documents';
 
 export const STEPS = ['Propose', 'Check', 'Fund', 'Dinner', 'Close out', 'Settle', 'Report'] as const;
 export type Role = 'rep' | 'compliance';
@@ -67,23 +66,4 @@ export function afterMark(id: CheckerId, settlement: Settlement | null, receipt:
 export function openFlag(evaluation: Evaluation | null, settlement: Settlement | null): CheckResult | undefined {
   const checks = settlement ? settlement.exceptions : (evaluation?.checks ?? []);
   return checks.find((c) => c.outcome === 'flag' && !c.approval && !c.denial);
-}
-
-export const SOURCES: Record<CheckerId, { doc: DocKey; at?: string }[]> = {
-  P1: [{ doc: 'policy', at: 'speaker' }, { doc: 'oig', at: 'speaker' }],
-  P2: [{ doc: 'cms' }],
-  P3: [{ doc: 'policy', at: 'meal' }],
-  P4: [{ doc: 'cal' }, { doc: 'policy', at: 'annual' }],
-  P5: [{ doc: 'oig', at: 'flags' }, { doc: 'policy', at: 'repeat' }],
-  P6: [{ doc: 'cms' }],
-};
-
-/** Maps a check's evidence id (registry record, roster row, ledger entry, receipt) to the document that holds it. */
-export function evidenceDoc(id: string): { doc: DocKey; at?: string } | null {
-  if (id === 'company') return { doc: 'policy', at: 'meal' };
-  if (id.startsWith('ledger:')) return { doc: 'ledger', at: id.slice('ledger:'.length) };
-  if (/^\d{10}$/.test(id)) return { doc: 'npi', at: id };
-  if (id.startsWith('spk-')) return { doc: 'speaker' };
-  if (id.startsWith('rcpt-')) return { doc: 'receipt' };
-  return null;
 }

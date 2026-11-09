@@ -1,6 +1,5 @@
-import { IDS } from '@covers/contract/fixtures';
-import { DinnerScreen } from '../components/dinner-screen';
+import { Dashboard } from '../components/dashboard';
 
 export default function Home() {
-  return <DinnerScreen planId={IDS.demoPlan} />;
+  return <Dashboard />;
 }
