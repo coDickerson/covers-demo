@@ -12,14 +12,15 @@
     "test:contract": "vitest run tests/contract.test.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.6.0",
     "@covers/contract": "workspace:*",
+    "@covers/integrations": "workspace:*",
+    "@covers/live-service": "workspace:*",
+    "@upstash/redis": "1.41.0",
     "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "@upstash/redis": "1.41.0",
-    "zod": "4.6.7",
-    "@covers/live-service": "workspace:*",
-    "@covers/integrations": "workspace:*"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

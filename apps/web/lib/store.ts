@@ -53,10 +53,14 @@ export class UpstashStore implements SessionStore {
 
 /** Vercel's Upstash integration sets KV_REST_API_*; a direct Upstash setup uses UPSTASH_REDIS_REST_*. */
 export function storeFromEnv(env: NodeJS.ProcessEnv = process.env): SessionStore {
+  const redis = redisFromEnv(env);
+  return redis ? new UpstashStore(redis) : memoryStore();
+}
+
+export function redisFromEnv(env: NodeJS.ProcessEnv = process.env): Redis | null {
   const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
-  if (url && token) return new UpstashStore(new Redis({ url, token }));
-  return memoryStore();
+  return url && token ? new Redis({ url, token }) : null;
 }
 
 // One memory store per server process, kept on globalThis so dev hot-reloads don't wipe sessions.
