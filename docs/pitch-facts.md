@@ -57,6 +57,6 @@ Longer:
   again. We tested it: Ramp declines charges on a locked fund, and declines a charge over the fund's limit ("Card limit").
 - After the dinner, Covers reads the actual charge back from Ramp and compares it with the receipt (P6.card-charge); a
   mismatch is an exception for compliance, not a silent difference.
-- Honest gap: Covers doesn't yet check the charge's merchant category. Ramp returns it with each transaction, so a
-  "not a restaurant" flag is a small addition if we want it.
+- Covers also checks where the card was used: Ramp returns each charge's merchant category, and a dinner charge that
+  isn't at a restaurant is flagged to compliance (rule P6.card-merchant, in PR #2). That closes the gap Ramp leaves open.
 - Video shot: the fund's "Declined transactions" tab in Ramp, showing a charge declined while the plan was blocked.
