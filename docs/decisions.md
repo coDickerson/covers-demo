@@ -137,7 +137,7 @@ This replaces the Figma Plan screen from B1. **Code leads; Figma now does the vi
 | Per session | 20 | Keeps one visitor's demo modest |
 | Chat history sent with a question | 6 turns, 1,300 characters each | Bounds the size of a request |
 
-The counts live in Upstash, so a visitor or a new server instance cannot reset them. A deployment without Upstash turns questions off instead of running unlimited; memory counting is for a laptop only. IP addresses are hashed before storing. *(Claude's call on the numbers; change `ASK_LIMITS`.)*
+The counts live in Upstash, so a visitor or a new server instance cannot reset them. A request refused by the per-client or per-session limit does not count toward the site-wide limit, so one visitor cannot use it up. A deployment without Upstash turns questions off instead of running unlimited; memory counting is for a laptop only. IP addresses are hashed before storing. *(Claude's call on the numbers; change `ASK_LIMITS`.)*
 
 **Known limit:** chat history comes from the browser, so someone can forge earlier turns in their own conversation. That can only affect the answer they see themselves. The system prompt tells the model those turns are not part of the record. The record itself is always read fresh on the server.
 

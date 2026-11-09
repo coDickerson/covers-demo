@@ -45,9 +45,11 @@ export function clientKey(headers: Headers): string {
 /** Counts this question. Returns the message to show if it is over any limit, otherwise null. */
 export async function checkAskLimit(counter: Counter, who: { client: string; sessionId: string }, now = new Date()): Promise<string | null> {
   const day = now.toISOString().slice(0, 10);
-  const [total, client, session] = await counter.bump([`covers:ask:day:${day}`, `covers:ask:client:${day}:${who.client}`, `covers:ask:session:${who.sessionId}`], TTL_SECONDS);
-  if (total! > ASK_LIMITS.perDay) return 'Questions have reached today’s limit. Try again tomorrow.';
+  // The site-wide count is only charged once the narrower limits pass, so one visitor cannot use up everyone's questions.
+  const [client, session] = await counter.bump([`covers:ask:client:${day}:${who.client}`, `covers:ask:session:${who.sessionId}`], TTL_SECONDS);
   if (client! > ASK_LIMITS.perClientPerDay) return 'You have reached today’s question limit. Try again tomorrow.';
   if (session! > ASK_LIMITS.perSession) return 'This session has used its questions.';
+  const [total] = await counter.bump([`covers:ask:day:${day}`], TTL_SECONDS);
+  if (total! > ASK_LIMITS.perDay) return 'Questions have reached today’s limit. Try again tomorrow.';
   return null;
 }

@@ -28,6 +28,12 @@ describe('audit log question limits', () => {
     expect(await checkAskLimit(c, { client: 'new', sessionId: 'new2' }, new Date('2026-11-10T12:00:00Z'))).toBeNull();
   });
 
+  it('does not let one visitor use up the site-wide limit', async () => {
+    const c = new MemoryCounter();
+    await run(c, ASK_LIMITS.perDay * 2, (i) => ({ client: 'a', sessionId: `s${i}` }));
+    expect(await checkAskLimit(c, { client: 'someone-else', sessionId: 'new' }, day)).toBeNull();
+  });
+
   it('turns questions off on a deployment without a shared store', () => {
     expect(counterFromEnv({ VERCEL: '1' } as unknown as NodeJS.ProcessEnv)).toBeNull();
     expect(counterFromEnv({} as unknown as NodeJS.ProcessEnv)).not.toBeNull();
