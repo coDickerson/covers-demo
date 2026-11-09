@@ -3,7 +3,7 @@ import { IDS } from '@covers/contract/fixtures';
 import { FixtureService } from '../lib/fixtures/fixture-service';
 import { MemoryStore } from '../lib/store';
 import { buildCard } from '../lib/doc-cards';
-import { changedStations, layoutPath, restingStation, sourceOf, standing, stationsFor, thinkingLines, type DinnerState } from '../lib/map';
+import { changedStations, isSimulatedFund, rampFundUrl, layoutPath, restingStation, sourceOf, standing, stationsFor, thinkingLines, type DinnerState } from '../lib/map';
 
 const rep = { sessionId: 'm', actorId: IDS.rep };
 const id = IDS.demoPlan;
@@ -55,5 +55,21 @@ describe('the dinner map reads real results', () => {
     expect(stops[0]).toBe(0);
     expect(stops[7]).toBeCloseTo(100);
     for (let i = 1; i < stops.length; i++) expect(stops[i]!).toBeGreaterThan(stops[i - 1]!);
+  });
+});
+
+describe('Ramp fund link', () => {
+  it('links a real fund to its page in Ramp and gives simulated funds no link', () => {
+    expect(rampFundUrl('4b320813-8a5d-4d64-8106-ab45a426ce72')).toBe('https://demo.ramp.com/funds/issued#/d/funds/4b320813-8a5d-4d64-8106-ab45a426ce72');
+    for (const sim of ['fund-sim-plan-demo', 'sim-fund-ad82150c']) { expect(isSimulatedFund(sim)).toBe(true); expect(rampFundUrl(sim)).toBeNull(); }
+  });
+
+  it('puts the link on the card stations of a real fund only', async () => {
+    const svc = new FixtureService(new MemoryStore());
+    const s = await state(svc);
+    const real = { ...s, view: { ...s.view, plan: { ...s.view.plan, fundId: 'f-123' } } };
+    expect(stationsFor(3, real).find((x) => x.name === 'Card live')?.link?.url).toContain('/funds/f-123');
+    const sim = { ...s, view: { ...s.view, plan: { ...s.view.plan, fundId: 'fund-sim-plan-demo' } } };
+    expect(stationsFor(3, sim).find((x) => x.name === 'Card live')?.link).toBeUndefined();
   });
 });

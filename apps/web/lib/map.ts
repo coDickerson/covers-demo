@@ -9,7 +9,13 @@ export type DinnerState = { view: PlanView; rounds: Evaluation[]; receipt: Recei
 export type Tone = '' | 'ok' | 'near' | 'over';
 /** A document to open: 'receipt', 'ledger', 'roster', 'npi', 'ramp', 'attend', 'rows', 'audit', or a stored document id. */
 export type DocRef = { label: string; doc: string; at?: string };
-export type Station = { name: string; kind: string; mark: Mark; word?: string; card: [string, string, Tone?][]; found: string; looked: DocRef[]; think?: string[]; checks?: CheckResult[] };
+export type Station = { name: string; kind: string; mark: Mark; word?: string; card: [string, string, Tone?][]; found: string; looked: DocRef[]; think?: string[]; checks?: CheckResult[]; link?: { label: string; url: string } };
+
+/** Simulated funds: the fixture service uses fund-sim-…, LiveService without Ramp keys uses sim-fund-…. */
+export const isSimulatedFund = (fundId: string) => fundId.startsWith('fund-sim') || fundId.startsWith('sim-fund');
+/** The fund's page in Ramp's sandbox web app (same path LiveService links from Slack). Null for a simulated fund. */
+export const rampFundUrl = (fundId: string) => (isSimulatedFund(fundId) ? null : `https://demo.ramp.com/funds/issued#/d/funds/${encodeURIComponent(fundId)}`);
+const rampLink = (fundId: string | undefined) => { const url = fundId ? rampFundUrl(fundId) : null; return url ? { link: { label: 'View in Ramp', url } } : {}; };
 
 const CONFIDENCE_GATE = 0.8; // same as the engine's default
 /** The Check stations whose results differ between two evaluation rounds: the only ones the bell needs to revisit. */
@@ -113,15 +119,15 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
         done('Headcount', 'Who the card covers', [['People', String(headcountOf(plan))]], `${plan.inviteeNpis.length} clinicians, the speaker and ${plan.employeeCount} employee(s).`),
         done('Limit', 'Card limit', [[usd(limit), '']], `${headcountOf(plan)} people at ${usd(fixtures.company.perPersonCapCents)}.`, [{ label: 'Card', doc: 'ramp', at: 'limit' }, { label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
         done('Merchant', 'Where it works', [['Restaurants only', '']], 'The card is restricted to restaurants, and the charge is confirmed after the dinner.', [{ label: 'Card policy', doc: 'halden-policy', at: 's5-card' }]),
-        issued ? done('Ramp', 'Card', [['Issued', ''], ...(plan.fundId!.startsWith('fund-sim') ? [['Simulated', ''] as [string, string]] : [])], `Card ${plan.fundId} is ready for ${dayOf(plan)}.`, [{ label: 'Card', doc: 'ramp', at: 'limit' }]) : waiting('Ramp', 'Card', 'The card is issued once every check has cleared.'),
+        issued ? { ...done('Ramp', 'Card', [['Issued', ''], ...(isSimulatedFund(plan.fundId!) ? [['Simulated', ''] as [string, string]] : [])], isSimulatedFund(plan.fundId!) ? `A simulated card is ready for ${dayOf(plan)}.` : `The Ramp card is ready for ${dayOf(plan)}.`, [{ label: 'Card', doc: 'ramp', at: 'limit' }]), ...rampLink(plan.fundId) } : waiting('Ramp', 'Card', 'The card is issued once every check has cleared.'),
       ];
     }
     case 3: {
       const charged = settlement?.charge?.amountCents ?? d.view.closeOut?.chargedCents ?? receipt?.totalCents;
       return [
-        plan.fundId ? done('Card live', 'Card', [[usd(cardLimitOf(plan)), '']], 'The card is live for the dinner.', [{ label: 'Card', doc: 'ramp', at: 'limit' }]) : waiting('Card live', 'Card', 'Waiting for the card.'),
+        plan.fundId ? { ...done('Card live', 'Card', [[usd(cardLimitOf(plan)), '']], 'The card is live for the dinner.', [{ label: 'Card', doc: 'ramp', at: 'limit' }]), ...rampLink(plan.fundId) } : waiting('Card live', 'Card', 'Waiting for the card.'),
         receipt ? done('Dinner', 'The night', [[venueOf(plan), ''], [dayOf(plan), '']], `The dinner took place at ${plan.venue}.`) : waiting('Dinner', 'The night', `Scheduled for ${dayOf(plan)} at ${plan.venue}.`),
-        charged !== undefined ? done('Charge', 'Card activity', [['Charged', usd(charged)]], `The card was charged ${usd(charged)}.`, [{ label: 'Card', doc: 'ramp', at: 'charge' }]) : waiting('Charge', 'Card activity', 'No charge yet.'),
+        charged !== undefined ? { ...done('Charge', 'Card activity', [['Charged', usd(charged)]], `The card was charged ${usd(charged)}${d.view.closeOut?.merchantName ? ` at ${d.view.closeOut.merchantName}` : ''}.`, [{ label: 'Card', doc: 'ramp', at: 'charge' }]), ...rampLink(plan.fundId) } : waiting('Charge', 'Card activity', 'No charge yet.'),
         receipt ? done('Reminder', 'To the rep', [['Asked for the receipt', '']], 'The rep was asked for the receipt and who came.') : waiting('Reminder', 'To the rep', 'Sent when the card is charged.'),
       ];
     }
