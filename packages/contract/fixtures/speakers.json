@@ -10,7 +10,21 @@
     "id": "spk-ortwell",
     "hcp": { "npi": "9000000102", "name": "Dr. Lena Ortwell", "credential": "MD", "specialty": "Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
     "status": "training_expired",
-    "approvedTopics": ["Catheter outcomes"],
+    "approvedTopics": ["Catheter outcomes", "Valve durability"],
     "contractEnds": "2027-03-31"
+  },
+  {
+    "id": "spk-okafor",
+    "hcp": { "npi": "9000000003", "name": "Dr. Daniel Okafor", "credential": "MD", "specialty": "Vascular Surgery", "state": "CA", "recipientType": "physician", "source": "seed" },
+    "status": "approved",
+    "approvedTopics": ["Device safety"],
+    "contractEnds": "2027-09-30"
+  },
+  {
+    "id": "spk-lindqvist",
+    "hcp": { "npi": "9000000004", "name": "Dr. Mei Lindqvist", "credential": "DO", "specialty": "Cardiology", "state": "CA", "recipientType": "physician", "source": "seed" },
+    "status": "approved",
+    "approvedTopics": ["Vascular access"],
+    "contractEnds": "2027-12-31"
   }
 ]

@@ -1,3 +1,4 @@
 [
-  { "id": "rep-jordan-lee", "name": "Jordan Lee", "territory": "Bay Area", "managerId": "mgr-morgan-reyes" }
+  { "id": "rep-jordan-lee", "name": "Jordan Lee", "territory": "Bay Area", "managerId": "mgr-morgan-reyes" },
+  { "id": "rep-casey-tran", "name": "Casey Tran", "territory": "East Bay", "managerId": "mgr-morgan-reyes" }
 ]

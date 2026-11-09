@@ -1,5 +1,6 @@
 [
   { "id": "rep-jordan-lee", "name": "Jordan Lee", "role": "rep" },
+  { "id": "rep-casey-tran", "name": "Casey Tran", "role": "rep" },
   { "id": "cmp-priya-shah", "name": "Priya Shah", "role": "compliance" },
   { "id": "mgr-morgan-reyes", "name": "Morgan Reyes", "role": "manager" }
 ]
