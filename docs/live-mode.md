@@ -62,6 +62,8 @@ replay mode; `postgres` stays in `serverExternalPackages`. `live.ts` points `COV
 | `COVERS_CACHE` | `0` | `0`, or `1` for the stage | `1` = replay recorded responses with no outside calls; `record` = record them |
 | `COVERS_CACHE_DIR` | (auto) | absolute path of the shipped `cache/` | Replay only |
 | `COVERS_MAX_READS_PER_SESSION` | (20) | (20) | Receipt reads per visitor |
+| `RAMP_FUND_URL` | (auto) | (auto) | "View in Ramp" link template with `{fundId}`; default `https://demo.ramp.com/funds/issued#/d/funds/{fundId}` |
+| `SLACK_WEBHOOK_URL` | optional | only while recording | Slack pings: blocked, cleared (with the card), settled. Off when unset and always off in replay. Every judge click on the public site would ping, so leave it unset there |
 
 Send `DATABASE_URL` and the keys privately (not in GitHub). Set the API key's monthly spend limit in the Anthropic Console.
 

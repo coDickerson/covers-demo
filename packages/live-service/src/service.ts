@@ -49,8 +49,12 @@ export type LiveDeps = {
   maxReadsPerSession?: number; proofPath?: string; now?: () => string;
   /** The fund's page in Ramp's web app, for "View in Ramp". Real funds only. */
   fundUrl?: (fundId: string) => string;
+  /** Slack pings (A10): before the dinner (blocked or cleared) and after it (settled). Off when absent. */
+  notifier?: { send(text: string): Promise<void> };
 };
 
+/** Escapes Slack's control characters in user-supplied text (same rule as @covers/integrations slackEscape). */
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
 /** Turns the contract fixtures into store documents. */
@@ -210,7 +214,17 @@ export class LiveService implements CoversService {
 
   async evaluatePlan(ctx: Ctx, id: string): Promise<Evaluation> {
     const sid = await this.open(ctx);
-    return this.runEvaluation(ctx, sid, await this.plan(sid, id), 'plan.evaluated', 'Plan evaluated');
+    const plan = await this.plan(sid, id);
+    const ev = await this.runEvaluation(ctx, sid, plan, 'plan.evaluated', 'Plan evaluated');
+    if (ev.status === 'blocked' || ev.status === 'needs_approval') {
+      const first = ev.checks.find((c) => c.outcome === (ev.status === 'blocked' ? 'block' : 'flag'));
+      await this.ping(ctx, id, [
+        `${ev.status === 'blocked' ? 'Blocked' : 'Needs compliance'}: ${esc(plan.title)}`,
+        esc(first?.message ?? ''),
+        'The card stays locked until this is resolved.',
+      ].join('\n'));
+    }
+    return ev;
   }
 
   async approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
@@ -282,6 +296,19 @@ export class LiveService implements CoversService {
   }
 
   async issueFund(ctx: Ctx, id: string): Promise<FundResult> {
+    const fund = await this.issueFundInner(ctx, id);
+    if (this.deps.notifier) {
+      const plan = await this.plan(await this.open(ctx), id);
+      const where = fund.simulated ? 'simulated card' : fund.rampUrl ? `<${fund.rampUrl}|View in Ramp>` : 'Ramp card';
+      await this.ping(ctx, id, [
+        `Cleared: ${esc(plan.title)}`,
+        `Every check passed. Card limit $${(fund.limitCents / 100).toFixed(2)}, restricted to restaurants in Ramp (${where}).`,
+      ].join('\n'));
+    }
+    return fund;
+  }
+
+  private async issueFundInner(ctx: Ctx, id: string): Promise<FundResult> {
     const sid = await this.open(ctx);
     const plan = await this.plan(sid, id);
     if (plan.status !== 'cleared') throw new CoversError('invalid_state', `Plan is ${plan.status}; a fund is issued only for a cleared plan.`);
@@ -448,7 +475,27 @@ export class LiveService implements CoversService {
       { kind: 'plan', id: plan.id, data: { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' } },
     ]));
     if (link && st.charge?.source === 'ramp' && st.charge.transactionId) await this.writeBackToRamp(ctx, sid, plan, a, st, link, st.charge.transactionId);
+    if (this.deps.notifier) {
+      const d = (c: number) => `$${(c / 100).toFixed(2)}`;
+      await this.ping(ctx, plan.id, [
+        `Settled: ${esc(plan.title)}`,
+        `${d(receipt.totalCents)} split over ${st.headcount} who ate: ${d(st.perPersonCents)} each. ${st.openPayments.filter((r) => r.reportable).length} Open Payments rows drafted.`,
+        st.exceptions.length ? `${st.exceptions.length} item(s) for compliance:` : 'Nothing for compliance.',
+        ...st.exceptions.slice(0, 3).map((c) => `• ${esc(c.message)}`),
+      ].join('\n'));
+    }
     return st;
+  }
+
+  /** Sends a Slack ping if one is configured. Best effort: failures are audited, never thrown. */
+  private async ping(ctx: Ctx, planId: string, text: string) {
+    if (!this.deps.notifier) return;
+    try {
+      await this.deps.notifier.send(text);
+      await write(this.sql, ctx, { action: 'slack.sent', planId, input: { text }, detail: text.split('\n')[0]!.slice(0, 120) }, async () => {});
+    } catch (e) {
+      await write(this.sql, ctx, { action: 'slack.failed', planId, input: { text }, detail: errText(e) }, async () => {});
+    }
   }
 
   /**
@@ -459,7 +506,16 @@ export class LiveService implements CoversService {
   private async readCharge(ctx: Ctx, plan: ProgramPlan, link: RampLink | null, receipt: Receipt): Promise<Settlement['charge']> {
     if (!link || !this.deps.ramp) return { amountCents: receipt.totalCents, source: 'simulated' };
     try {
-      const charge = (await this.deps.ramp.transactions(link.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+      // The dinner's charge is the cleared or pending one closest to the printed total; on a tie, the first Ramp returned.
+      const settled = (await this.deps.ramp.transactions(link.cardId)).filter((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+      const charge = settled.reduce<(typeof settled)[number] | undefined>((best, t) =>
+        !best || Math.abs(t.amountCents - receipt.totalCents) < Math.abs(best.amountCents - receipt.totalCents) ? t : best, undefined);
+      if (settled.length > 1) {
+        await write(this.sql, ctx, {
+          action: 'ramp.charge_chosen', planId: plan.id, input: { cardId: link.cardId, candidates: settled.map((t) => t.id) },
+          detail: `${settled.length} charges on card …${link.lastFour}; used ${charge!.id}, closest to the printed total`,
+        }, async () => {});
+      }
       if (charge) {
         return {
           amountCents: charge.amountCents, source: 'ramp', transactionId: charge.id,

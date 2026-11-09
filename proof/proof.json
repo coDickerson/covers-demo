@@ -148,7 +148,12 @@
     {
       "piece": "Rule engine (P1–P6)",
       "status": "Real",
-      "howWeKnow": "72 tests incl. property tests; deterministic, no model in the decision path"
+      "howWeKnow": "118 tests incl. property tests; deterministic, no model in the decision path"
+    },
+    {
+      "piece": "Citations",
+      "status": "Real",
+      "howWeKnow": "Every rule opens a stored passage quoted from the original (OIG alert, Cal. HSC §119402, 42 CFR 403.904, CMS); checked Nov 8. Company policy is fictional and labeled"
     },
     {
       "piece": "Doctor identity (NPI registry)",
@@ -163,7 +168,12 @@
     {
       "piece": "Ramp fund (limit, lock, unlock)",
       "status": "Real (sandbox)",
-      "howWeKnow": "Ramp sandbox API; visible in Ramp’s own UI and activity log"
+      "howWeKnow": "Ramp sandbox API; visible in Ramp’s own UI. Tested Nov 8: charges on a locked fund and an over-limit charge were declined"
+    },
+    {
+      "piece": "Restaurant-only card restriction",
+      "status": "Stored, not enforced",
+      "howWeKnow": "Ramp shows “Allowed categories: Restaurants” but approved 5 non-restaurant sandbox charges; Covers flags such charges itself (P6.card-merchant)"
     },
     {
       "piece": "Dinner card charge",
@@ -201,5 +211,5 @@
       "howWeKnow": "claude-opus-5-5 compiled \"Weekend dinners need manager approval\" on Nov 7; its 4 test cases and the code checks all passed on the engine"
     }
   ],
-  "generatedAt": "2026-11-08T02:27:57.333Z"
+  "generatedAt": "2026-11-09T06:33:03.019Z"
 }

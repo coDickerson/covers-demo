@@ -39,10 +39,12 @@ for (const c of BREAK_IT_CASES) {
 await sql.end();
 
 const realVsSimulated = [
-  { piece: 'Rule engine (P1–P6)', status: 'Real', howWeKnow: '72 tests incl. property tests; deterministic, no model in the decision path' },
+  { piece: 'Rule engine (P1–P6)', status: 'Real', howWeKnow: '118 tests incl. property tests; deterministic, no model in the decision path' },
+  { piece: 'Citations', status: 'Real', howWeKnow: 'Every rule opens a stored passage quoted from the original (OIG alert, Cal. HSC §119402, 42 CFR 403.904, CMS); checked Nov 8. Company policy is fictional and labeled' },
   { piece: 'Doctor identity (NPI registry)', status: 'Real', howWeKnow: 'Live CMS NPPES API v2.1; real doctors shown with zero spend' },
   { piece: 'Seed doctors and spend history', status: 'Simulated', howWeKnow: 'Fictional; fake NPIs start with 9 and fail the NPI check digit' },
-  { piece: 'Ramp fund (limit, lock, unlock)', status: 'Real (sandbox)', howWeKnow: 'Ramp sandbox API; visible in Ramp’s own UI and activity log' },
+  { piece: 'Ramp fund (limit, lock, unlock)', status: 'Real (sandbox)', howWeKnow: 'Ramp sandbox API; visible in Ramp’s own UI. Tested Nov 8: charges on a locked fund and an over-limit charge were declined' },
+  { piece: 'Restaurant-only card restriction', status: 'Stored, not enforced', howWeKnow: 'Ramp shows “Allowed categories: Restaurants” but approved 5 non-restaurant sandbox charges; Covers flags such charges itself (P6.card-merchant)' },
   { piece: 'Dinner card charge', status: 'Simulated', howWeKnow: 'Created with Ramp’s sandbox demo tool; no real card swipe' },
   { piece: 'Receipt + memo written to Ramp', status: 'Real (sandbox)', howWeKnow: 'Ramp sandbox API; receipt and memo read back on the transaction' },
   { piece: 'Receipt reading', status: 'Real', howWeKnow: `${evalRun.model}; ${evalRun.totalsCorrect}/${evalRun.receipts} totals correct on synthetic receipts, ${evalRun.alcoholMissed.length} alcohol lines missed; real receipts pending` },

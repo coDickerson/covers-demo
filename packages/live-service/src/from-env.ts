@@ -5,7 +5,7 @@
 import { join } from 'node:path';
 import { CoversError } from '@covers/contract';
 import {
-  CacheMissError, cachedCompiler, cachedRamp, cachedReader, cachedRegistrySearch, cacheModeFrom, createCache, createNppesClient,
+  CacheMissError, cachedCompiler, cachedRamp, cachedReader, cachedRegistrySearch, cacheModeFrom, createCache, createNppesClient, createSlackNotifier,
   createPackCompiler, createRampClient, createReceiptReader, hashImage, offline,
 } from '@covers/integrations';
 import { connect, migrate } from './db';
@@ -88,9 +88,11 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
 
   const maxReads = env.COVERS_MAX_READS_PER_SESSION ? Number(env.COVERS_MAX_READS_PER_SESSION) : undefined;
   const fundUrl = ramp ? rampFundUrl(env) : undefined;
+  // Slack pings only with a webhook, and never in replay mode, which makes no outside calls.
+  const notifier = env.SLACK_WEBHOOK_URL && !replay ? createSlackNotifier({ webhookUrl: env.SLACK_WEBHOOK_URL }) : undefined;
   const service = new LiveService({
     sql, searchRegistry, ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}), ...(compiler ? { compiler } : {}),
-    ...(maxReads ? { maxReadsPerSession: maxReads } : {}), ...(fundUrl ? { fundUrl } : {}),
+    ...(maxReads ? { maxReadsPerSession: maxReads } : {}), ...(fundUrl ? { fundUrl } : {}), ...(notifier ? { notifier } : {}),
   });
   return { service, cacheMode: mode, close: () => sql.end() };
 }

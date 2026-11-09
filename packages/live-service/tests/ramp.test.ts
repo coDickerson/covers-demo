@@ -141,6 +141,20 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect(check?.message).toContain('305 Fitness');
   });
 
+  it('with several charges on the card, uses the one closest to the printed total and logs the choice', async () => {
+    const f = fakeRamp();
+    f.ramp.transactions = async () => [
+      { id: 'tx-a', amountCents: 2_311, state: 'CLEARED', categoryId: 31 },
+      { id: 'tx-b', amountCents: 61_150, state: 'CLEARED', categoryId: 19 },
+      { id: 'tx-c', amountCents: 61_200, state: 'DECLINED', categoryId: 19 },
+    ];
+    const c = ctx();
+    const svc = new LiveService({ sql, ramp: f.ramp });
+    const st = await settleWith(svc, c);
+    expect(st.charge?.transactionId).toBe('tx-b');
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.charge_chosen')).toBe(true);
+  });
+
   it('without Ramp, labels the printed total as a simulated charge', async () => {
     const st = await settleWith(new LiveService({ sql }), ctx());
     expect(st.charge).toEqual({ amountCents: 61_200, source: 'simulated' });
