@@ -120,6 +120,27 @@ This replaces the Figma Plan screen from B1. **Code leads; Figma now does the vi
 
 **`FixtureService.approveException` now handles settlement exceptions.** `LiveService` has the same gap (Nikhil).
 
+## Mon Nov 9 — the real app
+
+**The app now runs the prototype's design on `CoversService`.** Home is the dashboard (`/`), each dinner has a map (`/plans/[id]`), and Doctors, Rules, Documents, Proof and New dinner are built. Demo mode serves the real `proof/proof.json`. Writing a rule and re-running Break-It need live mode.
+
+**The bell paces results the service already returned.** It keeps going when you change pages (`components/run-provider.tsx`) and stops when a person is needed. After an edit it goes back only to the Check stations whose results differ from the previous round (`changedStations` in `apps/web/lib/map.ts`). This shortens the walk only: the service still re-runs every rule, so the record stays complete.
+
+**Audit log questions (`POST /api/ask`).** Read-only: answers are shown to the person, never reach the engine, and cannot change a dinner. Model is `claude-opus-5-5` at low effort with server-side refusal fallback on, `max_tokens` 1000. Needs `ANTHROPIC_API_KEY` and API credits on Vercel. Not yet tested with a real answer, because the account was out of credits.
+
+**Limits on those questions, because each one spends money on a public link** (`apps/web/lib/ask-limit.ts`):
+
+| Limit | Value | Why |
+|---|---|---|
+| Whole site, per UTC day | 200 | The hard ceiling on spend |
+| Per client (hashed IP), per UTC day | 40 | Clearing the session cookie does not reset it |
+| Per session | 20 | Keeps one visitor's demo modest |
+| Chat history sent with a question | 6 turns, 1,300 characters each | Bounds the size of a request |
+
+The counts live in Upstash, so a visitor or a new server instance cannot reset them. A deployment without Upstash turns questions off instead of running unlimited; memory counting is for a laptop only. IP addresses are hashed before storing. *(Claude's call on the numbers; change `ASK_LIMITS`.)*
+
+**Known limit:** chat history comes from the browser, so someone can forge earlier turns in their own conversation. That can only affect the answer they see themselves. The system prompt tells the model those turns are not part of the record. The record itself is always read fresh on the server.
+
 ## Pending
 
 - ~~Vercel connection and the Upstash integration (Cole, dashboard).~~ Done Nov 8.

@@ -4,10 +4,10 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { tokens } from '../lib/tokens';
 
-/** `start` picks up partway along a step's stations. `exit` walks to the end of the path before the next stage begins. */
-export type Stage = { step: number; names: string[]; lines: number[]; start?: number; exit?: boolean };
+/** `start` picks up partway along a step's stations. `recheck` lists the only stations to revisit, from wherever the bell is. `exit` walks to the end of the path before the next stage begins. */
+export type Stage = { step: number; names: string[]; lines: number[]; start?: number; recheck?: number[]; exit?: boolean };
 /** `at` is the station the bell is heading for (-1 = the start of the path); `seen` is how many stations have shown their result; `line` is how far through its thinking the current station is. */
-export type Run = { step: number; at: number; seen: number; line: number; label: string; exit?: boolean };
+export type Run = { step: number; at: number; seen: number; line: number; label: string; exit?: boolean; recheck?: number[] };
 type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[]) => Promise<void> };
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
@@ -21,7 +21,19 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
   const play = useCallback(async (planId: string, stages: Stage[]) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const set = (run: Run) => setRuns((r) => ({ ...r, [planId]: run }));
-    for (const { step, names, lines, start = 0, exit } of stages) {
+    for (const { step, names, lines, start = 0, recheck, exit } of stages) {
+      if (recheck) {
+        for (let i = 0; i < recheck.length; i++) {
+          const base = { step, at: recheck[i]!, seen: recheck[i]!, label: names[i]! };
+          set({ ...base, line: 0, recheck: recheck.slice(i) });
+          await sleep(WALK_MS);
+          for (let line = 1; line <= (lines[i] ?? 0); line++) { set({ ...base, line, recheck: recheck.slice(i) }); await sleep(THINK); }
+          set({ ...base, line: 0, recheck: recheck.slice(i + 1) });
+          await sleep(DWELL);
+        }
+        if (exit) { set({ step, at: recheck.at(-1) ?? 0, seen: 0, line: 0, label: names.at(-1) ?? '', exit: true, recheck: [] }); await sleep(WALK_MS); }
+        continue;
+      }
       if (!start) { set({ step, at: -1, seen: 0, line: 0, label: names[0] ?? '' }); await sleep(DWELL); }
       for (let i = 0; i < names.length; i++) {
         set({ step, at: start + i, seen: start + i, line: 0, label: names[i]! });

@@ -12,6 +12,12 @@ export type DocRef = { label: string; doc: string; at?: string };
 export type Station = { name: string; kind: string; mark: Mark; word?: string; card: [string, string, Tone?][]; found: string; looked: DocRef[]; think?: string[]; checks?: CheckResult[] };
 
 const CONFIDENCE_GATE = 0.8; // same as the engine's default
+/** The Check stations whose results differ between two evaluation rounds: the only ones the bell needs to revisit. */
+export function changedStations(before: Evaluation, after: Evaluation): number[] {
+  const sign = (e: Evaluation, id: CheckerId) => beforeChecks(id, e).map((c) => `${c.id}|${c.outcome}|${c.message}`).sort().join('\n');
+  return CHECKERS.flatMap((c, i) => (sign(before, c.id) === sign(after, c.id) ? [] : [i]));
+}
+
 /** What the agent looks at, line by line, while it is at a station. */
 export const thinkingLines = (s: Station) => s.think?.length ? s.think : s.card.map(([a, b]) => (b ? `${a}: ${b}` : a));
 /** The step of the map an audit action belongs to. */

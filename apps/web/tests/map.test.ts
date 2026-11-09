@@ -3,7 +3,7 @@ import { IDS } from '@covers/contract/fixtures';
 import { FixtureService } from '../lib/fixtures/fixture-service';
 import { MemoryStore } from '../lib/store';
 import { buildCard } from '../lib/doc-cards';
-import { layoutPath, restingStation, sourceOf, standing, stationsFor, thinkingLines, type DinnerState } from '../lib/map';
+import { changedStations, layoutPath, restingStation, sourceOf, standing, stationsFor, thinkingLines, type DinnerState } from '../lib/map';
 
 const rep = { sessionId: 'm', actorId: IDS.rep };
 const id = IDS.demoPlan;
@@ -28,6 +28,7 @@ describe('the dinner map reads real results', () => {
     await svc.updatePlan(rep, id, { inviteeNpis: plan.inviteeNpis.filter((n) => n !== IDS.ruvane) });
     await svc.evaluatePlan(rep, id);
     s = await state(svc);
+    expect(changedStations(s.rounds[0]!, s.rounds[1]!).map((i) => stationsFor(1, s)[i]!.name)).toEqual(['Identity', 'Annual limit', 'Red flags']);
     expect(stationsFor(1, s, 0).find((x) => x.name === 'Annual limit')?.mark).toBe('blocked');
     expect(stationsFor(1, s).find((x) => x.name === 'Annual limit')?.mark).toBe('clear');
     expect(standing(s.view, s.receipt, s.settlement)).toMatchObject({ step: 2, who: 'rep' });

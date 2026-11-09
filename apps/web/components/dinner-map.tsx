@@ -5,11 +5,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { AuditEvent, PlanView, PolicyDocument, Receipt, Settlement, StepNote, Evaluation } from '@covers/contract';
 import { fixtures, IDS } from '@covers/contract/fixtures';
 import { ReceiptLine as ReceiptLineSchema } from '@covers/contract';
+import { HISTORY_LIMITS } from '../lib/ask-limits';
 import { covers, CoversClientError } from '../lib/client';
 import { buildCard } from '../lib/doc-cards';
 import { AUDIT_LABEL } from '../lib/documents';
 import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
-import { AUDIT_STEP, cardLimitOf, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
+import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
 import { DocCard } from './doc-card';
@@ -163,8 +164,16 @@ export function DinnerMap({ planId }: { planId: string }) {
     finally { setBusy(false); }
   };
   const afterCheck = (s: DinnerState): Stage[] => (s.view.plan.status === 'cleared' ? [{ ...pace(s, 1, 5), exit: true }, pace(s, 2, 3)] : [pace(s, 1, 5)]);
+  /** After an edit, the bell only goes back to the checks whose results changed. */
+  const afterUpdate = (s: DinnerState): Stage[] => {
+    const before = s.rounds.at(-2), after = s.rounds.at(-1);
+    if (!before || !after) return afterCheck(s);
+    const recheck = changedStations(before, after), list = stationsFor(1, s);
+    const stage: Stage = { step: 1, recheck, names: recheck.map((i) => list[i]!.name), lines: recheck.map((i) => thinkingLines(list[i]!).length) };
+    return s.view.plan.status === 'cleared' ? [{ ...stage, exit: true }, pace(s, 2, 3)] : [stage];
+  };
   const check = () => act(() => covers.evaluatePlan(planId), afterCheck);
-  const removeGuest = (npi: string) => act(async () => { await covers.updatePlan(planId, { inviteeNpis: plan.inviteeNpis.filter((n) => n !== npi) }); await covers.evaluatePlan(planId); }, afterCheck);
+  const removeGuest = (npi: string) => act(async () => { await covers.updatePlan(planId, { inviteeNpis: plan.inviteeNpis.filter((n) => n !== npi) }); await covers.evaluatePlan(planId); }, afterUpdate);
   const issue = () => act(() => covers.issueFund(planId), (s) => [{ step: 2, names: ['Ramp'], lines: [1], start: 3, exit: true }, pace(s, 3, 1)]);
   const addReceipt = () => act(() => covers.submitReceipt(planId, { sampleId: IDS.cleanReceipt }), (s) => [{ step: 3, names: ['Dinner', 'Charge', 'Reminder'], lines: [1, 1, 1], start: 1, exit: true }, pace(s, 4, 3)]);
   const confirm = () => act(() => covers.confirmAttendance({ planId, attendedNpis: everyone.filter((id) => id !== 'rep' && !absent.has(id)), employeesPresent: absent.has('rep') ? 0 : 1, extraGuests: 0, confirmedBy: plan.repId }), (s) => [{ step: 4, names: ['Who ate'], lines: [1], start: 3, exit: true }, pace(s, 5)]);
@@ -191,7 +200,7 @@ export function DinnerMap({ planId }: { planId: string }) {
 
   const resting = picked ?? (shown === step ? restingStation(stations) : stations.length - 1);
   const target = run?.exit ? 100 : geometry.stops[(run ? run.at : resting) + 1] ?? 0;
-  const visible = (i: number) => !run || run.step !== shown || i < run.seen;
+  const visible = (i: number) => !run || run.step !== shown || (run.recheck ? !run.recheck.includes(i) : i < run.seen);
   const docModel = doc && buildCard(doc, state, documents);
   const caps = settlement?.caps.length ? settlement.caps : evaluation?.caps ?? [];
   const pickedStation = picked !== null ? stations[picked] : undefined;
@@ -224,7 +233,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   }
 
   const DOT = { pass: 'bg-status-ok', flag: 'bg-status-near', block: 'bg-status-over' } as const;
-  const replan = (patch: Parameters<typeof covers.updatePlan>[1]) => act(async () => { await covers.updatePlan(planId, patch); if (evaluation) await covers.evaluatePlan(planId); }, evaluation ? afterCheck : undefined);
+  const replan = (patch: Parameters<typeof covers.updatePlan>[1]) => act(async () => { await covers.updatePlan(planId, patch); if (evaluation) await covers.evaluatePlan(planId); }, evaluation ? afterUpdate : undefined);
   const saveLine = async (lineId: string, patch: Parameters<typeof covers.fixLine>[2]) => {
     setBusy(true); setError(null);
     try { await covers.fixLine(receipt!.id, lineId, patch); await load(); void loadAudit(); }
@@ -309,7 +318,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   const ask = async () => {
     const q = question.trim();
     if (!q || asking) return;
-    const history = chat.slice(-12);
+    const history = chat.slice(-HISTORY_LIMITS.turns).map((m) => ({ ...m, content: m.content.slice(0, HISTORY_LIMITS.chars) }));
     setChat((c) => [...c, { role: 'user', content: q }]); setQuestion(''); setAsking(true);
     try {
       const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ planId, question: q, history }) });
@@ -358,14 +367,14 @@ export function DinnerMap({ planId }: { planId: string }) {
                 </svg>
                 {stations.map((s, i) => {
                   const p = geometry.points[i]!, seen = visible(i), high = i % 2 === 1, mark = seen ? s.mark : 'waiting';
-                  const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0;
+                  const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0 && !seen;
                   const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0;
                   return (
                     <div key={s.name}>
                       <div style={{ left: p.x, top: p.y }} className={`absolute z-5 flex w-37.5 -translate-x-1/2 -translate-y-2.25 flex-col items-center transition-opacity duration-(--motion-duration-base) ease-standard ${zoomed && picked !== i ? 'opacity-0' : ''}`}>
                         <i className={`size-4.5 border transition-colors duration-(--motion-duration-base) ease-standard ${MARK_BOX[mark]} ${run?.at === i && run.step === shown ? 'outline-2 outline-offset-3 outline-ink-primary' : ''}`} />
                         <b className="mt-1.5 text-amount">{s.name}</b>
-                        <small className={`text-small ${MARK_TEXT[mark]}`}>{seen ? s.word ?? MARK_WORD[s.mark] : 'Waiting'}</small>
+                        <small className={`text-small ${MARK_TEXT[mark]}`}>{seen ? s.word ?? MARK_WORD[s.mark] : run?.recheck?.includes(i) ? 'Rechecking' : 'Waiting'}</small>
                       </div>
                       <div style={{ left: p.x, top: p.y }} className={`absolute z-1 w-52.5 max-w-[17vw] -translate-x-1/2 ${high ? '-translate-y-[calc(100%+66px)]' : 'translate-y-16.5'}`}>
                         <button aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)} className={`block w-full origin-bottom cursor-pointer border bg-bg-surface px-2.5 py-2 text-left text-small transition-[opacity,transform,border-color] duration-(--motion-duration-base) ease-standard hover:border-ink-primary ${here ? 'border-ink-primary' : CARD_EDGE[s.mark]} ${zoomed ? 'pointer-events-none opacity-0' : seen || here ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2.5 scale-97 opacity-0'}`}>
