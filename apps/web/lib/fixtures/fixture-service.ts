@@ -3,10 +3,10 @@
 // Must pass the same contract suite as Person A's LiveService.
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  Attendance, CoversError, PlanInput, PlanPatch, ReceiptLine,
+  Attendance, CoversError, PlanInput, PlanPatch, ReceiptLine, StepNoteInput,
   type AuditEvent, type BreakItResult, type CapStatus, type CompileResult, type CoversService, type Ctx, type Evaluation,
-  type FundResult, type Hcp, type PlanView, type ProgramPlan, type ProofBundle, type Receipt, type ReceiptImage, type Rep,
-  type ReplayDiff, type RulePack, type Settlement, type Speaker,
+  type CloseOut, type FundResult, type Hcp, type PlanView, type PolicyDocument, type ProgramPlan, type ProofBundle, type Receipt, type ReceiptImage, type Rep,
+  type ReplayDiff, type RulePack, type Settlement, type Speaker, type StepNote,
 } from '@covers/contract';
 import { cloneSeed, type Fixtures } from '@covers/contract/fixtures';
 import type { SessionStore } from '../store';
@@ -18,6 +18,9 @@ type State = {
   plans: ProgramPlan[];
   evaluations: Record<string, Evaluation>;
   approvals: Record<string, Approval>;
+  denials: Record<string, Approval>;
+  rounds: Record<string, Evaluation[]>;
+  notes: Record<string, StepNote[]>;
   receipts: Record<string, Receipt>;
   settlements: Record<string, Settlement>;
   audit: AuditEvent[];
@@ -29,7 +32,7 @@ function freshState(): State {
     v: 1,
     seed: { company: f.company, reps: f.reps, speakers: f.speakers, hcps: f.hcps, ledger: f.ledger, packs: f.packs, citations: f.citations, sampleReceipts: f.sampleReceipts },
     plans: f.plans,
-    evaluations: {}, approvals: {}, receipts: {}, settlements: {}, audit: [],
+    evaluations: {}, approvals: {}, denials: {}, rounds: {}, notes: {}, receipts: {}, settlements: {}, audit: [],
   };
 }
 
@@ -42,7 +45,8 @@ export class FixtureService implements CoversService {
   // ---- session plumbing ----
 
   private async load(ctx: Ctx): Promise<State> {
-    return (await this.store.get<State>(ctx.sessionId)) ?? freshState();
+    const saved = await this.store.get<Omit<State, 'denials' | 'rounds' | 'notes'> & Partial<State>>(ctx.sessionId);
+    return saved ? { denials: {}, rounds: {}, notes: {}, ...saved } : freshState(); // sessions saved before Nov 8 lack these
   }
 
   /** Load, mutate, save. Every write goes through here and records an audit event. */
@@ -60,9 +64,10 @@ export class FixtureService implements CoversService {
   }
 
   private evaluate(s: State, plan: ProgramPlan): Evaluation {
-    const ev = evaluatePlan(s.seed, plan, s.approvals, new Date().toISOString());
+    const ev = evaluatePlan(s.seed, plan, s.approvals, s.denials, new Date().toISOString());
     plan.status = ev.status;
     s.evaluations[plan.id] = ev;
+    (s.rounds[plan.id] ??= []).push(ev);
     return ev;
   }
 
@@ -121,29 +126,56 @@ export class FixtureService implements CoversService {
   }
 
   async approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
+    return this.decide(ctx, id, checkId, note, 'approved');
+  }
+
+  async denyException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
+    return this.decide(ctx, id, checkId, note, 'denied');
+  }
+
+  /** The latest decision on a check wins. After the dinner it lands on the settlement; before, the plan is re-evaluated. */
+  private decide(ctx: Ctx, id: string, checkId: string, note: string, verdict: 'approved' | 'denied'): Promise<Evaluation> {
     return this.write(ctx, (s, audit) => {
       const plan = this.plan(s, id);
+      const verb = verdict === 'approved' ? 'approve' : 'deny';
+      const decision: Approval = { by: ctx.actorId, note, at: new Date().toISOString() };
+      const record = () => {
+        delete s.approvals[checkId];
+        delete s.denials[checkId];
+        (verdict === 'approved' ? s.approvals : s.denials)[checkId] = decision;
+      };
       const settled = s.settlements[id];
       const exception = settled?.exceptions.find((c) => c.id === checkId);
       if (settled && exception) {
         // After the dinner: the exception lives on the settlement, and the plan closes once none are left open.
-        if (ctx.actorId === plan.repId) throw new CoversError('forbidden', 'The rep on a plan cannot approve its exceptions.');
-        const approval = { by: ctx.actorId, note, at: new Date().toISOString() };
-        s.approvals[checkId] = approval;
-        for (const c of [...settled.exceptions, ...settled.checks]) if (c.id === checkId) c.approval = approval;
-        plan.status = settled.exceptions.every((c) => c.approval) ? 'closed' : 'reconciling';
-        audit({ action: 'exception.approved', planId: id, packId: exception.packId, ruleId: exception.ruleId, inputHash: hash({ checkId, note }), detail: note });
-        return s.evaluations[id] ?? evaluatePlan(s.seed, plan, s.approvals, new Date().toISOString());
+        if (ctx.actorId === plan.repId) throw new CoversError('forbidden', `The rep on a plan cannot ${verb} its exceptions.`);
+        record();
+        for (const c of [...settled.exceptions, ...settled.checks]) {
+          if (c.id !== checkId) continue;
+          delete c.approval;
+          delete c.denial;
+          if (verdict === 'approved') c.approval = decision;
+          else c.denial = decision;
+        }
+        plan.status = settled.exceptions.every((c) => c.approval || c.denial) ? 'closed' : 'reconciling';
+        audit({ action: `exception.${verdict}`, planId: id, packId: exception.packId, ruleId: exception.ruleId, inputHash: hash({ checkId, note }), detail: note });
+        return s.evaluations[id] ?? evaluatePlan(s.seed, plan, s.approvals, s.denials, new Date().toISOString());
       }
       const check = s.evaluations[id]?.checks.find((c) => c.id === checkId);
       if (!check) throw new CoversError('not_found', `Check ${checkId} not found on plan ${id}.`);
-      if (ctx.actorId === plan.repId) throw new CoversError('forbidden', 'The rep on a plan cannot approve its exceptions.');
-      if (check.outcome !== 'flag') throw new CoversError('invalid_state', 'Only flags can be approved. Blocks have to be fixed.');
-      s.approvals[checkId] = { by: ctx.actorId, note, at: new Date().toISOString() };
+      if (ctx.actorId === plan.repId) throw new CoversError('forbidden', `The rep on a plan cannot ${verb} its exceptions.`);
+      if (check.outcome !== 'flag') throw new CoversError('invalid_state', 'Only flags can be decided. Blocks have to be fixed.');
+      record();
       const ev = this.evaluate(s, plan);
-      audit({ action: 'exception.approved', planId: id, packId: check.packId, ruleId: check.ruleId, inputHash: hash({ checkId, note }), detail: note });
+      audit({ action: `exception.${verdict}`, planId: id, packId: check.packId, ruleId: check.ruleId, inputHash: hash({ checkId, note }), detail: note });
       return ev;
     });
+  }
+
+  async listEvaluations(ctx: Ctx, id: string): Promise<Evaluation[]> {
+    const s = await this.load(ctx);
+    this.plan(s, id);
+    return s.rounds[id] ?? [];
   }
 
   async issueFund(ctx: Ctx, id: string): Promise<FundResult> {
@@ -156,6 +188,11 @@ export class FixtureService implements CoversService {
       audit({ action: 'fund.issued', planId: id, inputHash: hash(fund), detail: `Simulated fund, limit ${fund.limitCents} cents` });
       return fund;
     });
+  }
+
+  async checkForCharge(ctx: Ctx, id: string): Promise<CloseOut | null> {
+    this.plan(await this.load(ctx), id);
+    return null; // the fixture card is simulated, so no charge ever appears
   }
 
   // ---- after the dinner ----
@@ -221,6 +258,26 @@ export class FixtureService implements CoversService {
     return (await this.load(ctx)).settlements[planId] ?? null;
   }
 
+  // ---- notes on the record ----
+
+  async addNote(ctx: Ctx, planId: string, input: StepNoteInput): Promise<StepNote> {
+    const parsed = StepNoteInput.safeParse(input);
+    if (!parsed.success) throw new CoversError('validation', parsed.error.issues.map((i) => i.message).join('; '));
+    return this.write(ctx, (s, audit) => {
+      this.plan(s, planId);
+      const note: StepNote = { id: `note-${randomUUID()}`, planId, ...parsed.data, by: ctx.actorId, at: new Date().toISOString() };
+      (s.notes[planId] ??= []).push(note);
+      audit({ action: 'note.added', planId, inputHash: hash(note), detail: `${note.step}${note.target ? ` · ${note.target}` : ''}` });
+      return note;
+    });
+  }
+
+  async listNotes(ctx: Ctx, planId: string): Promise<StepNote[]> {
+    const s = await this.load(ctx);
+    this.plan(s, planId);
+    return s.notes[planId] ?? [];
+  }
+
   // ---- compliance views ----
 
   async listPlans(ctx: Ctx): Promise<ProgramPlan[]> {
@@ -261,6 +318,9 @@ export class FixtureService implements CoversService {
   }
   async getProof(): Promise<ProofBundle> {
     return this.proof();
+  }
+  async listDocuments(): Promise<PolicyDocument[]> {
+    return cloneSeed().documents;
   }
 
   async reset(ctx: Ctx): Promise<void> {

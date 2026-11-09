@@ -66,7 +66,7 @@ export function afterMark(id: CheckerId, settlement: Settlement | null, receipt:
 /** The first flag still waiting on a person: after the dinner if settled, otherwise on the plan. */
 export function openFlag(evaluation: Evaluation | null, settlement: Settlement | null): CheckResult | undefined {
   const checks = settlement ? settlement.exceptions : (evaluation?.checks ?? []);
-  return checks.find((c) => c.outcome === 'flag' && !c.approval);
+  return checks.find((c) => c.outcome === 'flag' && !c.approval && !c.denial);
 }
 
 export const SOURCES: Record<CheckerId, { doc: DocKey; at?: string }[]> = {

@@ -26,6 +26,7 @@ export function evaluatePlan(
   seed: Seedish,
   plan: ProgramPlan,
   approvals: Record<string, Approval>,
+  denials: Record<string, Approval>,
   now: string,
 ): Evaluation {
   const { perPersonCapCents: perPersonCap, annualCapCents: annualCap, nearThresholdPct, repeatTopicFlagAt } = seed.company;
@@ -34,8 +35,9 @@ export function evaluatePlan(
     const cit = citation(seed, c.packId);
     const id = `${plan.id}:${cit.ruleId}:${c.key}`;
     const { key: _key, ...rest } = c;
-    const approval = c.outcome === 'flag' ? approvals[id] : undefined;
-    checks.push({ ...rest, id, ruleId: cit.ruleId, citation: cit, ...(approval ? { approval } : {}) });
+    const denial = c.outcome === 'flag' ? denials[id] : undefined;
+    const approval = c.outcome === 'flag' && !denial ? approvals[id] : undefined;
+    checks.push({ ...rest, id, ruleId: cit.ruleId, citation: cit, ...(approval ? { approval } : {}), ...(denial ? { denial } : {}) });
   };
 
   // P1 speaker eligibility
@@ -112,7 +114,7 @@ export function evaluatePlan(
     }
   }
 
-  const status = checks.some((c) => c.outcome === 'block')
+  const status = checks.some((c) => c.outcome === 'block' || c.denial)
     ? 'blocked'
     : checks.some((c) => c.outcome === 'flag' && !c.approval)
       ? 'needs_approval'
