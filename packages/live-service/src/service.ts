@@ -2,7 +2,7 @@
 // every write through the audit gateway. Ramp, the receipt reader and the Pack lab plug in later (A5–A7).
 import { randomUUID } from 'node:crypto';
 import {
-  CoversError, PlanInput, PlanPatch, StepNoteInput, type StepNote,
+  CoversError, PlanInput, PlanPatch, StepNoteInput, type CloseOut, type StepNote,
   type AuditEvent, type Attendance, type BreakItResult, type CapStatus, type CompileResult, type CoversService, type Ctx,
   type Evaluation, type FundResult, type Hcp, type PlanView, type PolicyDocument, type ProgramPlan, type Receipt,
   type ReceiptImage, type ReceiptLine, type Rep, type ReplayDiff, type RulePack, type Settlement, type Speaker,
@@ -168,7 +168,43 @@ export class LiveService implements CoversService {
 
   async getPlan(ctx: Ctx, id: string): Promise<PlanView> {
     const sid = await this.open(ctx);
-    return { plan: await this.plan(sid, id), evaluation: await getDoc<Evaluation>(this.sql, sid, 'evaluation', id) };
+    const got = await getDocsById(this.sql, sid, ['plan', 'evaluation', 'closeOut'], id); // one query
+    const plan = got.get('plan') as ProgramPlan | undefined;
+    if (!plan) throw new CoversError('not_found', `Plan ${id} not found.`);
+    return { plan, evaluation: (got.get('evaluation') as Evaluation | undefined) ?? null, closeOut: (got.get('closeOut') as CloseOut | undefined) ?? null };
+  }
+
+  async checkForCharge(ctx: Ctx, id: string): Promise<CloseOut | null> {
+    const sid = await this.open(ctx);
+    const got = await getDocsById(this.sql, sid, ['plan', 'rampFund', 'closeOut', 'settlement'], id);
+    const plan = got.get('plan') as ProgramPlan | undefined;
+    if (!plan) throw new CoversError('not_found', `Plan ${id} not found.`);
+    const seen = got.get('closeOut') as CloseOut | undefined;
+    if (seen) return seen;
+    const link = got.get('rampFund') as RampLink | undefined;
+    if (!link || !this.deps.ramp || got.has('settlement')) return null; // simulated card, no Ramp, or already settled
+    return this.noticeCharge(ctx, sid, plan, link);
+  }
+
+  /** Looks for a charge on the plan's card; the first time one appears, records it, audits it and pings Slack (backup). */
+  private async noticeCharge(ctx: Ctx, sid: string, plan: ProgramPlan, link: RampLink): Promise<CloseOut | null> {
+    try {
+      const charge = (await this.deps.ramp!.transactions(link.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+      if (!charge) return null;
+      const closeOut: CloseOut = {
+        chargedCents: charge.amountCents, transactionId: charge.id, seenAt: this.now(),
+        ...(charge.merchantName ? { merchantName: charge.merchantName } : {}),
+      };
+      await write(this.sql, ctx, {
+        action: 'charge.seen', planId: plan.id, input: { transactionId: charge.id },
+        detail: `Card …${link.lastFour} charged $${(charge.amountCents / 100).toFixed(2)}${charge.merchantName ? ` at ${charge.merchantName}` : ''}; rep asked to close out`,
+      }, (tx) => putDoc(tx, sid, 'closeOut', plan.id, closeOut));
+      await this.ping(ctx, plan.id, closeOutMessage(plan, { amountCents: charge.amountCents, merchantName: charge.merchantName }, this.links()));
+      return closeOut;
+    } catch (e) {
+      await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'checkForCharge' }, detail: errText(e) }, async () => {});
+      return null;
+    }
   }
 
   async updatePlan(ctx: Ctx, id: string, patch: PlanPatch): Promise<ProgramPlan> {
@@ -491,27 +527,19 @@ export class LiveService implements CoversService {
    * the first time one appears, ping the rep to close it out. Meant to run on a schedule (scripts/watch-charges.ts);
    * not part of CoversService. Returns the plans it pinged.
    */
-  async sweepCharges(): Promise<{ sessionId: string; planId: string; amountCents: number }[]> {
-    if (!this.deps.ramp || !this.deps.notifier) return [];
+  async sweepCharges(opts: { sessionId?: string } = {}): Promise<{ sessionId: string; planId: string; amountCents: number }[]> {
+    if (!this.deps.ramp) return [];
     const rows = await this.sql<{ session_id: string; id: string; data: RampLink }[]>`
       select f.session_id, f.id, f.data from docs f
       where f.kind = 'rampFund'
-        and not exists (select 1 from docs s where s.session_id = f.session_id and s.id = f.id and s.kind in ('settlement', 'closeOutPinged'))`;
+        ${opts.sessionId ? this.sql`and f.session_id = ${opts.sessionId}` : this.sql``}
+        and not exists (select 1 from docs s where s.session_id = f.session_id and s.id = f.id and s.kind in ('settlement', 'closeOut'))`;
     const pinged: { sessionId: string; planId: string; amountCents: number }[] = [];
     for (const r of rows) {
-      const ctx: Ctx = { sessionId: r.session_id, actorId: 'covers' };
-      try {
-        const charge = (await this.deps.ramp.transactions(r.data.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
-        if (!charge) continue;
-        const plan = await getDoc<ProgramPlan>(this.sql, r.session_id, 'plan', r.id);
-        if (!plan) continue;
-        await write(this.sql, ctx, { action: 'charge.seen', planId: r.id, input: { transactionId: charge.id }, detail: `Card …${r.data.lastFour} charged $${(charge.amountCents / 100).toFixed(2)}; rep pinged to close out` },
-          (tx) => putDoc(tx, r.session_id, 'closeOutPinged', r.id, { transactionId: charge.id }));
-        await this.ping(ctx, r.id, closeOutMessage(plan, { amountCents: charge.amountCents, merchantName: charge.merchantName }, this.links()));
-        pinged.push({ sessionId: r.session_id, planId: r.id, amountCents: charge.amountCents });
-      } catch (e) {
-        await write(this.sql, ctx, { action: 'ramp.failed', planId: r.id, input: { step: 'sweepCharges' }, detail: errText(e) }, async () => {});
-      }
+      const plan = await getDoc<ProgramPlan>(this.sql, r.session_id, 'plan', r.id);
+      if (!plan) continue;
+      const seen = await this.noticeCharge({ sessionId: r.session_id, actorId: 'covers' }, r.session_id, plan, r.data);
+      if (seen) pinged.push({ sessionId: r.session_id, planId: r.id, amountCents: seen.chargedCents });
     }
     return pinged;
   }

@@ -1,7 +1,7 @@
 // Covers shared contract — FROZEN at C0. Additive changes only.
 // Refusals reject with CoversError (see types.ts).
 import type {
-  AuditEvent, Attendance, BreakItResult, CapStatus, CompileResult, Ctx, Evaluation, FundResult,
+  AuditEvent, Attendance, BreakItResult, CapStatus, CloseOut, CompileResult, Ctx, Evaluation, FundResult,
   Hcp, PlanInput, PlanPatch, PlanView, PolicyDocument, ProgramPlan, ProofBundle, Receipt, ReceiptImage, ReceiptLine, Rep, ReplayDiff,
   RulePack, Settlement, Speaker, StepNote, StepNoteInput,
 } from './types';
@@ -24,6 +24,10 @@ export interface CoversService {
   denyException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation>; // added Nov 8. Before the dinner a denied flag blocks the plan
   listEvaluations(ctx: Ctx, id: string): Promise<Evaluation[]>; // added Nov 8: every evaluation round, oldest first; writes no audit event
   issueFund(ctx: Ctx, id: string): Promise<FundResult>; // refuses unless status is 'cleared'
+  // Added Nov 8. Has the dinner's card been charged? Checks the plan's Ramp card; the first time a charge appears it is
+  // recorded (getPlan's closeOut) and audited. Null when there's no charge yet or the card is simulated. The phone page
+  // polls this every few seconds to show the close-out notification.
+  checkForCharge(ctx: Ctx, id: string): Promise<CloseOut | null>;
 
   // after the dinner
   submitReceipt(ctx: Ctx, planId: string, image: ReceiptImage): Promise<Receipt>;

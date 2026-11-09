@@ -161,3 +161,41 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect(st.checks.some((x) => x.ruleId === 'P6.card-charge')).toBe(false);
   });
 });
+
+describe.skipIf(!url)('LiveService: the close-out notice (checkForCharge)', () => {
+  let sql: Sql;
+  beforeAll(async () => { sql = connect(url!); await migrate(sql); });
+  afterAll(async () => { await sql?.end(); });
+
+  it('is null until the card is charged, then records the charge once and shows it on getPlan', async () => {
+    let charged = false;
+    const f = fakeRamp();
+    f.ramp.transactions = async () => (charged ? [{ id: 'tx-9', amountCents: 61_200, state: 'CLEARED', merchantName: 'Alder & Vine' }] : []);
+    const svc = new LiveService({ sql, ramp: f.ramp });
+    const c = { sessionId: `charge-${crypto.randomUUID()}`, actorId: IDS.rep };
+    const { plan } = await svc.getPlan(c, IDS.demoPlan);
+    await svc.updatePlan(c, IDS.demoPlan, { inviteeNpis: plan.inviteeNpis.filter((x) => x !== IDS.ruvane) });
+    await svc.evaluatePlan(c, IDS.demoPlan);
+    expect(await svc.checkForCharge(c, IDS.demoPlan)).toBeNull(); // no card yet
+    await svc.issueFund(c, IDS.demoPlan);
+    expect(await svc.checkForCharge(c, IDS.demoPlan)).toBeNull(); // card, no charge
+    expect((await svc.getPlan(c, IDS.demoPlan)).closeOut).toBeNull();
+
+    charged = true;
+    const seen = await svc.checkForCharge(c, IDS.demoPlan);
+    expect(seen).toMatchObject({ chargedCents: 61_200, merchantName: 'Alder & Vine', transactionId: 'tx-9' });
+    expect(await svc.checkForCharge(c, IDS.demoPlan)).toEqual(seen); // same record, not a new one
+    expect((await svc.getPlan(c, IDS.demoPlan)).closeOut).toEqual(seen);
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).filter((e) => e.action === 'charge.seen')).toHaveLength(1);
+  });
+
+  it('is null for a simulated card', async () => {
+    const svc = new LiveService({ sql });
+    const c = { sessionId: `charge-${crypto.randomUUID()}`, actorId: IDS.rep };
+    const { plan } = await svc.getPlan(c, IDS.demoPlan);
+    await svc.updatePlan(c, IDS.demoPlan, { inviteeNpis: plan.inviteeNpis.filter((x) => x !== IDS.ruvane) });
+    await svc.evaluatePlan(c, IDS.demoPlan);
+    expect((await svc.issueFund(c, IDS.demoPlan)).simulated).toBe(true);
+    expect(await svc.checkForCharge(c, IDS.demoPlan)).toBeNull();
+  });
+});

@@ -135,6 +135,15 @@ export function runContractSuite(name: string, make: Make) {
         expect((await demoPlan(rep)).fundId).toBe(fund.fundId);
       });
 
+      it('has no close-out notice before the card is charged', async () => {
+        await removeRuvane(rep);
+        await svc.evaluatePlan(rep, IDS.demoPlan);
+        await svc.issueFund(rep, IDS.demoPlan);
+        expect(await svc.checkForCharge(rep, IDS.demoPlan)).toBeNull();
+        expect(S.PlanView.parse(await svc.getPlan(rep, IDS.demoPlan)).closeOut ?? null).toBeNull();
+        await expectRefusal(svc.checkForCharge(rep, 'plan-nope'), 'not_found');
+      });
+
       it('refuses to issue a fund for a plan that is not cleared', async () => {
         await svc.evaluatePlan(rep, IDS.demoPlan);
         await expectRefusal(svc.issueFund(rep, IDS.demoPlan), 'invalid_state');

@@ -159,7 +159,21 @@ export const Evaluation = z.object({
 export type Evaluation = z.infer<typeof Evaluation>;
 
 // What getPlan returns: the plan plus its latest stored evaluation (null if never evaluated). Reading never re-evaluates.
-export const PlanView = z.object({ plan: ProgramPlan, evaluation: Evaluation.nullable() });
+// Added Nov 8. The moment the dinner's card is charged: what the phone notification says ("charged $612 at Alder & Vine,
+// snap the receipt and tap who came"). Recorded once, the first time Covers sees a charge on the plan's card.
+export const CloseOut = z.object({
+  chargedCents: Cents,
+  merchantName: z.string().optional(),
+  transactionId: z.string().optional(),
+  seenAt: IsoDateTime,
+});
+export type CloseOut = z.infer<typeof CloseOut>;
+
+export const PlanView = z.object({
+  plan: ProgramPlan,
+  evaluation: Evaluation.nullable(),
+  closeOut: CloseOut.nullable().optional(), // added Nov 8: set once the card has been charged (see checkForCharge)
+});
 export type PlanView = z.infer<typeof PlanView>;
 
 export const ReceiptLine = z.object({
