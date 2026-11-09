@@ -123,6 +123,18 @@ export class FixtureService implements CoversService {
   async approveException(ctx: Ctx, id: string, checkId: string, note: string): Promise<Evaluation> {
     return this.write(ctx, (s, audit) => {
       const plan = this.plan(s, id);
+      const settled = s.settlements[id];
+      const exception = settled?.exceptions.find((c) => c.id === checkId);
+      if (settled && exception) {
+        // After the dinner: the exception lives on the settlement, and the plan closes once none are left open.
+        if (ctx.actorId === plan.repId) throw new CoversError('forbidden', 'The rep on a plan cannot approve its exceptions.');
+        const approval = { by: ctx.actorId, note, at: new Date().toISOString() };
+        s.approvals[checkId] = approval;
+        for (const c of [...settled.exceptions, ...settled.checks]) if (c.id === checkId) c.approval = approval;
+        plan.status = settled.exceptions.every((c) => c.approval) ? 'closed' : 'reconciling';
+        audit({ action: 'exception.approved', planId: id, packId: exception.packId, ruleId: exception.ruleId, inputHash: hash({ checkId, note }), detail: note });
+        return s.evaluations[id] ?? evaluatePlan(s.seed, plan, s.approvals, new Date().toISOString());
+      }
       const check = s.evaluations[id]?.checks.find((c) => c.id === checkId);
       if (!check) throw new CoversError('not_found', `Check ${checkId} not found on plan ${id}.`);
       if (ctx.actorId === plan.repId) throw new CoversError('forbidden', 'The rep on a plan cannot approve its exceptions.');
