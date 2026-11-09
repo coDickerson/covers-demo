@@ -6,6 +6,7 @@
 //   set -a && . ../../.env.local && set +a && ./node_modules/.bin/tsx scripts/try-it.ts 640    card charged $640, flagged
 import { IDS } from '@covers/contract/fixtures';
 import type { CheckResult, Ctx } from '@covers/contract';
+import { createSlackNotifier } from '@covers/integrations';
 import { connect, LiveService, migrate, type RampPort } from '../src/index';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -27,9 +28,14 @@ const ramp: RampPort = {
   async setMemo() {},
 };
 
+// Slack pings go out only when you ask for them: add --slack and have SLACK_WEBHOOK_URL in .env.local.
+const slack = process.argv.includes('--slack') && process.env.SLACK_WEBHOOK_URL
+  ? createSlackNotifier({ webhookUrl: process.env.SLACK_WEBHOOK_URL }) : undefined;
+if (process.argv.includes('--slack') && !slack) console.log('--slack given but SLACK_WEBHOOK_URL is not set; no pings.');
+
 const sql = connect(url);
 await migrate(sql);
-const svc = new LiveService({ sql, ramp, fundUrl: (id) => `https://demo.ramp.com/funds/issued#/d/funds/${id}` });
+const svc = new LiveService({ sql, ramp, fundUrl: (id) => `https://demo.ramp.com/funds/issued#/d/funds/${id}`, ...(slack ? { notifier: slack } : {}) });
 const sessionId = `try-${Date.now()}`;
 const rep: Ctx = { sessionId, actorId: IDS.rep };
 const priya: Ctx = { sessionId, actorId: IDS.compliance };

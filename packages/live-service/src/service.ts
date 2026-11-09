@@ -19,6 +19,8 @@ import bundledProof from '../../../proof/proof.json';
 import { ProofBundle } from '@covers/contract';
 import { ensureSession, getDoc, getDocsById, listDocs, loadKinds, putDoc, putDocs, resetSession, type Seed } from './store';
 
+import { blockedMessage, clearedMessage, closeOutMessage, settledMessage, type SlackMessage } from './slack-messages';
+
 type Decisions = { approvals?: Approval[]; denials?: Approval[] };
 type Verdict = 'approved' | 'denied';
 
@@ -49,12 +51,12 @@ export type LiveDeps = {
   maxReadsPerSession?: number; proofPath?: string; now?: () => string;
   /** The fund's page in Ramp's web app, for "View in Ramp". Real funds only. */
   fundUrl?: (fundId: string) => string;
-  /** Slack pings (A10): before the dinner (blocked or cleared) and after it (settled). Off when absent. */
-  notifier?: { send(text: string): Promise<void> };
+  /** Slack pings (A10): blocked or cleared before the dinner, close out after the charge, settled. Off when absent. */
+  notifier?: { send(msg: SlackMessage): Promise<void> };
+  /** The web app's base URL (no trailing slash), for "Open in Covers" and "Close it out" buttons. */
+  appUrl?: string;
 };
 
-/** Escapes Slack's control characters in user-supplied text (same rule as @covers/integrations slackEscape). */
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
 /** Turns the contract fixtures into store documents. */
@@ -217,12 +219,8 @@ export class LiveService implements CoversService {
     const plan = await this.plan(sid, id);
     const ev = await this.runEvaluation(ctx, sid, plan, 'plan.evaluated', 'Plan evaluated');
     if (ev.status === 'blocked' || ev.status === 'needs_approval') {
-      const first = ev.checks.find((c) => c.outcome === (ev.status === 'blocked' ? 'block' : 'flag'));
-      await this.ping(ctx, id, [
-        `${ev.status === 'blocked' ? 'Blocked' : 'Needs compliance'}: ${esc(plan.title)}`,
-        esc(first?.message ?? ''),
-        'The card stays locked until this is resolved.',
-      ].join('\n'));
+      const reasons = ev.checks.filter((c) => c.outcome === (ev.status === 'blocked' ? 'block' : 'flag'));
+      await this.ping(ctx, id, blockedMessage(plan, ev.status, reasons, this.links()));
     }
     return ev;
   }
@@ -299,11 +297,7 @@ export class LiveService implements CoversService {
     const fund = await this.issueFundInner(ctx, id);
     if (this.deps.notifier) {
       const plan = await this.plan(await this.open(ctx), id);
-      const where = fund.simulated ? 'simulated card' : fund.rampUrl ? `<${fund.rampUrl}|View in Ramp>` : 'Ramp card';
-      await this.ping(ctx, id, [
-        `Cleared: ${esc(plan.title)}`,
-        `Every check passed. Card limit $${(fund.limitCents / 100).toFixed(2)}, restricted to restaurants in Ramp (${where}).`,
-      ].join('\n'));
+      await this.ping(ctx, id, clearedMessage(plan, fund.limitCents, fund.simulated, fund.rampUrl, this.links()));
     }
     return fund;
   }
@@ -475,27 +469,51 @@ export class LiveService implements CoversService {
       { kind: 'plan', id: plan.id, data: { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' } },
     ]));
     if (link && st.charge?.source === 'ramp' && st.charge.transactionId) await this.writeBackToRamp(ctx, sid, plan, a, st, link, st.charge.transactionId);
-    if (this.deps.notifier) {
-      const d = (c: number) => `$${(c / 100).toFixed(2)}`;
-      await this.ping(ctx, plan.id, [
-        `Settled: ${esc(plan.title)}`,
-        `${d(receipt.totalCents)} split over ${st.headcount} who ate: ${d(st.perPersonCents)} each. ${st.openPayments.filter((r) => r.reportable).length} Open Payments rows drafted.`,
-        st.exceptions.length ? `${st.exceptions.length} item(s) for compliance:` : 'Nothing for compliance.',
-        ...st.exceptions.slice(0, 3).map((c) => `• ${esc(c.message)}`),
-      ].join('\n'));
-    }
+    if (this.deps.notifier) await this.ping(ctx, plan.id, settledMessage(plan, receipt.totalCents, st, this.links()));
     return st;
   }
 
+  private links() { return { appUrl: this.deps.appUrl }; }
+
   /** Sends a Slack ping if one is configured. Best effort: failures are audited, never thrown. */
-  private async ping(ctx: Ctx, planId: string, text: string) {
+  private async ping(ctx: Ctx, planId: string, msg: SlackMessage) {
     if (!this.deps.notifier) return;
     try {
-      await this.deps.notifier.send(text);
-      await write(this.sql, ctx, { action: 'slack.sent', planId, input: { text }, detail: text.split('\n')[0]!.slice(0, 120) }, async () => {});
+      await this.deps.notifier.send(msg);
+      await write(this.sql, ctx, { action: 'slack.sent', planId, input: { text: msg.text }, detail: msg.text.slice(0, 120) }, async () => {});
     } catch (e) {
-      await write(this.sql, ctx, { action: 'slack.failed', planId, input: { text }, detail: errText(e) }, async () => {});
+      await write(this.sql, ctx, { action: 'slack.failed', planId, input: { text: msg.text }, detail: errText(e) }, async () => {});
     }
+  }
+
+  /**
+   * The morning-after ping. For every issued Ramp fund whose dinner isn't settled yet, look for a charge on its card;
+   * the first time one appears, ping the rep to close it out. Meant to run on a schedule (scripts/watch-charges.ts);
+   * not part of CoversService. Returns the plans it pinged.
+   */
+  async sweepCharges(): Promise<{ sessionId: string; planId: string; amountCents: number }[]> {
+    if (!this.deps.ramp || !this.deps.notifier) return [];
+    const rows = await this.sql<{ session_id: string; id: string; data: RampLink }[]>`
+      select f.session_id, f.id, f.data from docs f
+      where f.kind = 'rampFund'
+        and not exists (select 1 from docs s where s.session_id = f.session_id and s.id = f.id and s.kind in ('settlement', 'closeOutPinged'))`;
+    const pinged: { sessionId: string; planId: string; amountCents: number }[] = [];
+    for (const r of rows) {
+      const ctx: Ctx = { sessionId: r.session_id, actorId: 'covers' };
+      try {
+        const charge = (await this.deps.ramp.transactions(r.data.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+        if (!charge) continue;
+        const plan = await getDoc<ProgramPlan>(this.sql, r.session_id, 'plan', r.id);
+        if (!plan) continue;
+        await write(this.sql, ctx, { action: 'charge.seen', planId: r.id, input: { transactionId: charge.id }, detail: `Card …${r.data.lastFour} charged $${(charge.amountCents / 100).toFixed(2)}; rep pinged to close out` },
+          (tx) => putDoc(tx, r.session_id, 'closeOutPinged', r.id, { transactionId: charge.id }));
+        await this.ping(ctx, r.id, closeOutMessage(plan, { amountCents: charge.amountCents, merchantName: charge.merchantName }, this.links()));
+        pinged.push({ sessionId: r.session_id, planId: r.id, amountCents: charge.amountCents });
+      } catch (e) {
+        await write(this.sql, ctx, { action: 'ramp.failed', planId: r.id, input: { step: 'sweepCharges' }, detail: errText(e) }, async () => {});
+      }
+    }
+    return pinged;
   }
 
   /**

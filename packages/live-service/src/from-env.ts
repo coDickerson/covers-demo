@@ -93,6 +93,7 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
   const service = new LiveService({
     sql, searchRegistry, ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}), ...(compiler ? { compiler } : {}),
     ...(maxReads ? { maxReadsPerSession: maxReads } : {}), ...(fundUrl ? { fundUrl } : {}), ...(notifier ? { notifier } : {}),
+    ...(env.COVERS_APP_URL ? { appUrl: env.COVERS_APP_URL.replace(/\/$/, '') } : {}),
   });
   return { service, cacheMode: mode, close: () => sql.end() };
 }
