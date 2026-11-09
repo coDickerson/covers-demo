@@ -29,7 +29,7 @@ const ramp: RampPort = {
 
 const sql = connect(url);
 await migrate(sql);
-const svc = new LiveService({ sql, ramp, fundUrl: (id) => `https://demo.ramp.com/funds/${id}` });
+const svc = new LiveService({ sql, ramp, fundUrl: (id) => `https://demo.ramp.com/funds/issued#/d/funds/${id}` });
 const sessionId = `try-${Date.now()}`;
 const rep: Ctx = { sessionId, actorId: IDS.rep };
 const priya: Ctx = { sessionId, actorId: IDS.compliance };

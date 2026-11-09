@@ -302,7 +302,7 @@ export class LiveService implements CoversService {
             displayName: `Covers: ${plan.title}`.slice(0, 80), limitCents, idempotencyKey: `covers-${sid}-${id}-${limitCents}`,
           });
           link = { ...f, limitCents };
-          how = `Ramp fund …${f.lastFour} created (restaurants only)`;
+          how = `Ramp fund …${f.lastFour} created (restricted to restaurants in Ramp)`;
         }
         const fund: FundResult = { fundId: link.fundId, limitCents, ...(this.deps.fundUrl ? { rampUrl: this.deps.fundUrl(link.fundId) } : {}), simulated: false };
         const saved = link;

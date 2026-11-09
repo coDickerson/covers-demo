@@ -36,14 +36,21 @@ Fund limits are integer cents (`minor_unit_conversion_rate: 100`); **transaction
 
 ## Open items
 
-1. **Is the restaurant restriction enforced?** The fund detail panel still says "Can spend on: All categories", and the test
-   charge landed at a grocery merchant, but the demo tool's `random` mode bypasses controls. Rerun the demo tool with
-   `decision_mode = stored_controls` on card `…1273`: a non-restaurant charge should be declined. If it is, that decline is a
-   strong video shot. If not, we say "restriction recorded in Ramp" and don't claim enforcement.
+1. **Is the restaurant restriction enforced? No, not in the sandbox (tested Nov 8).** The Covers fund's panel shows
+   "Allowed categories: Restaurants". Ramp's demo tools (⌘J → Add transactions) created 5 charges on card `…5950` with
+   `decision_mode = stored_controls`, random merchants, max $50. All 5 were approved: Nacha $23.11, 305 Fitness $11.19,
+   Sephora $45.48, Tickets Berlin Under $24.85, MTA $15.99 ($120.62 in all); the fund's Declined tab is empty.
+   **So we say "restricted to restaurants in Ramp", never "only works at restaurants".** The audit log wording follows this.
+   (⌘D opens Ramp's internal staff sign-in, not the demo tools.)
 2. **Demo flow mapping for A6:** create fund at plan creation, **suspended**; unsuspend in `issueFund` only when the plan is
    `cleared`; re-suspend if the plan is edited back to draft. Fund cap = $125 × (invitees + speaker + employees).
 3. **One fund per judge session** would create many sandbox funds; A6 should reuse one fund per session or clean up on reset.
 
+4. **"View in Ramp" link (checked Nov 8):** `https://demo.ramp.com/funds/issued#/d/funds/{fundId}` opens the fund's panel;
+   `{fundId}` is the limit id the API returns. LiveService builds it from `RAMP_BASE_URL`; `RAMP_FUND_URL` overrides it.
+
 ## Sandbox objects created by this spike
+- Fund `599aa4a0-ec0c-432b-9f38-5092521472bb` "Covers: Speaker dinner: Dr. Patel on catheter outcomes", card …5950: now has the
+  5 test charges above ($120.62). Don't use this fund for the dinner demo; a fresh session creates its own fund.
 - Fund `de822829-8120-41ad-9086-cfd2801e30c5` "Covers spike: Speaker dinner (plan-demo)", owner Sawyer Maloney, card …1273
 - Transaction `0474c975-c5d1-447c-a24c-32e137084eb1` ($612.00, cleared) with receipt and memo

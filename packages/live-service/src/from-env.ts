@@ -31,13 +31,14 @@ function explainMisses<T extends object>(o: T, what: string): T {
 /**
  * The fund's page in Ramp's web app. RAMP_FUND_URL overrides it as a template with {fundId}. Otherwise the web host
  * comes from the API host (demo-api.ramp.com → demo.ramp.com, api.ramp.com → app.ramp.com).
- * VERIFY: the /funds/{id} path is a best guess until someone signed in to the sandbox opens one fund and checks.
+ * Path checked in the signed-in sandbox on Nov 8: the Funds list opens the fund's panel from the hash, and the id is
+ * the same limit id the API returns.
  */
 export function rampFundUrl(env: Record<string, string | undefined>): (fundId: string) => string {
   if (env.RAMP_FUND_URL) { const t = env.RAMP_FUND_URL; return (id) => t.replace('{fundId}', encodeURIComponent(id)); }
   const api = new URL(env.RAMP_BASE_URL ?? 'https://demo-api.ramp.com');
   const host = api.host.startsWith('demo-api.') ? api.host.replace('demo-api.', 'demo.') : api.host.replace(/^api\./, 'app.');
-  return (id) => `https://${host}/funds/${encodeURIComponent(id)}`;
+  return (id) => `https://${host}/funds/issued#/d/funds/${encodeURIComponent(id)}`;
 }
 
 export async function createLiveServiceFromEnv(env: Record<string, string | undefined> = process.env) {
