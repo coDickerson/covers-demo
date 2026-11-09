@@ -55,7 +55,7 @@ describe.skipIf(!url)('LiveService + Slack pings', () => {
     expect(json(sent[1]!)).toContain('$875.00');
     expect(buttonUrls(sent[1]!)).toEqual([`${APP}/plans/${IDS.demoPlan}`, 'https://ramp.test/fund-s']);
     expect(sent[2]!.text).toContain('charged $612.00 at Alder & Vine');
-    expect(buttonUrls(sent[2]!)).toEqual([`${APP}/m/${IDS.demoPlan}`]);
+    expect(buttonUrls(sent[2]!)).toEqual([`${APP}/m/${IDS.demoPlan}?s=${c.sessionId}`]); // opens this same sandbox on a phone
     expect(json(sent[3]!)).toContain('$102.00');
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'charge.seen')).toBe(true);
   });

@@ -199,7 +199,7 @@ export class LiveService implements CoversService {
         action: 'charge.seen', planId: plan.id, input: { transactionId: charge.id },
         detail: `Card …${link.lastFour} charged $${(charge.amountCents / 100).toFixed(2)}${charge.merchantName ? ` at ${charge.merchantName}` : ''}; rep asked to close out`,
       }, (tx) => putDoc(tx, sid, 'closeOut', plan.id, closeOut));
-      await this.ping(ctx, plan.id, closeOutMessage(plan, { amountCents: charge.amountCents, merchantName: charge.merchantName }, this.links()));
+      await this.ping(ctx, plan.id, closeOutMessage(plan, { amountCents: charge.amountCents, merchantName: charge.merchantName }, { ...this.links(), sessionId: ctx.sessionId }));
       return closeOut;
     } catch (e) {
       await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'checkForCharge' }, detail: errText(e) }, async () => {});
@@ -355,8 +355,11 @@ export class LiveService implements CoversService {
           how = `Ramp fund …${link.lastFour} unlocked`;
         } else {
           if (link) await this.deps.ramp.lock(link.fundId); // cap changed: retire the old fund
+          // The key names the evaluation that cleared this plan: a double click reuses it (one fund), while a fresh
+          // clearance after "Start this demo over" gets a new key (Ramp refuses a reused key instead of returning the fund).
+          const clearedAt = (await getDoc<Evaluation>(this.sql, sid, 'evaluation', id))?.evaluatedAt ?? '';
           const f = await this.deps.ramp.createFund({
-            displayName: `Covers: ${plan.title}`.slice(0, 80), limitCents, idempotencyKey: `covers-${sid}-${id}-${limitCents}`,
+            displayName: `Covers: ${plan.title}`.slice(0, 80), limitCents, idempotencyKey: `covers-${sid}-${id}-${limitCents}-${clearedAt}`,
           });
           link = { ...f, limitCents };
           how = `Ramp fund …${f.lastFour} created (restricted to restaurants in Ramp)`;

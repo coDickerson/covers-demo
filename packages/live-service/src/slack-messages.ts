@@ -3,7 +3,8 @@
 import type { CheckResult, ProgramPlan, Settlement } from '@covers/contract';
 
 export type SlackMessage = { text: string; blocks?: unknown[] };
-export type Links = { appUrl?: string | undefined };
+/** sessionId: the sandbox the ping is about, so "Close it out" opens that same sandbox on a phone (see apps/web/proxy.ts). */
+export type Links = { appUrl?: string | undefined; sessionId?: string | undefined };
 
 /** Slack's three control characters, for mrkdwn text. */
 export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -68,7 +69,7 @@ export function closeOutMessage(plan: ProgramPlan, charge: { amountCents: number
       header(`:receipt: Close out: ${plan.title}`),
       section(`The card was charged *${money(charge.amountCents)}*${esc(at)}. Snap the receipt and tap who came. It takes about 30 seconds.`),
       context(esc(when(plan))),
-      ...buttons([l.appUrl ? { text: 'Close it out', url: `${l.appUrl}/m/${encodeURIComponent(plan.id)}`, primary: true } : null]),
+      ...buttons([l.appUrl ? { text: 'Close it out', url: `${l.appUrl}/m/${encodeURIComponent(plan.id)}${l.sessionId ? `?s=${encodeURIComponent(l.sessionId)}` : ''}`, primary: true } : null]),
     ],
   };
 }

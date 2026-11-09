@@ -96,7 +96,7 @@ describe('shared seed: the other three dinners on the dashboard', () => {
   it('uses only seed people: every invitee and speaker is a fictional seed record', () => {
     const seeded = new Set([...f.hcps.map((h) => h.npi), ...f.speakers.map((s) => s.hcp.npi)]);
     for (const p of f.plans) {
-      expect(f.reps.some((r) => r.id === p.repId), p.id).toBe(true);
+      expect(p.repId, `${p.id}: the web sandbox always acts as ${IDS.rep}, so only that rep can confirm who came`).toBe(IDS.rep);
       expect(speakerOf(p), p.id).not.toBeNull();
       for (const npi of p.inviteeNpis) expect(seeded.has(npi), `${p.id} ${npi}`).toBe(true);
       expect(p.inviteeNpis, p.id).not.toContain(speakerOf(p)!.hcp.npi);

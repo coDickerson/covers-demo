@@ -9,10 +9,13 @@ const url = process.env.TEST_DATABASE_URL;
 function fakeRamp(opts: { failCreate?: boolean; charges?: boolean } = {}) {
   const log: string[] = [];
   const memos: string[] = [];
+  const keys = new Set<string>();
   let n = 0;
   const ramp: RampPort = {
     async createFund(i) {
       if (opts.failCreate) throw new Error('Ramp down');
+      if (keys.has(i.idempotencyKey)) throw new Error('RampError: Idempotency key already exists'); // what the real sandbox does
+      keys.add(i.idempotencyKey);
       n += 1; log.push(`create ${i.limitCents}`);
       return { fundId: `fund-${n}`, cardId: `card-${n}`, lastFour: '1273', ownerUserId: 'u-biz' };
     },
@@ -43,6 +46,17 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect(fund).toEqual({ fundId: 'fund-1', limitCents: 87_500, simulated: false });
     expect(f.log).toEqual(['create 87500']);
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'fund.issued' && e.detail.includes('…1273'))).toBe(true);
+  });
+
+  it('issues a real fund again after "Start this demo over" (a new idempotency key, not a simulated fallback)', async () => {
+    const f = fakeRamp(); const svc = new LiveService({ sql, ramp: f.ramp }); const c = ctx();
+    await clear(svc, c);
+    expect((await svc.issueFund(c, IDS.demoPlan)).simulated).toBe(false);
+    await svc.reset(c);
+    await clear(svc, c);
+    const again = await svc.issueFund(c, IDS.demoPlan);
+    expect(again).toMatchObject({ fundId: 'fund-2', simulated: false });
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.failed')).toBe(false);
   });
 
   it('locks the fund when the plan is edited, and unlocks the same fund when it clears again', async () => {
