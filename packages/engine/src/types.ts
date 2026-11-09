@@ -1,4 +1,4 @@
-import type { Attendance, Hcp, ProgramPlan, Receipt, Speaker } from '@covers/contract';
+import type { Attendance, Hcp, ProgramPlan, Receipt, Settlement, Speaker } from '@covers/contract';
 import type { CustomPack } from './custom';
 
 export const PACK_IDS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'] as const;
@@ -54,4 +54,8 @@ export type EvaluateInput = {
   now: string;
 };
 
-export type SettleInput = Omit<EvaluateInput, 'approvals'> & { receipt: Receipt; attendance: Attendance };
+export type SettleInput = Omit<EvaluateInput, 'approvals'> & {
+  receipt: Receipt; attendance: Attendance;
+  /** The card charge, when known. A charge read from Ramp is checked against the printed total (P6.card-charge). */
+  charge?: Settlement['charge'];
+};

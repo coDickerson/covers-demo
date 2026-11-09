@@ -10,6 +10,27 @@ const input = (over: Partial<Parameters<typeof settle>[0]> = {}) => ({
 });
 const find = (s: Settlement, id: string) => s.checks.find((c) => c.id === id);
 
+describe('settle: the card charge', () => {
+  it('passes P6.card-charge when the Ramp charge matches the printed total, and keeps the charge', () => {
+    const s = settle(input({ charge: { amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' } }));
+    expect(find(s, 'P6.card-charge:plan')?.outcome).toBe('pass');
+    expect(s.charge).toEqual({ amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' });
+    expect(() => Settlement.parse(s)).not.toThrow();
+  });
+
+  it('flags a Ramp charge that differs from the printed total, without changing the split', () => {
+    const s = settle(input({ charge: { amountCents: 64_000, source: 'ramp' } }));
+    expect(find(s, 'P6.card-charge:plan')?.outcome).toBe('flag');
+    expect(s.exceptions.some((c) => c.id === 'P6.card-charge:plan')).toBe(true);
+    expect(s.perPersonCents).toBe(10_200);
+  });
+
+  it('does not check a simulated charge, and omits the charge when none is given', () => {
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'simulated' } })), 'P6.card-charge:plan')).toBeUndefined();
+    expect(settle(input()).charge).toBeUndefined();
+  });
+});
+
 describe('settle: the scripted dinner', () => {
   const s = settle(input());
 

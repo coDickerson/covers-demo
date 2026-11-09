@@ -28,6 +28,18 @@ function explainMisses<T extends object>(o: T, what: string): T {
   return out as T;
 }
 
+/**
+ * The fund's page in Ramp's web app. RAMP_FUND_URL overrides it as a template with {fundId}. Otherwise the web host
+ * comes from the API host (demo-api.ramp.com → demo.ramp.com, api.ramp.com → app.ramp.com).
+ * VERIFY: the /funds/{id} path is a best guess until someone signed in to the sandbox opens one fund and checks.
+ */
+export function rampFundUrl(env: Record<string, string | undefined>): (fundId: string) => string {
+  if (env.RAMP_FUND_URL) { const t = env.RAMP_FUND_URL; return (id) => t.replace('{fundId}', encodeURIComponent(id)); }
+  const api = new URL(env.RAMP_BASE_URL ?? 'https://demo-api.ramp.com');
+  const host = api.host.startsWith('demo-api.') ? api.host.replace('demo-api.', 'demo.') : api.host.replace(/^api\./, 'app.');
+  return (id) => `https://${host}/funds/${encodeURIComponent(id)}`;
+}
+
 export async function createLiveServiceFromEnv(env: Record<string, string | undefined> = process.env) {
   const url = env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is required for COVERS_MODE=live');
@@ -74,9 +86,10 @@ export async function createLiveServiceFromEnv(env: Record<string, string | unde
   const compiler = compilerCached && replay ? explainMisses(compilerCached, 'rule compile') : compilerCached;
 
   const maxReads = env.COVERS_MAX_READS_PER_SESSION ? Number(env.COVERS_MAX_READS_PER_SESSION) : undefined;
+  const fundUrl = ramp ? rampFundUrl(env) : undefined;
   const service = new LiveService({
     sql, searchRegistry, ...(ramp ? { ramp } : {}), ...(reader ? { reader } : {}), ...(compiler ? { compiler } : {}),
-    ...(maxReads ? { maxReadsPerSession: maxReads } : {}),
+    ...(maxReads ? { maxReadsPerSession: maxReads } : {}), ...(fundUrl ? { fundUrl } : {}),
   });
   return { service, cacheMode: mode, close: () => sql.end() };
 }

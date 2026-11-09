@@ -30,6 +30,7 @@ const RULES = {
   'P5.alcohol': { pack: 'P5', label: 'HHS-OIG Special Fraud Alert, Nov 16 2020: alcohol available at the program', url: OIG_SPEAKER_ALERT },
   'P5.non-hcp-guest': { pack: 'P5', label: 'HHS-OIG Special Fraud Alert, Nov 16 2020: attendees without a legitimate business reason, such as friends, significant others or family members', url: OIG_SPEAKER_ALERT },
   'P6.reconcile': { pack: 'P6', label: '42 CFR 403.904(g)(1): per-person value is calculated from the entire cost of the meal', url: CFR_403_904 },
+  'P6.card-charge': { pack: 'P6', label: 'Halden Medical meals policy: the card charge must match the itemized receipt (fictional company policy)', url: undefined },
   'P6.covers': { pack: 'P6', label: '42 CFR 403.904(g)(1): divide the entire cost by everyone who ate, covered recipients or not', url: CFR_403_904 },
   'P6.line-confidence': { pack: 'P6', label: 'Covers receipt policy: lines read below the confidence gate are confirmed by a person', url: undefined },
   'P6.open-payments': { pack: 'P6', label: 'CMS Open Payments: food and beverage, in kind; program year 2026 thresholds $13.82 per payment / $138.13 a year', url: CMS_OPEN_PAYMENTS },

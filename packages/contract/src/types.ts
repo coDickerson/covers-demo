@@ -168,6 +168,13 @@ export const Settlement = z.object({
   caps: z.array(CapStatus),
   openPayments: z.array(OpenPaymentsRow),
   exceptions: z.array(CheckResult), // what goes to finance
+  // Added Nov 8. The dinner's card charge. 'ramp' = read from the fund's card in Ramp; 'simulated' = no card data,
+  // so the printed total stands in (label it as simulated). Absent when a Ramp fund exists but no charge was found.
+  charge: z.object({
+    amountCents: Cents,
+    source: z.enum(['ramp', 'simulated']),
+    transactionId: z.string().optional(),
+  }).optional(),
 });
 export type Settlement = z.infer<typeof Settlement>;
 

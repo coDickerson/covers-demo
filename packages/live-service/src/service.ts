@@ -44,7 +44,12 @@ export type ReceiptReaderPort = {
 type StoredImage = { base64: string; mime: string; hash: string };
 type RampLink = { fundId: string; cardId: string; lastFour: string; ownerUserId: string; limitCents: number };
 
-export type LiveDeps = { sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; compiler?: PackCompilerPort; maxReadsPerSession?: number; proofPath?: string; now?: () => string };
+export type LiveDeps = {
+  sql: Sql; seed?: () => Seed; searchRegistry?: HcpSearch; ramp?: RampPort; reader?: ReceiptReaderPort; compiler?: PackCompilerPort;
+  maxReadsPerSession?: number; proofPath?: string; now?: () => string;
+  /** The fund's page in Ramp's web app, for "View in Ramp". Real funds only. */
+  fundUrl?: (fundId: string) => string;
+};
 
 const errText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
@@ -299,7 +304,7 @@ export class LiveService implements CoversService {
           link = { ...f, limitCents };
           how = `Ramp fund …${f.lastFour} created (restaurants only)`;
         }
-        const fund: FundResult = { fundId: link.fundId, limitCents, simulated: false };
+        const fund: FundResult = { fundId: link.fundId, limitCents, ...(this.deps.fundUrl ? { rampUrl: this.deps.fundUrl(link.fundId) } : {}), simulated: false };
         const saved = link;
         await write(this.sql, ctx, { action: 'fund.issued', planId: id, input: fund, detail: `${how}, limit ${limitCents} cents` }, async (tx) => {
           await putDoc(tx, sid, 'rampFund', id, saved);
@@ -330,17 +335,11 @@ export class LiveService implements CoversService {
     }
   }
 
-  /** After settlement, writes the attendee memo onto the Ramp charge. Best effort, audited. */
-  private async writeBackToRamp(ctx: Ctx, sid: string, plan: ProgramPlan, a: Attendance, st: Settlement) {
-    const link = this.deps.ramp ? await getDoc<RampLink>(this.sql, sid, 'rampFund', plan.id) : null;
-    if (!link || !this.deps.ramp) return;
+  /** After settlement, writes the attendee memo onto the Ramp charge found by readCharge. Best effort, audited. */
+  private async writeBackToRamp(ctx: Ctx, sid: string, plan: ProgramPlan, a: Attendance, st: Settlement, link: RampLink, transactionId: string) {
+    if (!this.deps.ramp) return;
+    const charge = { id: transactionId, amountCents: st.charge!.amountCents };
     try {
-      const charges = (await this.deps.ramp.transactions(link.cardId)).filter((t) => t.state === 'CLEARED' || t.state === 'PENDING');
-      const charge = charges[0];
-      if (!charge) {
-        await write(this.sql, ctx, { action: 'ramp.no_transaction', planId: plan.id, input: { cardId: link.cardId }, detail: `No charge yet on card …${link.lastFour}` }, async () => {});
-        return;
-      }
       const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
       const memo = [
         `Covers ${plan.id}: ${plan.title}`,
@@ -431,7 +430,9 @@ export class LiveService implements CoversService {
     const receipt = await getDoc<Receipt>(this.sql, sid, 'receipt', plan.id);
     if (!receipt) throw new CoversError('invalid_state', 'Submit the receipt before confirming attendance.');
 
-    const st = settle({ ...(await this.facts(sid, plan)), receipt, attendance: a });
+    const link = this.deps.ramp ? await getDoc<RampLink>(this.sql, sid, 'rampFund', plan.id) : null;
+    const charge = await this.readCharge(ctx, plan, link, receipt);
+    const st = settle({ ...(await this.facts(sid, plan)), receipt, attendance: a, ...(charge ? { charge } : {}) });
     const shares = new Map(st.byPerson.filter((p) => p.npi).map((p) => [p.npi!, p.amountCents]));
     const ledger = await listDocs<LedgerSeed>(this.sql, sid, 'ledger');
     const day = plan.date.slice(0, 10);
@@ -446,8 +447,25 @@ export class LiveService implements CoversService {
       { kind: 'settlement', id: plan.id, data: st },
       { kind: 'plan', id: plan.id, data: { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' } },
     ]));
-    await this.writeBackToRamp(ctx, sid, plan, a, st);
+    if (link && st.charge?.source === 'ramp' && st.charge.transactionId) await this.writeBackToRamp(ctx, sid, plan, a, st, link, st.charge.transactionId);
     return st;
+  }
+
+  /**
+   * The dinner's card charge. Without a Ramp fund the printed total stands in, labeled 'simulated'. With one, the first
+   * cleared or pending charge on its card; if there is none, or Ramp fails, the settlement has no charge and the
+   * audit log says why.
+   */
+  private async readCharge(ctx: Ctx, plan: ProgramPlan, link: RampLink | null, receipt: Receipt): Promise<Settlement['charge']> {
+    if (!link || !this.deps.ramp) return { amountCents: receipt.totalCents, source: 'simulated' };
+    try {
+      const charge = (await this.deps.ramp.transactions(link.cardId)).find((t) => t.state === 'CLEARED' || t.state === 'PENDING');
+      if (charge) return { amountCents: charge.amountCents, source: 'ramp', transactionId: charge.id };
+      await write(this.sql, ctx, { action: 'ramp.no_transaction', planId: plan.id, input: { cardId: link.cardId }, detail: `No charge yet on card …${link.lastFour}` }, async () => {});
+    } catch (e) {
+      await write(this.sql, ctx, { action: 'ramp.failed', planId: plan.id, input: { step: 'transactions' }, detail: errText(e) }, async () => {});
+    }
+    return undefined;
   }
 
   async getSettlement(ctx: Ctx, planId: string): Promise<Settlement | null> {

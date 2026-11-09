@@ -97,6 +97,44 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
       planId: IDS.demoPlan, attendedNpis: [IDS.patel, IDS.okafor], employeesPresent: 1, extraGuests: 0, confirmedBy: IDS.rep,
     });
     expect(st.headcount).toBe(3);
+    expect(st.charge).toBeUndefined();
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.no_transaction')).toBe(true);
+  });
+
+  it('sets the "View in Ramp" link on a real fund', async () => {
+    const f = fakeRamp(); const c = ctx();
+    const svc = new LiveService({ sql, ramp: f.ramp, fundUrl: (id) => `https://demo.ramp.com/funds/${id}` });
+    await clear(svc, c);
+    expect(await svc.issueFund(c, IDS.demoPlan)).toEqual({ fundId: 'fund-1', limitCents: 87_500, rampUrl: 'https://demo.ramp.com/funds/fund-1', simulated: false });
+  });
+
+  const settleWith = async (svc: LiveService, c: ReturnType<typeof ctx>) => {
+    await clear(svc, c);
+    await svc.issueFund(c, IDS.demoPlan);
+    await svc.submitReceipt(c, IDS.demoPlan, { sampleId: IDS.cleanReceipt });
+    return svc.confirmAttendance(c, {
+      planId: IDS.demoPlan, attendedNpis: [IDS.patel, IDS.okafor, IDS.lindqvist, IDS.brennick, IDS.ellery],
+      employeesPresent: 1, extraGuests: 0, confirmedBy: IDS.rep,
+    });
+  };
+
+  it('records the Ramp charge on the settlement and checks it against the printed total', async () => {
+    const st = await settleWith(new LiveService({ sql, ramp: fakeRamp().ramp }), ctx());
+    expect(st.charge).toEqual({ amountCents: 61_200, source: 'ramp', transactionId: 'tx-1' });
+    expect(st.checks.find((x) => x.ruleId === 'P6.card-charge')?.outcome).toBe('pass');
+  });
+
+  it('flags a card charge that does not match the receipt', async () => {
+    const f = fakeRamp(); f.ramp.transactions = async () => [{ id: 'tx-2', amountCents: 64_000, state: 'CLEARED' }];
+    const st = await settleWith(new LiveService({ sql, ramp: f.ramp }), ctx());
+    const check = st.exceptions.find((x) => x.ruleId === 'P6.card-charge');
+    expect(check?.outcome).toBe('flag');
+    expect(check?.message).toContain('$640');
+  });
+
+  it('without Ramp, labels the printed total as a simulated charge', async () => {
+    const st = await settleWith(new LiveService({ sql }), ctx());
+    expect(st.charge).toEqual({ amountCents: 61_200, source: 'simulated' });
+    expect(st.checks.some((x) => x.ruleId === 'P6.card-charge')).toBe(false);
   });
 });
