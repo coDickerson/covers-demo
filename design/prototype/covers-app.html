@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Covers Dinners</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root { --ink:#141414; --ink2:#4A4744; --mute:#7A7672; --line:#E2DED9; --paper:#FBFAF8; --white:#fff; --over:#D93A26; --ok:#2B7A4B; --near:#A86A00; --volt:#E4F222; --band:#F1EFEA; --ease:cubic-bezier(.2,0,0,1); }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--paper); }
+body { font: 400 17px/1.35 'Inter Tight', system-ui, sans-serif; color: var(--ink); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+#stage { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; background: var(--paper); overflow: hidden; }
+
+#bar { position: absolute; left: 40px; right: 40px; height: 52px; display: flex; align-items: center; gap: 28px; padding: 0 8px 0 28px; background: var(--white); border-radius: 999px; box-shadow: 0 2px 14px rgba(20,20,20,.1); z-index: 5; }
+#bar { top: 12px; border: 1px solid var(--line); }
+#bar .home { font-size: 21px; font-weight: 700; letter-spacing: -.02em; margin-right: 18px; }
+#bar .item { color: var(--mute); font-size: 17px; padding: 6px 0; border-bottom: 2px solid transparent; }
+#bar .item:hover { color: var(--ink); }
+#bar .item.on { color: var(--ink); font-weight: 700; border-color: var(--ink); }
+#bar .sp { flex: 1; }
+#bar .new { order: 2; border-radius: 999px; font-weight: 600; padding: 8px 18px; background: var(--volt); border: 1px solid var(--ink); }
+#bar .new:hover { background: var(--ink); color: var(--volt); }
+#bar .role { font-size: 16px; color: var(--ink2); }
+#bar .sp { order: 0; }
+#bar .role:hover { color: var(--ink); }
+
+#main { position: absolute; left: 0; right: 0; height: 828px; }
+#main { top: 72px; } #page { position: absolute; inset: 0; overflow-y: auto; padding: 14px 40px 12px; transition: opacity 180ms var(--ease); }
+[hidden] { display: none !important; }
+
+.filters { display: flex; align-items: baseline; gap: 46px; }
+.filters button { display: flex; align-items: baseline; gap: 10px; padding-bottom: 5px; border-bottom: 3px solid transparent; color: var(--mute); font-size: 20px; }
+.filters button b { font: 500 42px/1 'JetBrains Mono'; letter-spacing: -.04em; color: var(--ink); }
+.filters button.need b { color: var(--over); }
+.filters button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.filters button:hover { color: var(--ink); }
+.filters .note { margin-left: auto; font-size: 14px; color: var(--mute); align-self: center; }
+
+.grid { display: grid; grid-template-columns: 372px repeat(7, 96px) 1fr; align-items: center; column-gap: 0; }
+.head { margin-top: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); font-size: 14px; color: var(--mute); font-weight: 600; }
+.head span { text-align: center; }
+.head span:first-child, .head span:last-child { text-align: left; }
+.head span:last-child { padding-left: 34px; }
+.dsec { font-size: 14px; font-weight: 700; padding: 12px 0 3px; }
+.dsec.need { color: var(--over); }
+.row { width: 100%; height: 48px; border-bottom: 1px solid var(--line); }
+.row:hover { background: var(--white); }
+.what { min-width: 0; padding-left: 6px; }
+.what b { display: block; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+.what small { display: block; font-size: 14px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell { position: relative; height: 48px; display: flex; align-items: center; justify-content: center; }
+.cell::before, .cell::after { content: ''; position: absolute; top: 30px; height: 1px; width: 50%; background: var(--line); }
+.cell::before { left: 0; } .cell::after { right: 0; }
+.cell.first::before, .cell.last::after { display: none; }
+.cell.pl::before, .cell.pr::after { background: var(--ink); }
+.dot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 12px; background: var(--paper); border: 1px solid var(--line); }
+.row:hover .dot { background: var(--white); }
+.dot.d, .row:hover .dot.d { background: var(--ink); border-color: var(--ink); }
+.bell { position: relative; z-index: 1; width: 24px; margin-top: -4px; }
+.bell svg { display: block; width: 24px; shape-rendering: crispEdges; }
+.bell i { position: absolute; left: 19px; top: -7px; width: 15px; height: 15px; background: var(--over); color: #fff; font: 700 11px/15px 'Inter Tight'; font-style: normal; text-align: center; }
+.head { position: sticky; top: -14px; background: var(--paper); z-index: 3; padding-top: 8px; }
+.both .row > .cell:nth-child(odd), .bands .row > .cell:nth-child(odd), .both .head > span:nth-child(odd):not(:first-child):not(:last-child), .bands .head > span:nth-child(odd):not(:first-child):not(:last-child) { background: var(--band); }
+.head > span { padding-block: 4px; }
+.bell small { display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--ink); }
+.both .bell small, .names .bell small { display: block; }
+.say { padding-left: 34px; font-size: 16px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.say.over { color: var(--over); font-weight: 600; } .say.near { color: var(--near); font-weight: 600; } .say.ok { color: var(--ok); }
+.donebar { display: block; width: 100%; padding: 15px 6px; border-bottom: 1px solid var(--line); color: var(--ink2); }
+.donebar:hover { background: var(--white); color: var(--ink); }
+.more { padding: 12px 6px; font-size: 15px; color: var(--mute); }
+
+.stub { padding-top: 220px; text-align: center; }
+.stub h1 { font-size: 40px; letter-spacing: -.03em; }
+.stub p { margin-top: 8px; color: var(--ink2); font-size: 19px; }
+#mockctl { position: absolute; right: 18px; z-index: 6; display: flex; gap: 10px; align-items: center; padding: 7px 11px; background: var(--white); border: 1px dashed var(--mute); font-size: 14px; color: var(--mute); }
+#mockctl { bottom: 16px; } #mockctl button { font-weight: 500; color: var(--mute); }
+#mockctl button.on { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+:root { --ink:#141414; --ink2:#4A4744; --mute:#7A7672; --line:#E2DED9; --paper:#FBFAF8; --white:#fff; --over:#D93A26; --ok:#2B7A4B; --near:#A86A00; --volt:#E4F222; --tint:#F6FAB4; --ease:cubic-bezier(.2,0,0,1); }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--paper); }
+body { font: 400 16px/1.4 'Inter Tight', system-ui, sans-serif; color: var(--ink); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+#stage { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; background: var(--paper); }
+
+/* top */
+.top { position: absolute; left: 40px; top: 26px; width: 1120px; display: flex; gap: 12px; align-items: baseline; font-size: 18px; }
+.top b { font-size: 20px; } .top .s { color: var(--line); } .top span { color: var(--ink2); }
+.route { position: absolute; left: 40px; top: 74px; width: 1120px; display: grid; grid-template-columns: repeat(7, 1fr); }
+.route::before { content: ''; position: absolute; left: calc(100% / 14); right: calc(100% / 14); top: 6px; height: 1px; background: var(--line); }
+.stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 15px; color: var(--mute); }
+.stop i { width: 13px; height: 13px; background: var(--paper); border: 1px solid var(--line); }
+.stop.done { color: var(--ink); } .stop.done i { background: var(--ink); border-color: var(--ink); }
+.stop.now { color: var(--ink); font-weight: 700; } .stop.now i { background: var(--volt); border-color: var(--ink); }
+
+/* map */
+#map { position: absolute; left: 0; top: 0; width: 1200px; height: 900px; }
+#map svg.ln { position: absolute; inset: 0; width: 1200px; height: 900px; }
+.station { position: absolute; width: 180px; margin-left: -90px; display: flex; flex-direction: column; align-items: center; }
+.node { width: 26px; height: 26px; margin-top: -13px; background: var(--paper); border: 1px solid var(--mute); transition: background 240ms var(--ease), border-color 240ms var(--ease); }
+.station.clear .node { background: var(--ok); border-color: var(--ok); }
+.station.blocked .node { background: var(--over); border-color: var(--over); }
+.station.flagged .node { background: var(--near); border-color: var(--near); }
+.station.later .node { background: var(--line); border-color: var(--line); }
+.station.on .node { outline: 2px solid var(--ink); outline-offset: 3px; }
+.name { font-size: 19px; font-weight: 700; margin-top: 12px; letter-spacing: -.01em; }
+.state { font-size: 15px; color: var(--mute); }
+.station.clear .state { color: var(--ok); font-weight: 600; }
+.station.blocked .state { color: var(--over); font-weight: 700; }
+.station.flagged .state { color: var(--near); font-weight: 700; }
+
+.card { position: absolute; width: 176px; margin-left: -88px; background: var(--white); border: 1px solid var(--line); padding: 10px 11px; font-size: 14px; line-height: 1.3; opacity: 0; transform: translateY(10px) scale(.97); transform-origin: 50% 100%; transition: opacity 240ms var(--ease), transform 240ms var(--ease), border-color 240ms var(--ease); display: block; width: 176px; }
+.card.in { opacity: 1; transform: none; }
+.card.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.card.blocked { border-color: var(--over); box-shadow: 0 0 0 1px var(--over); }
+.card.flagged { border-color: var(--near); }
+.card .k { display: block; font-size: 12px; font-weight: 600; color: var(--mute); margin-bottom: 5px; }
+.card .r { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; opacity: 0; transition: opacity 160ms var(--ease); }
+.card .r.in { opacity: 1; }
+.card .r span:last-child { font-family: 'JetBrains Mono'; font-size: 13px; text-align: right; }
+.card .r.t { font-weight: 700; border-top: 1px solid var(--ink); margin-top: 3px; padding-top: 4px; }
+.card .r.bad span { color: var(--over); }
+.card .r.warn span { color: var(--near); }
+.card .note { display: block; }
+.dots { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.dots i { width: 16px; height: 16px; background: var(--line); transition: background 120ms var(--ease); }
+.dots i.y { background: var(--ok); }
+
+#sprite { position: absolute; left: 0; top: 0; width: 36px; height: 36px; margin: -50px 0 0 -18px; pointer-events: none; z-index: 5; }
+#sprite svg { position: absolute; left: 0; bottom: 0; width: 36px; shape-rendering: crispEdges; }
+#sprite.hop svg { animation: hop 300ms var(--ease); }
+@keyframes hop { 40% { transform: translateY(-12px); } }
+#badge { position: absolute; z-index: 2; left: 28px; top: -12px; width: 20px; height: 20px; background: var(--over); color: #fff; font: 700 14px/20px 'Inter Tight'; text-align: center; opacity: 0; transform: scale(.4); transition: opacity 160ms var(--ease), transform 160ms var(--ease); }
+#badge.in { opacity: 1; transform: none; }
+
+.ask { position: absolute; left: 448px; top: 690px; width: 480px; background: var(--white); border: 1px solid var(--ink); padding: 16px 18px; opacity: 0; transform: translateY(10px); transition: opacity 240ms var(--ease), transform 240ms var(--ease); pointer-events: none; z-index: 6; }
+.ask.in { opacity: 1; transform: none; pointer-events: auto; }
+.ask h3 { font-size: 21px; line-height: 1.2; letter-spacing: -.02em; }
+.ask p { font-size: 16px; color: var(--ink2); margin-top: 4px; }
+.opts { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
+.go { font-weight: 600; padding: 11px 15px; background: var(--volt); border: 1px solid var(--ink); }
+.go:hover { background: var(--ink); color: var(--volt); }
+.off { padding: 8px 12px; border: 1px solid var(--line); color: var(--mute); font-size: 14px; line-height: 1.2; cursor: default; }
+.tiny { position: absolute; left: 40px; bottom: 22px; display: flex; gap: 18px; font-size: 15px; color: var(--mute); }
+.tiny button:hover { color: var(--ink); }
+
+/* column */
+#col { position: absolute; left: 1200px; top: 0; width: 400px; height: 900px; background: var(--white); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+#colhead { padding: 28px 26px 14px; border-bottom: 1px solid var(--line); }
+#colhead b { display: block; font-size: 21px; letter-spacing: -.02em; }
+#colhead span { font-size: 14px; color: var(--mute); }
+#colbody { flex: 1; overflow-y: auto; padding: 8px 26px 24px; }
+.entry { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 16px; line-height: 1.38; }
+.entry .who { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--mute); margin-bottom: 3px; }
+.entry p { min-height: 22px; }
+.entry.you { background: var(--tint); margin: 0 -12px; padding: 12px; border-bottom: 0; }
+.lnk { text-decoration: underline; text-decoration-color: var(--mute); text-underline-offset: 3px; }
+.lnk:hover { text-decoration-color: var(--ink); }
+.back { font-size: 14px; color: var(--ink2); margin-bottom: 10px; display: block; }
+.tabs { display: flex; gap: 14px; margin-top: 12px; font-size: 15px; }
+.tabs button { color: var(--mute); padding-bottom: 3px; border-bottom: 2px solid transparent; }
+.tabs button.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+.sec { margin-top: 18px; }
+.sec h4 { font-size: 13px; font-weight: 600; color: var(--mute); margin-bottom: 4px; }
+.sec p, .sec li { font-size: 16px; line-height: 1.38; }
+.sec ul { padding-left: 16px; }
+.line { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.line span:last-child { font-family: 'JetBrains Mono'; font-size: 14px; text-align: right; }
+.line.hl { background: var(--tint); margin: 0 -8px; padding: 7px 8px; }
+.gap { border: 1px dashed var(--mute); padding: 12px; font-size: 15px; color: var(--ink2); }
+.d p { padding: 8px 10px; margin: 0 -10px 4px; font-size: 16px; }
+.d p.hl { background: var(--tint); }
+
+#scene { position: absolute; inset: 0; transition: opacity 240ms var(--ease), transform 240ms var(--ease); }
+#scene.out { opacity: 0; transform: translateX(-36px); }
+#scene.pre { opacity: 0; transform: translateX(36px); transition: none; }
+.top .sp { flex: 1; } .top .role { font-size: 16px; color: var(--ink2); }
+.stop.open { cursor: pointer; } .stop.view span { text-decoration: underline; text-underline-offset: 3px; }
+.station.done .node { background: var(--ink); border-color: var(--ink); }
+.station.done .state { color: var(--ink); font-weight: 600; }
+.ask .who { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 20px; margin-top: 8px; font-size: 16px; }
+.ask .who button { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.ask .who button.no { color: var(--mute); text-decoration: line-through; }
+.ask .sum { display: flex; justify-content: space-between; font-weight: 700; margin-top: 8px; }
+.ask input { width: 100%; font: inherit; border: 1px solid var(--ink); padding: 9px 10px; margin-top: 10px; background: #fff; }
+.ask .plain { font-weight: 600; padding: 11px 15px; border: 1px solid var(--ink); }
+.ask { left: var(--askx, 448px); top: var(--asky, 690px); width: var(--askw, 480px); }
+.pick { display: flex; align-items: center; gap: 6px; }
+.pick button { width: 40px; height: 36px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 2px solid transparent; padding-bottom: 3px; }
+.pick button.on { border-bottom-color: var(--ink); }
+.pick svg { width: 24px; shape-rendering: crispEdges; }
+.step-h { padding: 14px 0 2px; font-size: 13px; font-weight: 700; color: var(--ink); border-bottom: 1px solid var(--ink); }
+#stage { overflow: hidden; }
+#map { transition: transform 280ms var(--ease); transform: translateX(200px); }
+#flow.col #map { transform: none; }
+#col { transition: transform 280ms var(--ease); transform: translateX(101%); }
+#flow.col #col { transform: none; }
+#colhead .x, #exp .x { float: right; font-size: 24px; line-height: 1; padding: 0 4px; }
+#trailbtn { position: absolute; right: 36px; top: 28px; font-size: 16px; font-weight: 600; padding: 8px 12px; border: 1px solid var(--ink); background: var(--white); z-index: 8; }
+#trailbtn:hover { background: var(--ink); color: var(--paper); }
+#cap { position: absolute; left: 150px; width: 900px; top: 642px; text-align: center; font-size: 18px; color: var(--ink2); min-height: 26px; transition: opacity 160ms var(--ease); }
+.ask.in ~ #cap { opacity: 0; }
+#exp { position: absolute; width: 760px; background: var(--white); border: 1px solid var(--ink); padding: 18px 22px 20px; z-index: 7; overflow-y: auto; opacity: 0; transform: scale(.72); pointer-events: none; transition: opacity 200ms var(--ease), transform 240ms var(--ease); }
+#exp.in { opacity: 1; transform: none; pointer-events: auto; }
+.xt { font-size: 24px; letter-spacing: -.02em; display: block; } .xm { font-size: 14px; color: var(--mute); }
+.xb { columns: 2; column-gap: 28px; margin-top: 2px; } .xb .sec { break-inside: avoid; margin-top: 12px; }
+.xb .one { column-span: all; }
+#exp .line { padding: 5px 0; }
+#exp .back { display: block; font-size: 14px; margin-bottom: 6px; }
+.embed .top b, .embed .top .s { display: none; }
+#exp { display: flex; flex-direction: column; overflow: hidden; }
+#exp .x { position: absolute; right: 14px; top: 12px; float: none; z-index: 1; }
+#exp .xb { flex: 1; min-height: 0; overflow-y: auto; }
+.foot { flex-shrink: 0; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ink); }
+.fl { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.fr { display: flex; gap: 10px; align-items: flex-start; }
+.fr #xi { flex: 1; font: inherit; padding: 9px 11px; border: 1px solid var(--ink); background: var(--white); }
+.cks { flex: 1; display: flex; flex-wrap: wrap; gap: 5px 22px; font-size: 16px; }
+.cks label { display: flex; gap: 7px; align-items: center; cursor: pointer; }
+.cks input { width: 16px; height: 16px; accent-color: var(--ink); margin: 0; }
+.save { font-weight: 600; padding: 9px 16px; background: var(--volt); border: 1px solid var(--ink); }
+.save:hover { background: var(--ink); color: var(--volt); }
+.sv, .pz { display: block; margin-top: 6px; font-size: 14px; } .sv { color: var(--ok); font-weight: 600; } .pz { color: var(--mute); }
+.card .r.you span { font-size: 13px; font-weight: 600; font-family: inherit; }
+
+#flowwrap { position: absolute; left: 0; top: 72px; width: 1600px; height: 828px; overflow: hidden; }
+#flow { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; font-size: 16px; transform: scale(.92); transform-origin: 50% 0; overflow: hidden; }
+#flow .top b, #flow .top .s { display: none; }
+#mockctl .reset { margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--line); }
+</style>
+<div id="stage" class="both">
+  <nav id="bar" aria-label="Main"></nav>
+  <main id="main"><div id="page"></div></main>
+  <div id="flowwrap" hidden><div id="flow">
+    <div id="map">
+      <div class="top"><b>Covers</b><span class="s">/</span><span id="ftitle"></span><span class="sp"></span><span class="role" id="role"></span></div>
+      <div class="route" id="route"></div>
+      <div id="scene"><svg class="ln" id="lines" viewBox="0 0 1200 900"></svg><div id="stations"></div><div id="cards"></div></div>
+      <div id="sprite"><div id="badge">!</div><svg id="spr"></svg></div>
+      <div class="ask" id="ask"></div><div id="cap"></div><div id="exp"></div>
+      <div class="tiny"><button id="skip">Skip ahead</button><button id="replay">Restart this dinner</button></div>
+    </div>
+    <button id="trailbtn">Audit trail</button><aside id="col"><div id="colhead"></div><div id="colbody"><div id="log"></div></div></aside>
+  </div></div>
+  <div id="mockctl"><span>Mock only · Columns:</span><button data-cols="bands">Bands</button><button data-cols="names">Step name</button><button data-cols="both" class="on">Both</button><button class="reset" data-reset="1">Reset demo</button></div>
+</div>
+<script>const stage = document.getElementById('stage'), $ = id => document.getElementById(id);
+function fit() { const s = Math.min(innerWidth / 1600, innerHeight / 900); stage.style.transform = `translate(${(innerWidth - 1600 * s) / 2}px, ${(innerHeight - 900 * s) / 2}px) scale(${s})`; }
+addEventListener('resize', fit); fit();
+
+/* ---------- the bell ---------- */
+const INK = { K:'#141414', G:'#C9C5BF', W:'#FFFFFF' };
+const BODY = ['.....KK.....','.....KK.....','...KKKKKK...','..KGGGGGGK..','.KGWGGGGGGK.','.KGGKGGKGGK.','.KGGGGGGGGK.','KKKKKKKKKKKK'];
+const LEGS = [['....K..K....','....K..K....','....KK.KK...'],['....K..K....','...K....K...','..KK.....KK.'],['....K..K....','....K..K....','....KK.K....'],['....K..K....','....K...K...','...KK....KK.'],['....K..K....','....K..K....','....K..KK...']];
+function svgFor(f) { const rows = [...BODY, ...LEGS[f]]; let h = ''; rows.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '.') h += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${INK[c]}"/>`; })); return { h, vb: `0 0 12 ${rows.length}` }; }
+let facing = 1;
+function drawSprite(f) { const { h, vb } = svgFor(f), e = $('spr'); e.setAttribute('viewBox', vb); e.innerHTML = h; e.style.transform = `translateY(${f === 2 || f === 4 ? -3 : 0}px) scaleX(${facing})`; }
+const bellSvg = (() => { const { h, vb } = svgFor(0); return `<svg viewBox="${vb}" aria-hidden="true">${h}</svg>`; })();
+
+/* ---------- fictional demo data ---------- */
+const YTD = { 'Dr. Ana Ruvane':194000,'Dr. Mei Lindqvist':88000,'Dr. Daniel Okafor':61000,'Dr. Grace Kinsale':42000,'Dr. Robert Ellery':35000,'Dr. Marcus Patel':30000,'Sofia Brennick, NP':12000,'Dr. Lena Ortwell':0 };
+const NPI = { 'Dr. Marcus Patel':'9000000101','Dr. Lena Ortwell':'9000000102','Dr. Ana Ruvane':'9000000001','Dr. Grace Kinsale':'9000000002','Dr. Daniel Okafor':'9000000003','Dr. Mei Lindqvist':'9000000004','Sofia Brennick, NP':'9000000005','Dr. Robert Ellery':'9000000006' };
+const L = (t, c, alc) => ({ t, c, alc });
+const DINNERS = [
+ { id:'okafor-nov', t:'Dr. Okafor on device safety', speaker:'Dr. Daniel Okafor', topic:'device safety', day:'Thu Nov 5', venue:'The Larder', rep:'Casey Tran', plan:'Nov 1', next:'Nov 6', final:'Nov 9', est:10500,
+   guests:['Dr. Mei Lindqvist','Sofia Brennick, NP','Dr. Robert Ellery','Dr. Grace Kinsale'], lines:[L('Appetizers (2)',3600),L('Entrees (6)',24600),L('Desserts (3)',3300),L('Cabernet, bottle (2)',8400,1),L('Tax',4090),L('Tip',10010)], seed:{ step:6, absent:['Dr. Robert Ellery'], resolved:false } },
+ { id:'ellery-nov', t:'Dr. Ellery on imaging guidance', speaker:'Dr. Robert Ellery', topic:'imaging guidance', day:'Tue Nov 3', venue:'Marrow & Oak', rep:'Taylor Brandt', plan:'Oct 28', next:'Nov 4', final:'Nov 9', est:12000,
+   guests:['Dr. Daniel Okafor','Dr. Mei Lindqvist','Sofia Brennick, NP','Dr. Grace Kinsale'], lines:[L('Appetizers (4)',7200),L('Entrees (6)',38400),L('Desserts (6)',6600),L('Sparkling water (4)',2000),L('Tax',5900),L('Tip',18500)], seed:{ step:6, absent:[], resolved:false } },
+ { id:'patel-nov', t:'Dr. Patel on catheter outcomes', speaker:'Dr. Marcus Patel', topic:'catheter outcomes', day:'Thu Nov 12', venue:'Alder & Vine', rep:'Jordan Lee', plan:'Nov 8', next:'Nov 13', final:'Nov 14', est:11000,
+   guests:['Dr. Ana Ruvane','Dr. Grace Kinsale','Dr. Daniel Okafor','Dr. Mei Lindqvist','Sofia Brennick, NP','Dr. Robert Ellery'], issue:{ kind:'annual', who:'Dr. Ana Ruvane' }, repeat:'Dr. Ana Ruvane', hint:'Dr. Grace Kinsale',
+   lines:[L('Appetizers (3)',5400),L('Entrees (6)',26400),L('Desserts (4)',4800),L('Sparkling water (3)',1500),L('Pinot Noir, bottle (2)',9600,1),L('Tax',4114),L('Tip',9386)], seed:{ step:0, absent:[], resolved:false } },
+ { id:'ortwell-nov', t:'Dr. Ortwell on valve durability', speaker:'Dr. Lena Ortwell', topic:'valve durability', day:'Tue Nov 17', venue:'Foxglove', rep:'Jordan Lee', plan:'Nov 8', next:'Nov 18', final:'Nov 19', est:10500,
+   guests:['Dr. Daniel Okafor','Sofia Brennick, NP','Dr. Grace Kinsale'], issue:{ kind:'speaker' }, lines:[L('Appetizers (2)',3200),L('Entrees (5)',22500),L('Desserts (3)',3000),L('Tax',2600),L('Tip',6200)], seed:{ step:1, absent:[], resolved:false } },
+ { id:'kinsale-nov', t:'Dr. Kinsale on lead placement', speaker:'Dr. Grace Kinsale', topic:'lead placement', day:'Thu Nov 19', venue:'The Larder', rep:'Casey Tran', plan:'Nov 6', next:'Nov 20', final:'Nov 21', est:11500,
+   guests:['Dr. Robert Ellery','Dr. Mei Lindqvist','Sofia Brennick, NP','Dr. Daniel Okafor'], lines:[L('Appetizers (3)',4800),L('Entrees (6)',27000),L('Desserts (2)',2200),L('Tax',3400),L('Tip',7600)], seed:{ step:3, absent:[], resolved:false } },
+ { id:'lindqvist-nov', t:'Dr. Lindqvist on vascular access', speaker:'Dr. Mei Lindqvist', topic:'vascular access', day:'Fri Nov 6', venue:'Harbor Room', rep:'Jordan Lee', plan:'Nov 2', next:'Nov 7', final:'Nov 9', est:10000,
+   guests:['Dr. Marcus Patel','Dr. Daniel Okafor','Dr. Robert Ellery','Sofia Brennick, NP'], lines:[L('Appetizers (3)',4500),L('Entrees (6)',29400),L('Desserts (4)',4400),L('Sparkling water (2)',1000),L('Tax',4300),L('Tip',9400)], seed:{ step:4, absent:[], resolved:false } },
+ { id:'okafor-oct', t:'Dr. Okafor on device safety', speaker:'Dr. Daniel Okafor', topic:'device safety', day:'Thu Oct 29', venue:'Foxglove', rep:'Jordan Lee', plan:'Oct 24', next:'Oct 30', final:'Nov 2', est:10000,
+   guests:['Dr. Mei Lindqvist','Dr. Robert Ellery','Sofia Brennick, NP','Dr. Marcus Patel'], lines:[L('Appetizers (2)',3000),L('Entrees (6)',26400),L('Desserts (3)',3000),L('Sparkling water (2)',1000),L('Tax',3600),L('Tip',8600)], seed:{ step:7, absent:[], resolved:false } },
+ { id:'lindqvist-oct', t:'Dr. Lindqvist on vascular access', speaker:'Dr. Mei Lindqvist', topic:'vascular access', day:'Tue Oct 27', venue:'Lantern', rep:'Casey Tran', plan:'Oct 21', next:'Oct 28', final:'Oct 30', est:11000,
+   guests:['Dr. Grace Kinsale','Dr. Marcus Patel','Dr. Robert Ellery'], lines:[L('Appetizers (2)',3200),L('Entrees (5)',23000),L('Desserts (3)',3300),L('Tax',3000),L('Tip',7000)], seed:{ step:7, absent:['Dr. Robert Ellery'], resolved:false } },
+ { id:'patel-oct', t:'Dr. Patel on catheter outcomes', speaker:'Dr. Marcus Patel', topic:'catheter outcomes', day:'Thu Oct 22', venue:'Marrow & Oak', rep:'Taylor Brandt', plan:'Oct 16', next:'Oct 23', final:'Oct 26', est:11500,
+   guests:['Dr. Daniel Okafor','Dr. Mei Lindqvist','Sofia Brennick, NP','Dr. Grace Kinsale'], lines:[L('Appetizers (3)',5100),L('Entrees (6)',28200),L('Desserts (2)',2200),L('Pinot Noir, bottle (1)',4800,1),L('Tax',4300),L('Tip',9800)], seed:{ step:7, absent:[], resolved:false, verdict:'Approved', note:'One bottle for six people.' } },
+];
+const usd = c => '$' + (c/100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const whole = c => '$' + Math.round(c/100).toLocaleString('en-US');
+const short = n => n.replace(/^Dr\. \S+ /, 'Dr. ').replace(/^Sofia /, 'S. ');
+const first = n => n.split(' ')[0];
+const LIMIT_PP = 12500, ANNUAL = 200000;
+
+/* ---------- saved progress: per dinner, kept in this browser ---------- */
+const KEY = 'covers-dinners-v1';
+const blank = d => ({ absent: [], inputs: {}, started: false, verdict: null, note: '', ...JSON.parse(JSON.stringify(d.seed)) });
+let saves = {};
+try { saves = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { saves = {}; }
+const saveOf = d => (saves[d.id] = saves[d.id] || blank(d));
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(saves)); } catch {} }
+
+function calc(d, s) {
+  const guests = d.guests.filter(g => !(s.resolved && d.issue?.kind === 'annual' && g === d.issue.who));
+  const people = [d.speaker, ...guests, d.rep], ate = people.filter(p => !s.absent.includes(p)), hcps = ate.filter(p => p !== d.rep);
+  const total = d.lines.reduce((n, l) => n + l.c, 0), share = Math.round(total / Math.max(1, ate.length)), limit = people.length * LIMIT_PP;
+  const alc = d.lines.filter(l => l.alc).reduce((n, l) => n + l.c, 0), alcLine = d.lines.find(l => l.alc);
+  const flag = share > LIMIT_PP ? { kind:'over', label:`${whole(share)} per person, over the $125 limit`, ask:`${whole(share)} per person: approve it?`, sub:`The limit is $125. ${d.venue} came to ${usd(total)} for ${ate.length} people.`, card:[['Per person', usd(share), 't warn'],['Limit','$125.00']], log:`${usd(total)} across ${ate.length} is ${usd(share)} each. That’s over the limit, so a person has to review it.`, why:'An actual cost over the limit can’t be undone, so a person records why it happened.', src:[['Company meals policy §2','policy','meal']], doc:['Receipt','receipt','total'] }
+    : alc ? { kind:'alcohol', label:`${whole(alc)} of alcohol to review`, ask:`${whole(alc)} of alcohol: approve it?`, sub:`${alcLine.t}. Everything else on this dinner cleared.`, card:[[alcLine.t.replace(', bottle',''), whole(alc)],['Per person', usd(Math.round(alc / ate.length)), 't warn']], log:`${whole(alc)} of alcohol at a speaker program. This needs a person.`, why:'Alcohol at a speaker program is a recognized risk, so a person makes this call, not Covers.', src:[['OIG Special Fraud Alert','oig']], doc:['Receipt','receipt','alcohol'] } : null;
+  return { guests, people, ate, hcps, total, share, limit, alc, flag };
+}
+function statusOf(d) {
+  const s = saveOf(d), c = calc(d, s), st = s.step;
+  if (st >= 7) return { step:6, done:true, say:`Filed · ${c.hcps.length} rows · ${usd(c.share)} each${s.verdict ? ' · exception ' + s.verdict.toLowerCase() : ''}`, tone:'ok' };
+  if (st === 0) return { step:0, who:'rep', say:'Draft, ready to check' };
+  if (st === 1) return d.issue && !s.resolved ? { step:1, who:'rep', tone:'over', say: d.issue.kind === 'annual' ? `Blocked: ${short(d.issue.who)} is over the annual limit` : 'Blocked: speaker training has expired' } : { step:1, who:'rep', say:'Rechecking' };
+  if (st === 2) return { step:2, who:'rep', say:'Checks passed, card not issued yet' };
+  if (st === 3) return { step:3, say:`Card ready, ${whole(c.limit)} limit` };
+  if (st === 4) return { step:4, who:'rep', say:'Add the receipt and who came' };
+  if (st === 5) return { step:5, who:c.flag ? 'rep' : null, say:`Settled at ${usd(c.share)}${c.flag ? ', hand to compliance' : ''}` };
+  return c.flag && !s.verdict ? { step:6, who:'compliance', tone:'near', say:c.flag.label } : { step:6, say:'Ready to file' };
+}
+
+/* ---------- the current dinner ---------- */
+let dn = null, sv = null;
+const C = () => calc(dn, sv);
+const NAMES = ['Propose','Check','Fund','Dinner','Close out','Settle','Report'];
+const whenOf = i => [dn.plan, dn.plan, dn.plan, dn.day.replace(/^\S+ /, '') + ', 7:00 pm', dn.next + ', 8:02 am', dn.next + ', 8:04 am', dn.final + ', 9:15 am'][i];
+const WHO = i => i === 6 ? 'Priya Shah · Compliance' : `${dn.rep} · Rep`;
+const actor = () => cur === 6 ? 'Priya Shah' : dn.rep;
+let trailLog = [];
+const POLICY = [['speaker','§1 Speakers. Only approved, trained speakers under an active contract may present, and only on topics they are approved for.'],['meal','§2 Meals. Out-of-office dinners may not exceed $125 per person, including food, beverage, tax and tip.'],['annual','§3 Annual limit. Meals provided to any one health care professional may not exceed $2,000 in a calendar year.'],['repeat','§4 Repeat attendance. A third program on the same topic within 12 months goes to compliance.']];
+const GAP = '<div class="gap"><b>Stored passage goes here.</b><br>The exact wording isn’t stored yet, so nothing is quoted until it is.</div>';
+const ln = (a, b, on) => `<div class="line ${on ? 'hl' : ''}"><span>${a}</span><span>${b}</span></div>`;
+const DOCS = {
+  policy:{ t:'HCP meals and speaker policy', m:'Company policy v1 · fictional demo policy', b:at => '<div class="d">'+POLICY.map(([a,x])=>`<p class="${a===at?'hl':''}">${x}</p>`).join('')+'</div>' },
+  ledger:{ t:'Annual totals by clinician', m:'Covers ledger · fictional demo doctors', b:at => [dn.speaker, ...dn.guests].map(n=>ln(n, whole(YTD[n]), at==='flag'&&dn.issue?.who===n)).join('') + (dn.repeat ? ln(`${short(dn.repeat)}, same topic in 12 months`,'2 programs',at==='topic') : '') },
+  roster:{ t:"Speaker record", m:'Company speaker roster · fictional', b:()=>ln('Speaker',dn.speaker)+ln('Status',dn.issue?.kind==='speaker'&&!sv.resolved?'Training expired':'Approved')+ln('Approved topics',dn.topic)+ln('Contract ends','Jun 30, 2027') },
+  npi:{ t:'NPI registry records', m:'Fictional seed records · real lookups use the NPPES registry', b:()=>[dn.speaker,...dn.guests].map(n=>ln(n,NPI[n])).join('') },
+  receipt:{ t:'Receipt', m:'Uploaded by the rep · as read from the photo', b:at => dn.lines.map(l=>ln(l.t,usd(l.c),at==='alcohol'&&l.alc)).join('')+ln('<b>Total</b>',`<b>${usd(C().total)}</b>`,at==='total') },
+  ramp:{ t:'Ramp card and charge', m:'Ramp sandbox · the card swipe is simulated', b:at => ln('Limit, restaurants only',usd(C().limit),at==='limit')+ln(`Charged, ${dn.venue}`,usd(C().total),at==='charge') },
+  attend:{ t:'Attendance confirmation', m:"Confirmed by the rep", b:()=>C().people.map(p=>ln(p,sv.absent.includes(p)?'Did not eat':usd(C().share))).join('') },
+  rows:{ t:'Open Payments rows', m:'Food and beverage, in kind · drafted, people file', b:()=>C().hcps.map(p=>ln(p,usd(C().share))).join('') },
+  audit:{ t:'Audit trail', m:'Every action on this dinner, in order', b:()=>trailLog.map(([w,a,x])=>`<div class="line"><span>${x}<br><small style="color:var(--mute)">${a}</small></span><span>${w}</span></div>`).join('') },
+  oig:{ t:'Special Fraud Alert: Speaker Programs', m:'HHS Office of Inspector General · Nov 16, 2020', url:'https://oig.hhs.gov/documents/special-fraud-alerts/865/SpecialFraudAlertSpeakerPrograms.pdf', b:()=>GAP },
+  cms:{ t:'Open Payments: data collection', m:'Centers for Medicare & Medicaid Services', url:'https://www.cms.gov/openpayments/program-participants/reporting-entities/data-collection', b:()=>GAP },
+  cal:{ t:'Health & Safety Code §119402', m:'State of California · from a 2009 copy, confirm current text', url:'https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=119402', b:()=>'<div class="d"><p class="hl">"Each pharmaceutical company shall establish explicitly in its Comprehensive Compliance Program a specific annual dollar limit…"</p></div>' },
+};
+const docTitle = k => k === 'roster' ? `Speaker record: ${dn.speaker}` : DOCS[k].t;
+const docMeta = k => k === 'attend' ? `Confirmed by ${dn.rep}` : DOCS[k].m;
+
+/* ---------- each step's checkers, built when the step is entered ---------- */
+const BUILD = [
+ () => [
+  { name:'Speaker', kind:'Speaker', mark:'done', card:[[dn.speaker,''],['Topic',dn.topic.split(' ')[0]]], log:`${first(dn.rep)} chose ${short(dn.speaker)} to speak on ${dn.topic}.`, found:`${dn.speaker} will speak on ${dn.topic}.`, src:[], actor:dn.rep },
+  { name:'Guests', kind:'Invited', mark:'done', card:dn.guests.map(g=>[short(g),'']), log:`${dn.guests.length} clinicians invited.`, found:`${dn.guests.length} clinicians were invited, plus the speaker and the rep.`, src:[], actor:dn.rep },
+  { name:'Venue', kind:'Where and when', mark:'done', card:[[dn.venue,''],[dn.day,'7 pm']], log:`${dn.venue}, ${dn.day}, at 7.`, found:`${dn.venue}, ${dn.day} at 7:00 pm.`, src:[], actor:dn.rep },
+  { name:'Estimate', kind:'All in', mark:'done', card:[['Per person',whole(dn.est)],['People',String(dn.guests.length+2)]], log:`Estimated at ${whole(dn.est)} a person, all in.`, found:`${whole(dn.est)} per person including tax and tip, for ${dn.guests.length+2} people.`, src:[], actor:dn.rep },
+ ],
+ () => {
+  const k = dn.issue?.kind, two = !!dn.issue, nOld = dn.guests.length + 1, nNew = k === 'annual' ? nOld - 1 : nOld, who = dn.issue?.who, sp = short(dn.speaker);
+  const after = [dn.speaker, ...dn.guests.filter(g => g !== who)].sort((a, b) => YTD[b] - YTD[a])[0], cl = YTD[after] + dn.est;
+  const rr = (a, b) => two ? [a, b] : [a];
+  return [
+  { name:'Speaker', kind:'Roster record', r: k === 'speaker' ? [{ mark:'blocked', card:[[dn.speaker,''],['Status','Expired','t bad'],['Topic','On list']], log:`Pulled ${sp}’s roster record. Her speaker training has expired, so she can’t present.`, found:`${sp}’s speaker training has expired.` },{ mark:'clear', card:[[dn.speaker,''],['Status','Renewed'],['Topic','On list']], log:`${sp}’s training is now current.`, found:`${sp}’s training was renewed and she is cleared to present.` }] : rr({ mark:'clear', card:[[dn.speaker,''],['Status','Approved'],['Topic','On list'],['Contract','Jun 2027']], log:`Pulled ${sp}’s roster record. Approved for this topic and under contract.` },{ mark:'clear', same:1, log:`${sp} is still cleared.` }), looked:[['Speaker roster record','roster']], found:`${sp} is approved for this topic and under contract on the dinner date.`, src:[['Company speaker policy §1','policy','speaker'],['OIG Special Fraud Alert','oig']], ...(k === 'speaker' ? { suggest:'Upload the renewed certificate, then recheck.', why:'Only trained speakers can present. Nothing else on this dinner can fix an expired certificate.', alt:'Ask for an exception: not available. Speaker blocks can’t be approved by anyone.', decideKey:'issue' } : {}) },
+  { name:'Identity', kind:'NPI registry', r:rr({ mark:'clear', dots:nOld, text:`${nOld} of ${nOld} found`, log:`Looked up all ${nOld} clinicians in the NPI registry. All found, each listed once.` },{ mark:'clear', dots:nNew, text:`${nNew} of ${nNew} found`, log:`${nNew} of ${nNew} found.` }), looked:[['NPI registry records','npi']], found:'Every clinician has a registry record and appears once.', src:[['CMS Open Payments','cms']] },
+  { name:'Meal limit', kind:'Per person', r:rr({ mark:'clear', card:[['Estimate',whole(dn.est)],['Limit','$125'],['Room left',whole(LIMIT_PP-dn.est)]], log:`The estimate is ${whole(dn.est)} a person. The limit is $125.` },{ mark:'clear', same:1, log:`${whole(dn.est)} of $125.` }), looked:[['Company meals policy','policy','meal']], found:'The estimate is within the per-person limit.', src:[['Company meals policy §2','policy','meal']] },
+  { name:'Annual limit', kind: k === 'annual' ? `${short(who)} · this year` : 'Closest to the limit', r: k === 'annual' ? [{ mark:'blocked', card:[['Paid so far',whole(YTD[who])],['Tonight','+ '+whole(dn.est)],['Limit','$2,000'],['Total',whole(YTD[who]+dn.est),'t bad']], log:`Pulled this year’s ledger. ${short(who)} has received ${whole(YTD[who])}, so ${whole(dn.est)} more makes ${whole(YTD[who]+dn.est)}. That’s ${whole(YTD[who]+dn.est-ANNUAL)} over.`, found:`${short(who)} would reach ${whole(YTD[who]+dn.est)} of the $2,000 limit.` },{ mark:'clear', kind:'Closest to the limit', card:[[short(after),''],['With tonight',whole(cl)],['Limit','$2,000']], log:`The closest guest is now ${short(after)} at ${whole(cl)}.`, found:`Everyone stays under the limit. ${short(after)} is closest at ${whole(cl)}.` }] : rr({ mark:'clear', card:[[short(after),''],['With tonight',whole(cl)],['Limit','$2,000']], log:`Pulled this year’s ledger. Everyone stays under. ${short(after)} is closest at ${whole(cl)}.`, found:`Everyone stays under the limit. ${short(after)} is closest at ${whole(cl)}.` },{ mark:'clear', same:1, log:'Everyone is still under.' }), looked:[['Annual totals by clinician','ledger','flag'],['Company limit, §3','policy','annual']], src:[['Cal. Health & Safety Code §119402','cal'],['Company policy §3','policy','annual']], ...(k === 'annual' ? { suggest:`Remove ${short(who)} from this dinner.`, why:`${short(who)} has only ${whole(ANNUAL-YTD[who])} of room left and tonight costs ${whole(dn.est)}, so no smaller change would keep them under. Removing them is the one edit that clears this.`, alt:'Ask for an exception: not available. Limit blocks can’t be approved by anyone.', decideKey:'issue' } : {}) },
+  { name:'Red flags', kind:'Attendance history', r: dn.repeat ? [{ mark:'flagged', card:[[short(dn.repeat),''],['Same topic','2 before'],['Tonight','3rd','t warn']], log:`${short(dn.repeat)} has been to this topic twice in 12 months. A third needs compliance.`, found:`This would be ${short(dn.repeat)}’s 3rd program on this topic in 12 months.` },{ mark:'clear', card:[['Repeat visits','None']], log:'No one repeats this topic now.', found:'No guest has repeated this topic.' }] : rr({ mark:'clear', card:[['Repeat visits','None']], log:'No one repeats this topic.', found:'No guest has repeated this topic.' },{ mark:'clear', same:1, log:'Still no repeats.', found:'No guest has repeated this topic.' }), looked:[['Attendance history','ledger','topic'],['Company policy §4','policy','repeat']], src:[['OIG Special Fraud Alert','oig'],['Company policy §4','policy','repeat']], ...(dn.repeat ? { suggest:'Send to compliance if they stay on the list.', why:'A third visit on the same topic isn’t forbidden, but a person has to review it.', alt:'None needed. This cleared once the guest was removed.' } : {}) },
+  { name:'Reporting', kind:'After the dinner', r:rr({ mark:'later', card:[['Runs once the receipt is in','']], log:'Nothing to report yet. I’ll pick this up after the dinner.' },{ mark:'later', same:1, log:'' }), looked:[], found:'This checker runs after the dinner, once there’s a receipt and a headcount.', src:[['CMS Open Payments','cms']] },
+ ]; },
+ () => { const c = C(); return [
+  { name:'Headcount', kind:'Who the card covers', mark:'clear', card:[['Guests',String(c.guests.length)],['Speaker','1'],['Rep','1'],['People',String(c.people.length),'t']], log:`Counted who the card has to cover: ${c.guests.length} guests, the speaker and ${first(dn.rep)}.`, found:`${c.people.length} people: ${c.guests.length} guests, the speaker and the rep.`, src:[] },
+  { name:'Limit', kind:'Card limit', mark:'clear', card:[['People',String(c.people.length)],['× per person','$125'],['Limit',whole(c.limit),'t']], log:`${c.people.length} people at $125 sets the limit at ${whole(c.limit)}.`, found:`The card can’t go above ${c.people.length} × $125 = ${whole(c.limit)}.`, looked:[['Company meals policy','policy','meal']], src:[['Company meals policy §2','policy','meal']] },
+  { name:'Merchant', kind:'Where it works', mark:'clear', card:[['Restaurants only','']], log:'Locked it to restaurants.', found:'The card only works at restaurants.', src:[] },
+  { name:'Ramp', kind:'Ramp', mark:'clear', card:[['Card issued',''],['Limit',whole(c.limit)]], log:'Issued the card in Ramp.', found:'The card was created in Ramp’s sandbox.', looked:[['Ramp card and charge','ramp','limit']], src:[] },
+ ]; },
+ () => { const c = C(); return [
+  { name:'Card live', kind:'Before dinner', mark:'clear', card:[[`Ready for ${first(dn.rep)}`,''],['Limit',whole(c.limit)]], log:`The card is live for ${dn.day.split(' ')[0]}.`, found:'The card was active before the dinner.', src:[] },
+  { name:'Dinner', kind:dn.day, mark:'done', card:[[dn.venue,''],['7:00 pm','']], log:`Dinner at ${dn.venue}.`, found:`The dinner took place at ${dn.venue}.`, src:[] },
+  { name:'Charge', kind:'Card activity', mark:'clear', card:[['Charged',whole(c.total)],['Limit',whole(c.limit)],['Unused',whole(c.limit-c.total)]], log:`${whole(c.total)} charged at ${dn.venue}, inside the limit.`, found:`${usd(c.total)} charged, ${whole(c.limit-c.total)} under the limit. The swipe is simulated.`, looked:[['Ramp card and charge','ramp','charge']], src:[] },
+  { name:'Ping', kind:'Next morning', mark:'done', card:[[`To ${first(dn.rep)}’s phone`,''],['Add receipt, who came','']], log:`Pinged ${first(dn.rep)} to close it out.`, found:`${first(dn.rep)} got one notification the next morning.`, src:[] },
+ ]; },
+ () => { const c = C(), gone = c.people.filter(p => sv.absent.includes(p)); return [
+  { name:'Photo', kind:'Receipt photo', mark:'done', card:[[dn.venue,''],['Guests printed',String(c.ate.length)]], log:`${first(dn.rep)} added the receipt photo.`, found:`${first(dn.rep)} photographed the itemized receipt.`, actor:dn.rep, looked:[['Receipt','receipt']], src:[] },
+  { name:'Read', kind:'Line by line', mark:'clear', card:dn.lines.map(l=>[l.t.replace(', bottle',''),whole(l.c),l.alc?'warn':'']), log:`Read all ${dn.lines.length} lines.${c.alc ? ` One is alcohol, ${whole(c.alc)}.` : ''}`, found:`The reader returned ${dn.lines.length} lines${c.alc ? ' and tagged the alcohol' : ''}. It only reads; rules decide what happens next.`, looked:[['Receipt','receipt',c.alc?'alcohol':'total']], src:[] },
+  { name:'Adds up', kind:'Check the math', mark:'clear', card:[['Lines',usd(c.total)],['Printed total',usd(c.total)],['Card',usd(c.total)]], log:'The lines add up to the printed total and the card charge.', found:`Lines, printed total and card charge all agree at ${usd(c.total)}.`, looked:[['Receipt','receipt','total'],['Ramp card and charge','ramp','charge']], src:[] },
+  { name:'Who ate', kind:`Confirmed by ${first(dn.rep)}`, mark:'done', card:[[`${c.ate.length} people ate`,''],['Each',usd(c.share)],...gone.map(n=>[short(n),'No-show'])], log:`${first(dn.rep)} confirmed ${c.ate.length} people ate${gone.length ? `. ${gone.map(short).join(', ')} didn’t come` : ''}.`, found:`${c.ate.length} people ate.${gone.length ? ` ${gone.map(short).join(', ')} did not.` : ''}`, actor:dn.rep, looked:[['Attendance confirmation','attend']], src:[] },
+ ]; },
+ () => { const c = C(), gone = c.people.filter(p => sv.absent.includes(p)), top = [...c.hcps].sort((a,b)=>YTD[b]-YTD[a])[0]; return [
+  { name:'Speaker', kind:'Before only', mark:'none', card:[['Checked before dinner','']], log:'', found:'The speaker check only runs before the dinner.', src:[] },
+  { name:'Identity', kind:'Who ate', mark:'clear', card:[[`${c.hcps.length} clinicians`,''],['Identified','All']], log:`All ${c.hcps.length} clinicians who ate are identified.`, found:`All ${c.hcps.length} clinicians who ate are identified by NPI.`, looked:[['Attendance confirmation','attend'],['NPI registry records','npi']], src:[['CMS Open Payments','cms']] },
+  { name:'Meal limit', kind:'Actual', mark: c.flag?.kind === 'over' && !sv.verdict ? 'flagged' : 'clear', card:[[`${whole(c.total)} ÷ ${c.ate.length}`,usd(c.share)],['Limit','$125.00']], log:`${whole(c.total)} split across ${c.ate.length} is ${usd(c.share)} each.`, found:`The actual cost was ${usd(c.share)} per person.`, looked:[['Receipt','receipt','total'],['Company meals policy','policy','meal']], src:[['Company meals policy §2','policy','meal']], ...(c.flag?.kind === 'over' ? { suggest:'Send it to compliance.', why:c.flag.why, alt:'The rep can’t approve their own exception.', decideKey:'handoff' } : {}) },
+  { name:'Annual limit', kind:'New totals', mark:'clear', card:[[short(top),whole(YTD[top]+c.share)],...gone.filter(g=>g!==dn.rep).map(g=>[short(g),whole(YTD[g])]),['Limit','$2,000']], log: gone.length ? `Everyone is under. ${gone.map(short).join(', ')}’s total doesn’t change.` : 'Everyone is under their limit.', found:'Everyone is under their annual limit.', looked:[['Annual totals by clinician','ledger']], src:[['Cal. Health & Safety Code §119402','cal']] },
+  { name:'Red flags', kind:'Receipt', mark: c.flag?.kind === 'alcohol' ? (sv.verdict ? 'clear' : 'flagged') : 'clear', card: c.flag?.kind === 'alcohol' ? c.flag.card : [['Alcohol',c.alc?whole(c.alc):'None']], log: c.flag?.kind === 'alcohol' ? c.flag.log : 'Nothing else to flag.', found: c.flag?.kind === 'alcohol' ? c.flag.label : 'Nothing was flagged on the receipt.', looked:[['Receipt','receipt',c.alc?'alcohol':'total']], src:[['OIG Special Fraud Alert','oig']], ...(c.flag?.kind === 'alcohol' ? { suggest:'Send it to compliance.', why:c.flag.why, alt:'The rep can’t approve their own exception.', decideKey:'handoff' } : {}) },
+  { name:'Reporting', kind:'Tie-out', mark:'clear', card:[['Receipt',usd(c.total)],['Split',`${c.ate.length} × ${usd(c.share)}`],['Rows drafted',String(c.hcps.length),'t']], log:`Everything ties to ${whole(c.total)}. Drafted ${c.hcps.length} Open Payments rows.`, found:`The split adds back to ${usd(c.total)}, and ${c.hcps.length} Open Payments rows are drafted.`, looked:[['Open Payments rows','rows'],['Receipt','receipt','total']], src:[['CMS Open Payments','cms']] },
+ ]; },
+ () => { const c = C(), f = c.flag; return [
+  { name:'Exception', kind:f ? 'For Priya' : 'Exceptions', mark: f && !sv.verdict ? 'flagged' : 'clear', card: f ? f.card : [['None','']], log: f ? `One exception needs Priya: ${f.label}.` : 'Nothing needed compliance.', found: f ? 'One item reached compliance. Everything else cleared by itself.' : 'Nothing reached compliance.', looked: f ? [f.doc] : [], src: f ? f.src : [] },
+  { name:'Decision', kind:'Priya Shah', mark:'done', get card(){ return f ? [[sv.verdict || 'Waiting',''], ...(sv.note ? [[sv.note,'']] : [])] : [['Not needed','']]; }, get log(){ return f ? `Priya ${(sv.verdict||'').toLowerCase()} it${sv.note ? `: "${sv.note}"` : ''}.` : ''; }, get found(){ return f ? `Priya ${(sv.verdict||'').toLowerCase()} the exception.` : 'No decision was needed.'; }, actor:'Priya Shah', src:[], ...(f ? { decideKey:'priya', alt:'Approve or deny, with a note for the record.', suggest:'No recommendation here.', why:'This is a judgment call, so Covers lays out the evidence and leaves it to her.' } : {}) },
+  { name:'Rows', kind:'Open Payments', mark:'clear', card:[['Rows',String(c.hcps.length)],['Each',usd(c.share)],['Nature','Food']], log:`${c.hcps.length} Open Payments rows are ready to file.`, found:`${c.hcps.length} rows, food and beverage, in kind.`, looked:[['Open Payments rows','rows']], src:[['CMS Open Payments','cms']] },
+  { name:'Record', kind:'Audit trail', mark:'clear', card:[['Every action logged',''],['Every number sourced','']], log:'The record is complete.', found:'Every action on this dinner is logged with who did it.', looked:[['Audit trail','audit']], src:[] },
+ ]; },
+];
+
+/* ---------- map ---------- */
+const WORD = { clear:'Clear', blocked:'Blocked', flagged:'Flagged', later:'After dinner', wait:'Waiting', done:'Done', none:'–' };
+let cur = 0, view = 0, sc = {}, S = [], path, total, trail, pos = 0, reached = 0;
+let working = false, runId = 0, fast = false, speed = .7, pending = null, replay = false, replayUntil = 0;
+let exp = null, prevExp = null, stash = null, justSaved = null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+class Stop extends Error {}
+const alive = id => { if (id !== runId) throw new Stop(); };
+const isPaused = () => working && (exp !== null || view !== cur) && !fast;
+const hold = async id => { while (isPaused()) { await new Promise(r => setTimeout(r, 80)); alive(id); } };
+const wait = async (ms, id) => { alive(id); if (!fast) await new Promise(r => setTimeout(r, ms * speed)); await hold(id); alive(id); };
+function route() { $('route').innerHTML = NAMES.map((n, i) => { const done = i < cur || (i === cur && sv.step >= 7); return `<div class="stop ${done ? 'done open' : i === cur ? 'now open' : ''} ${i === view && view !== cur ? 'view' : ''}" data-s="${i}"><i></i><span>${n}</span></div>`; }).join(''); }
+function layout(i) {
+  S = sc[i].st; const n = S.length, w = Math.min(230, 950 / Math.max(1, n - 1) - 14);
+  S.forEach((s, k) => { s.x = 115 + k * 950 / (n - 1); s.y = k % 2 ? 565 : 525; s.w = w; });
+  const pts = [{ x:24, y:550 }, ...S, { x:1178, y:540 }]; let d = 'M24 550';
+  for (let k = 1; k < pts.length; k++) { const a = pts[k-1], b = pts[k], m = (a.x + b.x) / 2; d += ` C${m} ${a.y} ${m} ${b.y} ${b.x} ${b.y}`; }
+  $('lines').innerHTML = `<path d="${d}" fill="none" stroke="#E2DED9" stroke-width="2" stroke-dasharray="3 7"/><path id="trail" d="${d}" fill="none" stroke="#141414" stroke-width="2"/><path id="path" d="${d}" fill="none"/>`;
+  path = $('path'); total = path.getTotalLength(); trail = $('trail'); trail.style.strokeDasharray = total; trail.style.strokeDashoffset = total;
+  S.forEach(s => { let lo = 0, hi = total; for (let j = 0; j < 40; j++) { const m = (lo + hi) / 2; path.getPointAtLength(m).x < s.x ? lo = m : hi = m; } s.len = lo; });
+  $('stations').innerHTML = S.map((s, k) => `<button class="station" id="st${k}" data-k="${k}" style="left:${s.x}px;top:${s.y}px"><div class="node"></div><div class="name">${s.name}</div><div class="state">Waiting</div></button>`).join('');
+  $('cards').innerHTML = S.map((s, k) => `<button class="card" id="cd${k}" data-k="${k}" style="width:${s.w}px;margin-left:${-s.w/2}px"></button>`).join('');
+}
+function place(l) { pos = l; const p = path.getPointAtLength(l); $('sprite').style.left = p.x + 'px'; $('sprite').style.top = p.y + 'px'; reached = Math.max(reached, l); trail.style.strokeDashoffset = total - reached; }
+function hop() { const s = $('sprite'); s.classList.remove('hop'); void s.offsetWidth; s.classList.add('hop'); }
+function walk(to, id, ms, force) {
+  alive(id); const from = pos, dur = (ms ?? Math.max(420, Math.abs(to - from) * 5)) * speed; facing = to < from ? -1 : 1;
+  if (fast || reduce) { place(to); return Promise.resolve(); }
+  return new Promise((res, rej) => { let t0 = performance.now(), prev = t0, last = -1;
+    (function step(now) { if (id !== runId) return rej(new Stop()); if (!force && isPaused()) { t0 += now - prev; prev = now; return requestAnimationFrame(step); } prev = now;
+      const k = Math.min(1, (now - t0) / dur), e = k < .5 ? 2*k*k : 1 - (-2*k+2)**2/2; place(from + (to - from) * e);
+      const f = Math.floor(Math.abs(pos - from) / 16) % 4 + 1; if (f !== last) { drawSprite(f); last = f; }
+      k < 1 ? requestAnimationFrame(step) : (drawSprite(0), hop(), res()); })(t0); });
+}
+function setMark(k, m) { const e = $('st'+k); e.className = 'station ' + (m === 'wait' ? '' : m); e.querySelector('.state').textContent = WORD[m]; }
+function setOn(k) { S.forEach((_, j) => { $('st'+j).classList.toggle('on', k === j); $('cd'+j).classList.toggle('on', k === j); }); }
+const roundData = (s, r) => s.r ? s.r[r] : s;
+function fillCard(k, r) {
+  const s = S[k], data = roundData(s, r), show = data.same !== undefined ? s.r[0] : data, c = $('cd'+k);
+  const body = show.dots ? `<span class="dots">${Array.from({length:show.dots},()=>'<i></i>').join('')}</span><span class="r"><span>${show.text}</span><span></span></span>` : show.card.map(([a,b,cl]) => `<span class="r ${cl||''}"><span>${a}</span><span>${b}</span></span>`).join('');
+  c.innerHTML = `<span class="k">${data.kind || s.kind}</span>${body}${sc[view]?.input?.[k]?.saved ? '<span class="r you"><span>Your input added</span><span></span></span>' : ''}`; c.style.left = s.x + 'px'; c.classList.remove('blocked','flagged');
+  c.style.top = (s.y - 66 - c.offsetHeight) + 'px'; return show;
+}
+async function reveal(k, r, id) {
+  const show = fillCard(k, r), c = $('cd'+k); c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); await wait(180, id);
+  if (show.dots) for (const e of c.querySelectorAll('.dots i')) { e.classList.add('y'); await wait(90, id); }
+  for (const e of c.querySelectorAll('.r')) { e.classList.add('in'); await wait(show.dots ? 60 : 200, id); }
+}
+function entry(who, cls) { const e = document.createElement('div'); e.className = 'entry ' + (cls || ''); e.innerHTML = `<div class="who"><span>${who}</span><span>${whenOf(cur)}</span></div><p></p>`; $('log').append(e); $('trailbtn').textContent = `Audit trail · ${$('log').querySelectorAll('.entry').length}`; return e.querySelector('p'); }
+const follow = () => { $('colbody').scrollTop = 1e6; };
+async function type(p, text, id) { if (fast || reduce) { p.textContent = text; if (!replay) $('cap').textContent = text; follow(); return; } for (let n = 0; n <= text.length; n += 3) { await hold(id); alive(id); p.textContent = text.slice(0, n); $('cap').textContent = text.slice(0, n); follow(); await new Promise(r => setTimeout(r, 12)); } p.textContent = text; $('cap').textContent = text; follow(); }
+function say(who, text, cls) { trailLog.push([whenOf(cur), who, text]); return entry(who, cls); }
+const you = text => { say(actor(), text, 'you').textContent = text; follow(); };
+async function visit(k, r, id) {
+  const s = S[k], data = roundData(s, r); await walk(s.len, id); setOn(k); await reveal(k, r, id);
+  if (data.log) await type(say(s.actor || s.name, data.log), data.log, id);
+  setMark(k, data.mark); if (data.mark === 'blocked' || data.mark === 'flagged') $('cd'+k).classList.add(data.mark);
+  sc[cur].done[k] = sc[cur].done[k] || []; sc[cur].done[k][r] = data.mark;
+  if (replay && sc[cur].input[k]?.saved) you(`${s.name}: ${sc[cur].input[k].text}`);
+  await wait(170, id);
+}
+async function pass(r, id, from = 0, to = S.length) { for (let k = from; k < to; k++) await visit(k, r, id); setOn(-1); }
+function restoreAsk() { if (!pending) return; const a = pending; $('ask').innerHTML = a.html(); const st = $('ask').style; st.setProperty('--askx', a.x + 'px'); st.setProperty('--asky', a.y + 'px'); st.setProperty('--askw', a.w + 'px'); $('ask').classList.add('in'); }
+function ask(cfg) {
+  if (replay && cur < replayUntil && !cfg.final) return Promise.resolve(1);
+  replay = false; working = false; fast = false;
+  return new Promise(res => { pending = { ...cfg, x: cfg.x ?? 448, y: cfg.y ?? 690, w: cfg.w ?? 480, done: v => { pending = null; $('ask').classList.remove('in'); working = true; res(v); } }; restoreAsk(); });
+}
+const simpleAsk = (h, p, btns) => ({ html: () => `<h3>${h}</h3><p>${p}</p><div class="opts">${btns.map(([l, v, cl]) => v === null ? `<button class="off" disabled>${l}</button>` : `<button class="${cl || 'go'}" data-ans="${v}">${l}</button>`).join('')}</div>` });
+async function enter(i, id) {
+  cur = i; view = i; $('role').textContent = WHO(i); sv.inputs[i] = sv.inputs[i] || {};
+  sc[i] = { st: BUILD[i](), done: {}, decided: {}, input: sv.inputs[i] };
+  if (i > sv.step) { sv.step = i; persist(); }
+  const sn = $('scene');
+  if (i > 0 && !fast) { sn.classList.add('out'); await wait(320, id); }
+  layout(i); route(); reached = 0; place(0); drawSprite(0);
+  sn.classList.remove('out'); sn.classList.add('pre'); void sn.offsetWidth; sn.classList.remove('pre');
+  const h = document.createElement('div'); h.className = 'step-h'; h.textContent = NAMES[i]; $('log').append(h);
+  await wait(260, id);
+}
+const decide = (key, text) => { sc[cur].decided[key] = `${text} (${whenOf(cur)})`; };
+
+async function run() {
+  working = true; let id = ++runId; speed = .7;
+  const A = async cfg => { const v = await ask(cfg); id = ++runId; working = true; return v; };
+  try {
+    const c0 = dn.guests.length;
+    await enter(0, id); await pass(0, id); await walk(total, id);
+    await A(simpleAsk('Is this plan ready to check?', `${c0} clinicians, ${short(dn.speaker)} speaking, ${whole(dn.est)} a person.`, [['Check this plan', 1]])); you('Sent the plan to be checked.');
+
+    await enter(1, id); await pass(0, id);
+    if (dn.issue) {
+      const k = dn.issue.kind, a = S.findIndex(s => s.decideKey === 'issue'), who = dn.issue.who;
+      const p = say('Covers', k === 'annual' ? `One thing blocks the card, so I’m stopping here. I recommend removing ${short(who)}.` : `One thing blocks the card, so I’m stopping here. ${short(dn.speaker)} needs current training.`);
+      await walk(S[a].len, id, 900); setOn(a); $('badge').classList.add('in');
+      await type(p, trailLog[trailLog.length-1][2], id);
+      await A(k === 'annual' ? simpleAsk(`${short(who)} would pass the annual limit`, `${whole(ANNUAL-YTD[who])} left and tonight costs ${whole(dn.est)}. Removing them is the one change that clears this.`, [[`Remove ${short(who)} · Recommended`, 1], ['Ask for an exception<br>Can’t be approved', null]]) : simpleAsk(`${short(dn.speaker)}’s speaker training has expired`, 'Nobody can present without current training. Add the renewed certificate to clear this.', [['Add renewed certificate · Recommended', 1], ['Ask for an exception<br>Can’t be approved', null]]));
+      $('badge').classList.remove('in'); sv.resolved = true; persist();
+      const text = k === 'annual' ? `Removed ${short(who)} from the dinner.` : `Added ${short(dn.speaker)}’s renewed training certificate.`;
+      decide('issue', `${dn.rep}: ${text}`); you(text);
+      S.forEach((_, n) => setMark(n, 'wait')); speed = .45;
+      await type(say('Covers', 'The plan changed, so every check runs again.'), 'The plan changed, so every check runs again.', id);
+      reached = 0; trail.style.strokeDashoffset = total; await walk(0, id, 1500); await pass(1, id); speed = .7;
+    }
+    await walk(total, id, 500); await type(say('Covers', 'Every check passes, so the card can be set up.'), 'Every check passes, so the card can be set up.', id);
+
+    await enter(2, id); await pass(0, id, 0, 3);
+    await A(simpleAsk(`Issue the ${whole(C().limit)} card?`, `${C().people.length} people at $125, restaurants only.`, [['Issue the card', 1]])); you('Issued the card.');
+    await pass(0, id, 3, 4); await walk(total, id);
+
+    await enter(3, id); await pass(0, id); await walk(total, id);
+    await A(simpleAsk(`Good morning, ${first(dn.rep)}`, 'Add the receipt and tap who came. It takes about 30 seconds.', [['Close it out', 1]]));
+
+    await enter(4, id); await pass(0, id, 0, 3);
+    await A({ x: 250, y: 640, w: 700, html: () => { const c = C(); return `<h3 style="font-size:18px">Who actually ate? <span style="font-weight:400;color:var(--mute)">${dn.hint ? `Tap ${short(dn.hint)}, who didn’t make it.` : 'Tap anyone who didn’t come.'}</span></h3><div class="who">${c.people.map(p => `<button data-tog="${p}" class="${sv.absent.includes(p) ? 'no' : ''}"><span>${p}</span><span class="mono">${sv.absent.includes(p) ? '' : '✓'}</span></button>`).join('')}</div><div class="sum"><span>${c.ate.length} people</span><span class="mono">${usd(c.share)} each</span><button class="go" data-ans="1" style="padding:6px 14px">Confirm</button></div>`; } });
+    sc[4].st[3] = Object.assign(BUILD[4]()[3], { x: S[3].x, y: S[3].y, w: S[3].w, len: S[3].len }); S = sc[4].st; await visit(3, 0, id); setOn(-1); await walk(total, id);
+
+    await enter(5, id); await pass(0, id); const f = C().flag;
+    if (f) { const n = S.findIndex(s => s.decideKey === 'handoff'); await walk(S[n].len, id, 800); setOn(n); $('badge').classList.add('in');
+      await A(simpleAsk(`Settled at ${usd(C().share)} per person`, 'One item needs a compliance decision. There’s nothing left for you to do.', [['Hand it to Priya', 1]]));
+      $('badge').classList.remove('in'); decide('handoff', `Sent to Priya Shah. ${dn.rep} can’t approve it`); }
+    await walk(total, id);
+
+    await enter(6, id); await pass(0, id, 0, 1);
+    if (f) { await walk(S[1].len, id); setOn(1);
+      await A({ html: () => `<h3>${f.ask}</h3><p>${f.sub}</p><input id="noteIn" placeholder="Note for the record" value="${esc(sv.note)}"><div class="opts"><button class="go" data-v="Approved">Approve</button><button class="plain" data-v="Denied">Deny</button></div>` });
+      decide('priya', `Priya Shah ${sv.verdict.toLowerCase()} it${sv.note ? `: "${sv.note}"` : ''}`);
+      sc[6].done[0] = ['clear']; setMark(0, 'clear'); $('cd0').classList.remove('flagged'); }
+    await pass(0, id, 1, 4); await walk(total, id);
+    sv.step = 7; persist(); route();
+    await type(say('Covers', 'All caught up. Nothing is left open on this dinner.'), 'All caught up. Nothing is left open on this dinner.', id);
+    await A({ final: true, html: () => `<h3>All caught up</h3><p>Click any step above to see what happened there, and why.</p><div class="opts"><button class="go" data-see="1">See the audit trail</button></div>` });
+  } catch (e) { if (!(e instanceof Stop)) throw e; }
+}
+
+/* ---------- expanding in place, going back, adding input ---------- */
+const lnk = ([t, k, at]) => `<button class="lnk" data-doc="${k}" data-at="${at||''}">${t}</button>`;
+const W = 760, clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function showExp(x, bottom, head, body, animate, ft = '') {
+  const e = $('exp'), left = clamp(x - W / 2, 20, 1180 - W);
+  e.style.left = left + 'px'; e.style.bottom = (900 - bottom) + 'px'; e.style.maxHeight = (bottom - 20) + 'px'; e.style.transformOrigin = `${x - left}px 100%`;
+  e.innerHTML = `<button class="x" data-close aria-label="Close">×</button>${head}<div class="xb">${body}</div>${ft}`;
+  if (animate) { e.classList.remove('in'); void e.offsetWidth; }
+  e.classList.add('in');
+}
+function closeExp() { const wasStep = exp && exp.kind === 'step'; exp = null; prevExp = null; $('exp').classList.remove('in'); if (!working && S.length) setOn(-1); if (wasStep && view !== cur) returnToCur(); }
+function walkTo(k) { if (working && view === cur) return; const to = S[k].len, dist = Math.abs(pos - to); setOn(k); if (dist < 1) return; if (!working) speed = 1; walk(to, working ? runId : ++runId, Math.min(1500, Math.max(500, dist * 3.5)), true).catch(e => { if (!(e instanceof Stop)) throw e; }); }
+function restore(i) {
+  view = i; layout(i); route(); $('ask').classList.remove('in'); $('cap').textContent = i === cur ? '' : `Viewing ${NAMES[i]}. Click ${NAMES[cur]} above to go back.`;
+  const last = S.reduce((n, s, k) => (sc[i].done[k] ? k : n), 0);
+  S.forEach((s, k) => { const d = sc[i].done[k]; if (!d) return; const r = d.length - 1; fillCard(k, r); const c = $('cd'+k); c.classList.add('in'); c.querySelectorAll('.r').forEach(e => e.classList.add('in')); c.querySelectorAll('.dots i').forEach(e => e.classList.add('y')); setMark(k, d[r]); if (d[r] === 'blocked' || d[r] === 'flagged') c.classList.add(d[r]); });
+  reached = i === cur ? S[last].len : total; place(i === cur ? S[last].len : total);
+  if (i === cur) restoreAsk();
+}
+const LAYERS = ['stations', 'cards', 'lines'];
+function stashLive() { const kept = {}; LAYERS.forEach(id => { const f = document.createDocumentFragment(); while ($(id).firstChild) f.append($(id).firstChild); kept[id] = f; }); stash = { kept, S, path, total, trail, pos, reached, speed, badge: $('badge').classList.contains('in') }; $('badge').classList.remove('in'); }
+function jumpTo(i) { if (i === cur) return returnToCur(); if (working && view === cur) stashLive(); restore(i); }
+function returnToCur() { if (!stash) return restore(cur); LAYERS.forEach(id => $(id).replaceChildren(stash.kept[id])); ({ S, path, total, trail, reached, speed } = stash); $('badge').classList.toggle('in', stash.badge); view = cur; place(stash.pos); trail.style.strokeDashoffset = total - reached; stash = null; route(); $('cap').textContent = ''; }
+const sec = (t, h) => `<div class="sec"><h4>${t}</h4>${h}</div>`;
+function stepRecord(i, animate = true) {
+  exp = { kind: 'step', i }; const stations = sc[i].st, picks = stations.filter(s => s.suggest && sc[i].decided[s.decideKey]);
+  let h = picks.map(s => sec('Decision', `<p><b>${sc[i].decided[s.decideKey]}</b></p>`) + sec('What Covers suggested', `<p>${s.suggest}</p>`) + sec('Why', `<p>${s.why}</p>`) + sec('Other options', `<p>${s.alt}</p>`)).join('');
+  if (!picks.length) h += sec('Decisions', '<p>Nothing here needed a decision.</p>');
+  h += sec('What happened', stations.map((s, k) => { const d = sc[i].done[k]; return d ? `<div class="line"><span><button class="lnk" data-k="${k}">${s.name}</button></span><span>${WORD[d[d.length-1]]}</span></div>` : ''; }).join(''));
+  showExp(600, 500, `<b class="xt">${NAMES[i]}</b><span class="xm">${whenOf(i)}</span>`, h, animate);
+}
+function openDetail(k, r, animate = true) {
+  const i = view, s = S[k], d = sc[i].done[k];
+  if (!d) { exp = { kind: 'pre', k }; return showExp(s.x, s.y - 62, `<b class="xt">${s.name}</b><span class="xm">${NAMES[i]} · Not checked yet</span>`, '<div class="sec one"><p>Covers hasn’t reached this yet. Add anything it should know first.</p></div>', animate, foot(k)); }
+  walkTo(k); const rounds = d.map((_, n) => n).filter(n => d[n] !== undefined); r = r ?? rounds[rounds.length - 1];
+  exp = { kind: 'st', k, r };
+  const data = roundData(s, r), found = data.found || s.found, showDecision = s.suggest && (r === 0 || !s.r);
+  const back = view !== cur ? `<button class="lnk back" data-step="${i}">← ${NAMES[i]}</button>` : '';
+  const tabs = rounds.length > 1 ? `<div class="tabs">${rounds.map(n => `<button data-round="${n}" data-k="${k}" class="${n===r?'on':''}">Round ${n+1}${n===0?' · original plan':' · after the change'}</button>`).join('')}</div>` : '';
+  let h = sec('What it found', `<p>${found}</p>`);
+  if (s.looked && s.looked.length) h += sec('What it looked at', `<ul>${s.looked.map(l => `<li>${lnk(l)}</li>`).join('')}</ul>`);
+  if (showDecision) h += sec('What Covers suggested', `<p>${s.suggest}</p>`) + sec('Why', `<p>${s.why}</p>`) + sec('Other options', `<p>${s.alt}</p>`);
+  h += sec('What was decided', `<p>${sc[i].decided[s.decideKey] || (s.suggest && r === 1 ? 'Cleared after the change.' : s.suggest ? 'Waiting.' : 'Nothing needed a decision.')}</p>`);
+  if (s.src && s.src.length) h += sec('Source', `<p>${s.src.map(lnk).join(', ')}</p>`);
+  showExp(s.x, s.y - 62, `${back}<b class="xt">${s.name}</b><span class="xm">${NAMES[i]} · ${WORD[d[r]]}</span>${tabs}`, h, animate, foot(k));
+}
+function openDoc(k, at) {
+  prevExp = exp; const d = DOCS[k], back = !exp ? '' : exp.kind === 'st' ? S[exp.k].name : NAMES[exp.i], x = exp && exp.kind === 'st' ? S[exp.k].x : 600, bottom = exp && exp.kind === 'st' ? S[exp.k].y - 62 : 500;
+  showExp(x, bottom, `${back ? `<button class="lnk back" data-return>← ${back}</button>` : ''}<b class="xt">${docTitle(k)}</b><span class="xm">${docMeta(k)}${d.url ? ` · <a class="lnk" href="${d.url}" target="_blank" rel="noopener">Original ↗</a>` : ''}</span>`, `<div class="one">${d.b(at)}</div>`, false);
+}
+const setCol = on => { $('flow').classList.toggle('col', on); $('trailbtn').hidden = on; if (on) follow(); };
+const NOTE = label => ({ t:'note', label }), CHECK = (label, opts) => ({ t:'checks', label, opts });
+const INPUTS = () => [
+ { Speaker: NOTE('Anything compliance should know about this speaker?'), Guests: CHECK('Confirm before checking', ['Each guest has a business reason to attend', 'No spouses or friends']), Venue: CHECK('Confirm the venue', ['Modest restaurant', 'Quiet enough to present']), Estimate: NOTE('How did you get this estimate?') },
+ { Speaker: NOTE('Anything to add about this speaker?'), Identity: CHECK('Confirm', ['These are the people I invited']), 'Meal limit': NOTE('Why is this estimate right?'), 'Annual limit': CHECK('If this total looks wrong', ['Ask compliance to review the ledger', 'A past dinner is missing or doubled']), 'Red flags': NOTE('Why does this guest need to attend again?'), Reporting: NOTE('Anything to remember for reporting?') },
+ { Headcount: CHECK('Confirm who the card covers', ['The speaker is eating', 'I am the only employee attending']), Limit: NOTE('Anything about this limit?'), Merchant: CHECK('Card restrictions', ['Restaurants only', 'Valid on the dinner date only']), Ramp: NOTE('Memo to add to the card') },
+ { 'Card live': NOTE('Anything to flag before the dinner?'), Dinner: NOTE('Did anything change on the night?'), Charge: CHECK('Confirm the charge', ['This charge is from the dinner', 'There was only one charge']), Ping: NOTE('Anything to add?') },
+ { Photo: NOTE('Anything hard to read on the receipt?'), Read: CHECK('Tick any line read wrong', dn.lines.map(l => l.t)), 'Adds up': NOTE('Why might these not match?'), 'Who ate': NOTE('Anything to note about attendance?') },
+ { Speaker: NOTE('Anything to add?'), Identity: CHECK('Confirm', ['Everyone who ate is listed']), 'Meal limit': NOTE('Anything about the final cost?'), 'Annual limit': NOTE('Anything about these totals?'), 'Red flags': NOTE('Context for compliance'), Reporting: CHECK('Before these are drafted', ['Amounts look right', 'Hold these rows for review']) },
+ { Exception: NOTE('Questions for the rep'), Decision: NOTE('Add to the decision'), Rows: CHECK('Before filing', ['Rows checked', 'Hold for a second review']), Record: NOTE('Note for the file') },
+];
+const DEF_INPUT = NOTE('Anything to add?');
+function foot(k) {
+  const i = view, def = INPUTS()[i]?.[S[k].name] || DEF_INPUT, v = sc[i].input[k] || { c: [], t: '' };
+  const field = def.t === 'checks' ? `<div class="cks">${def.opts.map((o, n) => `<label><input type="checkbox" data-c="${n}" ${v.c.includes(n) ? 'checked' : ''}>${o}</label>`).join('')}</div>` : `<input id="xi" type="text" aria-label="${esc(def.label)}" placeholder="Type here" value="${esc(v.t)}">`;
+  const status = justSaved === k ? '<span class="sv">Saved to this dinner and the audit trail</span>' : working ? '<span class="pz">Paused while this is open. Close it to continue.</span>' : '';
+  return `<div class="foot"><div class="fl">${def.label}</div><div class="fr">${field}<button class="save" data-save="${k}">${v.saved ? 'Update' : 'Add'}</button></div>${status}</div>`;
+}
+function saveInput(k) {
+  const i = view, def = INPUTS()[i]?.[S[k].name] || DEF_INPUT;
+  const c = [...$('exp').querySelectorAll('[data-c]')].filter(e => e.checked).map(e => +e.dataset.c), t = $('xi')?.value.trim() || '';
+  const text = def.t === 'checks' ? c.map(n => def.opts[n]).join('; ') : t; if (!text) return;
+  sc[i].input[k] = { c, t, text, saved: true }; persist();
+  you(`${S[k].name}: ${text}`);
+  const d = sc[i].done[k];
+  if (d) { const r = d.length - 1, card = $('cd'+k); fillCard(k, r); card.classList.add('in'); card.querySelectorAll('.r').forEach(e => e.classList.add('in')); card.querySelectorAll('.dots i').forEach(e => e.classList.add('y')); if (d[r] === 'blocked' || d[r] === 'flagged') card.classList.add(d[r]); }
+  justSaved = k; openDetail(k, exp.kind === 'st' ? exp.r : undefined, false); justSaved = null;
+}
+
+/* ---------- dashboard ---------- */
+let role = 'compliance', filter = null, doneOpen = false, tab = 'Dinners', showing = null;
+const seen = () => role === 'rep' ? DINNERS.filter(d => d.rep === 'Jordan Lee') : DINNERS;
+function rail(s, done) { return NAMES.map((_, i) => { const pl = done || (i <= s && i > 0), pr = done ? i < 6 : i < s; const cls = 'cell' + (i === 0 ? ' first' : '') + (i === 6 ? ' last' : '') + (pl ? ' pl' : '') + (pr ? ' pr' : ''); return `<span class="${cls}">${i === s && !done ? '@' : `<span class="dot ${done || i < s ? 'd' : ''}"></span>`}</span>`; }).join(''); }
+function rowHtml(d, st) {
+  const need = !st.done && st.who === role, l = rail(st.step, st.done).replace('@', `<span class="bell">${bellSvg}${need ? '<i>!</i>' : ''}<small>${NAMES[st.step]}</small></span>`);
+  return `<button class="grid row" data-open="${d.id}"><span class="what"><b>${d.t}</b><small>${d.day} · ${d.venue}${role === 'compliance' ? ' · ' + d.rep : ''}</small></span>${l}<span class="say ${st.tone || ''}">${st.say}</span></button>`;
+}
+function dinnersHtml() {
+  const list = seen().map(d => [d, statusOf(d)]), nd = list.filter(([, s]) => !s.done && s.who === role), prog = list.filter(([, s]) => !s.done && s.who !== role), dn2 = list.filter(([, s]) => s.done);
+  const money = dn2.reduce((n, [d]) => n + calc(d, saveOf(d)).total, 0), rows = dn2.reduce((n, [d]) => n + calc(d, saveOf(d)).hcps.length, 0), show = k => !filter || filter === k;
+  let h = `<div class="filters"><button class="need ${filter === 'need' ? 'on' : ''}" data-f="need"><b>${nd.length}</b>need you</button><button class="${filter === 'prog' ? 'on' : ''}" data-f="prog"><b>${prog.length}</b>in progress</button><button class="${filter === 'done' ? 'on' : ''}" data-f="done"><b>${dn2.length}</b>done</button><span class="note">Mock with fictional demo data · progress saves in this browser</span></div>`;
+  h += `<div class="grid head"><span>Dinner</span>${NAMES.map(n => `<span>${n}</span>`).join('')}<span>Where it stands</span></div>`;
+  if (show('need')) h += `<div class="dsec need">Needs you</div>` + (nd.length ? nd.map(([d, s]) => rowHtml(d, s)).join('') : '<div class="more">Nothing needs you right now.</div>');
+  if (show('prog')) h += `<div class="dsec">In progress</div>` + (prog.length ? prog.map(([d, s]) => rowHtml(d, s)).join('') : '<div class="more">Nothing in progress.</div>');
+  if (show('done')) { h += `<div class="dsec">Done</div><button class="donebar" data-doneopen="1" aria-expanded="${doneOpen}">${doneOpen ? '▾' : '▸'} ${dn2.length} dinners · ${whole(money)} settled · ${rows} Open Payments rows</button>`; if (doneOpen) h += dn2.map(([d, s]) => rowHtml(d, s)).join(''); }
+  return h;
+}
+function barHtml() { const items = role === 'rep' ? ['Dinners','Documents'] : ['Dinners','Doctors','Rules','Documents','Proof']; $('bar').innerHTML = `<button class="home" data-home="1">Covers</button>${items.map(n => `<button class="item ${tab === n ? 'on' : ''}" data-tab="${n}">${n}</button>`).join('')}<span class="sp"></span><button class="role" data-role="1" title="Switch role in this mock">${role === 'rep' ? 'Jordan Lee · Rep' : 'Priya Shah · Compliance'}</button><button class="new" data-tab="New dinner">+ New dinner</button>`; }
+function render() { barHtml(); $('flowwrap').hidden = !showing; $('page').hidden = !!showing; $('mockctl').hidden = !!showing; if (showing) return; $('page').innerHTML = tab === 'Dinners' ? dinnersHtml() : `<div class="stub"><h1>${tab}</h1><p>Not mocked yet.</p></div>`; }
+function leaveFlow() { runId++; working = false; fast = false; replay = false; pending = null; stash = null; exp = null; prevExp = null; $('exp').classList.remove('in'); $('ask').classList.remove('in'); $('badge').classList.remove('in'); showing = null; }
+function openDinner(d) {
+  leaveFlow(); dn = d; sv = saveOf(d); showing = d.id; sc = {}; trailLog = []; S = []; $('ftitle').textContent = `${d.t} · ${d.day} · ${d.venue}`; $('log').innerHTML = ''; $('cap').textContent = ''; $('trailbtn').textContent = 'Audit trail'; setCol(false);
+  replay = sv.started || sv.step > 0; replayUntil = sv.step; fast = replay; if (!sv.started) { sv.started = true; persist(); }
+  render(); run();
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, .stop'); if (!t) { if (exp && !e.target.closest('#exp')) closeExp(); return; } const ds = t.dataset;
+  if (ds.cols) { stage.className = ds.cols; document.querySelectorAll('[data-cols]').forEach(b => b.classList.toggle('on', b === t)); return; }
+  if (ds.reset) { saves = {}; persist(); filter = null; doneOpen = false; return render(); }
+  if (ds.home) { leaveFlow(); tab = 'Dinners'; filter = null; return render(); }
+  if (ds.tab) { leaveFlow(); tab = ds.tab; return render(); }
+  if (ds.role) { leaveFlow(); role = role === 'rep' ? 'compliance' : 'rep'; filter = null; tab = 'Dinners'; return render(); }
+  if (ds.f) { filter = filter === ds.f ? null : ds.f; if (filter === 'done') doneOpen = true; return render(); }
+  if (ds.doneopen) { doneOpen = !doneOpen; return render(); }
+  if (ds.open) return openDinner(DINNERS.find(d => d.id === ds.open));
+  if (t.classList.contains('stop')) { const i = +ds.s; if (i > cur) return; if (i !== view) jumpTo(i); return stepRecord(i); }
+  if (ds.ans && pending) return pending.done(ds.ans);
+  if (ds.v && pending) { sv.verdict = ds.v; sv.note = ($('noteIn')?.value || '').trim().replace(/"/g, ''); persist(); return pending.done(ds.v); }
+  if (ds.tog && pending) { sv.absent.includes(ds.tog) ? sv.absent.splice(sv.absent.indexOf(ds.tog), 1) : sv.absent.push(ds.tog); persist(); return restoreAsk(); }
+  if (ds.see) return setCol(true);
+  if (ds.col !== undefined) return setCol(false);
+  if (ds.close !== undefined) return closeExp();
+  if (ds.save !== undefined) return saveInput(+ds.save);
+  if (ds.doc) return openDoc(ds.doc, ds.at);
+  if (ds.step !== undefined) return stepRecord(+ds.step, false);
+  if (ds.return !== undefined) { const p = prevExp; return p.kind === 'st' ? openDetail(p.k, p.r, false) : stepRecord(p.i, false); }
+  if (ds.round) return openDetail(+ds.k, +ds.round, false);
+  if (ds.k !== undefined) return exp && (exp.kind === 'st' || exp.kind === 'pre') && exp.k === +ds.k ? closeExp() : openDetail(+ds.k);
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && exp) closeExp(); });
+$('skip').onclick = () => { fast = true; if (exp) closeExp(); if (view !== cur) returnToCur(); };
+$('trailbtn').onclick = () => setCol(true);
+$('replay').onclick = () => { const d = dn; saves[d.id] = blank(d); persist(); openDinner(d); };
+$('colhead').innerHTML = '<button class="x" data-col aria-label="Close">×</button><b>Audit trail</b><span>Every step, as it happens</span>';
+drawSprite(0); render();
+</script>
+</html>

@@ -112,6 +112,14 @@ This replaces the Figma Plan screen from B1. **Code leads; Figma now does the vi
 - **Type sizes:** heading 22, verdict 26, display 40, micro 11. Bold 700 for the verdict lines.
 - **Shapes:** cap bar 4 px. Stamp flat (`stamp/rotation` = 0).
 
+## Sun Nov 8 — the prototype replaces the storyboard
+
+**The design target is `design/prototype/covers-app.html`.** A dashboard of dinners, each opening a map with a guide that walks the six checkers. This replaces `design/storyboard.html` and the page list in the plan. Details, calls made, and open questions: `docs/checkpoint-nov-8.md`.
+
+**Accent stays volt** (`#E4F222`, dark text). New token `color/accent-tint` (`#F6FAB4`) for highlights. **Figma needs that variable added.**
+
+**`FixtureService.approveException` now handles settlement exceptions.** `LiveService` has the same gap (Nikhil).
+
 ## Pending
 
 - ~~Vercel connection and the Upstash integration (Cole, dashboard).~~ Done Nov 8.
