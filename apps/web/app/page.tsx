@@ -1,5 +1,5 @@
-import { Dashboard } from '../components/dashboard';
+import { StartScreen } from '../components/start-screen';
 
 export default function Home() {
-  return <Dashboard />;
+  return <StartScreen />;
 }

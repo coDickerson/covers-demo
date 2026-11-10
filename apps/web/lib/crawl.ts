@@ -95,8 +95,7 @@ export const band = (h: number) => Math.max(160, h - ABOVE - BELOW);
 export const middle = (h: number, y0: number, y1: number, scale: number) => Math.round(ABOVE + (band(h) - (y1 - y0) * scale) / 2 - y0 * scale);
 
 /**
- * The camera for a step: that bar, at the largest whole-number zoom that fits beside the task panel (`panel` pixels on
- * the right). With `street`, it shows that whole stretch of street instead.
+ * The camera for a step: that bar, as large as fits beside the task panel (`panel` pixels on the right). With `street`, it shows that whole stretch of street instead.
  */
 export function camera(step: number, w: number, h: number, street: number | null = null, panel = 0): Camera {
   const s = STOPS[step] ?? STOPS[0];
@@ -104,10 +103,11 @@ export function camera(step: number, w: number, h: number, street: number | null
     const st = STREETS[street] ?? STREETS[0], rw = st.to - st.from, scale = Math.min(1, (w - 48) / rw, band(h) / (CRAWL.height - (TOP - 250)));
     return { scale, x: Math.round((w - rw * scale) / 2 - st.from * scale), y: middle(h, TOP - 250, CRAWL.height, scale) };
   }
-  const x0 = s.span[0] - 70, x1 = s.span[1] + 70;
-  const y0 = TOP - 250, y1 = CRAWL.height, avail = Math.max(240, w - panel);
+  // Frame just this bar: from a little above its roof to just under the cable car's feet, with a little room either side.
+  const x0 = s.span[0] - 40, x1 = s.span[1] + 40;
+  const y0 = TOP - (BARS[s.bar]?.rise ?? 250) - 14, y1 = CRAWL.walk + 18, avail = Math.max(240, w - panel);
   const fit = Math.min((avail * 0.94) / (x1 - x0), (band(h) * 0.94) / (y1 - y0));
-  const scale = fit >= 1 ? Math.min(3, Math.floor(fit)) : fit;
+  const scale = Math.min(4, fit);
   return { scale, x: Math.round(avail / 2 - ((x0 + x1) / 2) * scale), y: middle(h, y0, y1, scale) };
 }
 

@@ -582,7 +582,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                       {actionOpen && actionBox(null)}
                     </div>
                   )}
-                  {closed && viewing === null && !run && <div className="border-t border-ink-primary px-4 py-3"><Link href="/" className={`block text-center ${primary}`}>Closed, return to dashboard</Link></div>}
+                  {closed && viewing === null && !run && <div className="border-t border-ink-primary px-4 py-3"><Link href="/" className={`block text-center ${primary}`}>Closed, back to the start</Link></div>}
                   {Detail()}
                 </aside>
               </>
