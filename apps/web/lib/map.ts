@@ -27,7 +27,7 @@ export function changedStations(before: Evaluation, after: Evaluation): number[]
 /** What the agent looks at, line by line, while it is at a station. */
 export const thinkingLines = (s: Station) => s.think?.length ? s.think : s.card.map(([a, b]) => (b ? `${a}: ${b}` : a));
 /** The step of the map an audit action belongs to. */
-export const AUDIT_STEP: Record<string, number> = { 'plan.created': 0, 'plan.updated': 1, 'plan.evaluated': 1, 'fund.issued': 2, 'receipt.read': 4, 'receipt.line_fixed': 4, 'attendance.confirmed': 5, 'exception.approved': 6, 'exception.denied': 6 };
+export const AUDIT_STEP: Record<string, number> = { 'plan.created': 0, 'plan.updated': 1, 'plan.evaluated': 1, 'fund.issued': 2, 'charge.seen': 3, 'receipt.read': 4, 'receipt.line_fixed': 4, 'attendance.confirmed': 5, 'ramp.memo_written': 5, 'fund.locked': 5, 'exception.approved': 6, 'exception.denied': 6 };
 
 export const STEP_KEYS: DinnerStep[] = ['propose', 'check', 'fund', 'dinner', 'close_out', 'settle', 'report'];
 
@@ -103,12 +103,22 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
   const speaker = speakerOf(plan);
   const speakerName = speaker?.hcp.name ?? plan.speakerId;
   switch (step) {
-    case 0: return [
-      done('Speaker', 'Speaker', [[speakerName, ''], ['Topic', plan.topic]], `${speakerName} will speak on ${plan.topic}.`, [{ label: 'Speaker record', doc: 'roster' }]),
-      done('Guests', 'Invited', plan.inviteeNpis.slice(0, 3).map((n) => [nameOf(n), '']).concat(plan.inviteeNpis.length > 3 ? [[`+${plan.inviteeNpis.length - 3} more`, '']] : []) as Station['card'], `${plan.inviteeNpis.map(nameOf).join(', ')}.`, [{ label: 'NPI records', doc: 'npi' }]),
-      done('Venue', 'Where and when', [[venueOf(plan), ''], [dayOf(plan), '']], `${plan.venue}, ${dayOf(plan)}.`),
-      done('Estimate', 'All in', [['Per person', usd(plan.estimatedPerPerson)], ['People', String(headcountOf(plan))]], `${usd(plan.estimatedPerPerson)} per person including tax and tip, for ${headcountOf(plan)} people.`, [{ label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
-    ];
+    case 0: {
+      // The dinner as Covers proposes it from the rep's calendar invite: each station reads one part of the invite.
+      const people = headcountOf(plan);
+      const [speakerS, guestsS, venueS, estimateS] = [
+        done('Speaker', 'Speaker', [[speakerName, ''], ['Topic', plan.topic]], `${speakerName} will speak on ${plan.topic}.`, [{ label: 'Speaker record', doc: 'roster' }]),
+        done('Guests', 'Invited', plan.inviteeNpis.slice(0, 3).map((n) => [nameOf(n), '']).concat(plan.inviteeNpis.length > 3 ? [[`+${plan.inviteeNpis.length - 3} more`, '']] : []) as Station['card'], `${plan.inviteeNpis.map(nameOf).join(', ')}.`, [{ label: 'NPI records', doc: 'npi' }]),
+        done('Venue', 'Where and when', [[venueOf(plan), ''], [dayOf(plan), '']], `${plan.venue}, ${dayOf(plan)}.`),
+        done('Estimate', 'All in', [['Per person', usd(plan.estimatedPerPerson)], ['People', String(people)]], `${usd(plan.estimatedPerPerson)} per person including tax and tip, for ${people} people.`, [{ label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
+      ];
+      return [
+        { ...speakerS, think: [`Reading ${nameOf(plan.repId)}'s calendar invite`, `Speaker: ${speakerName}`, `Topic: ${plan.topic}`] },
+        { ...guestsS, think: [`${plan.inviteeNpis.length} doctors on the invite`, 'Matching each one to the NPI registry', 'Every guest identified'] },
+        { ...venueS, think: ['Reading where and when', `${venueOf(plan)}, ${dayOf(plan)}`] },
+        { ...estimateS, think: ['Pulling the reservation estimate', `${usd(plan.estimatedPerPerson)} a person, ${people} people`] },
+      ];
+    }
     case 1: {
       const ev = round !== undefined ? d.rounds[round] ?? d.view.evaluation : d.view.evaluation;
       return CHECKERS.map((c) => checkerStation(c.id, c.name, 'Before the dinner', beforeChecks(c.id, ev), c.id === 'P6' ? 'none' : beforeMark(c.id, ev), c.id === 'P6' ? 'Runs after the dinner' : 'Not checked yet'));

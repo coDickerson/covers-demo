@@ -12,7 +12,9 @@ type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[])
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-export const WALK_MS = tokens['motion/duration/slow'] * 2.5; // the bell's walking pace between stations
+export const WALK_MS = tokens['motion/duration/slow'] * 3.5; // the walker's pace between stations at one place
+/** The longer walk from one place (bar) to the next, slow enough to see the cable car sway. */
+export const TRAVEL_MS = tokens['motion/duration/slow'] * 11;
 const DWELL = tokens['motion/duration/slow'];
 const THINK = tokens['motion/duration/fast'];
 
@@ -37,7 +39,7 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
       if (!start) { set({ step, at: -1, seen: 0, line: 0, label: names[0] ?? '' }); await sleep(DWELL); }
       for (let i = 0; i < names.length; i++) {
         set({ step, at: start + i, seen: start + i, line: 0, label: names[i]! });
-        await sleep(WALK_MS);
+        await sleep(i === 0 && !start ? TRAVEL_MS : WALK_MS);
         for (let line = 1; line <= (lines[i] ?? 0); line++) {
           set({ step, at: start + i, seen: start + i, line, label: names[i]! });
           await sleep(THINK);

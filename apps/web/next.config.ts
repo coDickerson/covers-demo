@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // Live replay mode (COVERS_CACHE=1) reads recorded responses from the repo's cache/ folder at runtime.
   outputFileTracingIncludes: { '/api/**': ['../../cache/**/*'] },
   serverExternalPackages: ['postgres'],
+  // No Next.js dev badge in the corner: it shows up in demo recordings.
+  devIndicators: false,
 };
 
 export default nextConfig;
