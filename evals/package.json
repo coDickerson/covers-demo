@@ -10,13 +10,16 @@
     "receipts:eval": "tsx receipts/run-reader.ts",
     "proof": "tsx proof/build-proof.ts",
     "demo:record": "COVERS_CACHE=record tsx cache/demo-run.ts",
-    "demo:replay": "COVERS_CACHE=1 tsx cache/demo-run.ts"
+    "demo:replay": "COVERS_CACHE=1 tsx cache/demo-run.ts",
+    "backtest": "tsx backtest/run-backtest.ts",
+    "diligence": "tsx backtest/run-diligence.ts"
   },
   "dependencies": {
     "@covers/contract": "workspace:*",
-    "zod": "4.6.7",
+    "@covers/engine": "workspace:^",
     "@covers/integrations": "workspace:*",
-    "@covers/live-service": "workspace:*"
+    "@covers/live-service": "workspace:*",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

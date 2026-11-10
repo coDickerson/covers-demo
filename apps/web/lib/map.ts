@@ -113,7 +113,7 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
         done('Estimate', 'All in', [['Per person', usd(plan.estimatedPerPerson)], ['People', String(people)]], `${usd(plan.estimatedPerPerson)} per person including tax and tip, for ${people} people.`, [{ label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
       ];
       return [
-        { ...speakerS, think: [`Reading ${nameOf(plan.repId)}'s calendar invite`, `Speaker: ${speakerName}`, `Topic: ${plan.topic}`] },
+        { ...speakerS, think: [`Reading ${nameOf(plan.repId)}'s calendar invite (calendar import simulated in this demo)`, `Speaker: ${speakerName}`, `Topic: ${plan.topic}`] },
         { ...guestsS, think: [`${plan.inviteeNpis.length} doctors on the invite`, 'Matching each one to the NPI registry', 'Every guest identified'] },
         { ...venueS, think: ['Reading where and when', `${venueOf(plan)}, ${dayOf(plan)}`] },
         { ...estimateS, think: ['Pulling the reservation estimate', `${usd(plan.estimatedPerPerson)} a person, ${people} people`] },

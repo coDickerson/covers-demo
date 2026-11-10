@@ -569,7 +569,7 @@ export function DinnerMap({ planId, intro = false }: { planId: string; intro?: b
                         <span className="block text-small text-ink-muted">{stop.name} · {stop.hood} · {doneCount} of {stations.length} done</span>
                       </div>
                     </div>
-                    {run && run.step === shown && <span className="mt-1 block text-small text-ink-secondary"><b className="font-strong text-ink-primary">Checking {run.label.toLowerCase()}</b> · you can leave this page, it stops when it needs you</span>}
+                    {run && run.step === shown && <span className="mt-1 block text-small text-ink-secondary"><b className="font-strong text-ink-primary">Checking {/^[A-Z][a-z]+$/.test(run.label) && run.label !== 'Ramp' ? run.label.toLowerCase() : run.label}</b> · you can leave this page, it stops when it needs you</span>}
                     <span className="mt-2.5 flex gap-1">{stations.map((s, i) => <i key={s.name} className={`h-1.5 flex-1 transition-colors duration-(--motion-duration-base) ease-standard ${visible(i) && s.mark !== 'waiting' ? (s.mark === 'blocked' ? 'bg-status-over' : s.mark === 'flagged' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>
                     {stamp && <p className={`covers-line mt-2.5 border px-2.5 py-1.5 text-small font-strong ${stamp.tone === 'ok' ? 'border-status-ok text-status-ok' : 'border-status-near text-status-near'}`}>{STAMP_LINE[stamp.text] ?? stamp.text}</p>}
                   </header>

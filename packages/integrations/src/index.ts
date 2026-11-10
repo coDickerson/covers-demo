@@ -21,3 +21,6 @@ export { createReceiptReader, hashImage, ReceiptRead, ReceiptReadError, RECEIPT_
 export { createPackCompiler, CompiledOutput, PackCompileError, PACK_PROMPT_VERSION, DEFAULT_PACK_MODEL, type PackCompiler, type ParsePackFn } from './pack-compiler';
 export { createCache, cacheModeFrom, CacheMissError, cachedReader, cachedCompiler, cachedRegistrySearch, cachedRamp, offline, type Cache, type CacheMode } from './cache';
 export { createSlackNotifier, slackEscape, type SlackNotifier, type SlackConfig, type SlackMessage } from './slack';
+export { createOpenPaymentsClient, summarizeHistory, dollarsToCents, OpenPaymentsError, PaymentHistory, OpenPaymentRow, OPEN_PAYMENTS_GENERAL, OPEN_PAYMENTS_LATEST_YEAR, OPEN_PAYMENTS_PAGE_LIMIT, type OpenPaymentsClient, type Condition } from './open-payments';
+export { createVenueClient, venueFactsFrom, priceLevelOf, VenueError, VenueFacts, GOOGLE_MAPS_ACTOR, type VenueClient } from './venue';
+export { createDiligenceCrew, riskTier, DiligenceReport, IdentityFindings, HistoryFindings, VenueFindings, Verification, RiskTier, DILIGENCE_PROMPT_VERSION, DEFAULT_LEAD_MODEL, DEFAULT_SPECIALIST_MODEL, type DiligenceInput, type DiligenceRun, type DiligenceEvent, type Fact } from './diligence';

@@ -10,10 +10,11 @@ import { actorOf, CHIPS, labelOf, sectionOf, SECTIONS, type SectionId } from '..
 import { usd, type Role } from '../lib/dinner';
 import type { DocRef } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
+import { AgentsView } from './agents-view';
 import { DoctorsView, ProofView, RulesView, SourcesView } from './audit-views';
 
-export type AuditView = 'events' | 'rules' | 'doctors' | 'sources' | 'proof';
-const VIEWS: [AuditView, string][] = [['events', 'Events'], ['rules', 'Rules'], ['doctors', 'Doctors'], ['sources', 'Sources'], ['proof', 'Proof']];
+export type AuditView = 'events' | 'agents' | 'rules' | 'doctors' | 'sources' | 'proof';
+const VIEWS: [AuditView, string][] = [['events', 'Events'], ['agents', 'Agents'], ['rules', 'Rules'], ['doctors', 'Doctors'], ['sources', 'Sources'], ['proof', 'Proof']];
 
 export function AuditPage({ view: startView = 'events', doc, at }: { view?: AuditView; doc?: string | undefined; at?: string | undefined }) {
   const router = useRouter();
@@ -133,6 +134,7 @@ export function AuditPage({ view: startView = 'events', doc, at }: { view?: Audi
           )}
           {view !== 'events' && (
             <div className="mt-3 flex min-h-0 flex-1 flex-col">
+              {view === 'agents' && <AgentsView />}
               {view === 'rules' && <RulesView onDoc={openDoc} used={used} />}
               {view === 'doctors' && <DoctorsView onDoc={openDoc} />}
               {view === 'sources' && <SourcesView doc={source.doc} at={source.at} onDoc={openDoc} />}
