@@ -11,7 +11,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
+import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera, DRAGON, FLOWERS, RAMP_BOARD, SEALION } from '../lib/crawl';
 import { DocCard } from './doc-card';
 import { AuditLog } from './audit-log';
 import { CARD_STEPS, CardSlip } from './ramp-card';
@@ -535,6 +535,12 @@ export function DinnerMap({ planId }: { planId: string }) {
                       ? <i key={n} className="covers-warm absolute bg-accent-tint mix-blend-soft-light" style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, ...timing }} />
                       : <i key={n} className={`covers-${l.kind} absolute`} style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, backgroundImage: `url(${b.src})`, backgroundPosition: `${-x}px ${-y}px`, imageRendering: 'pixelated', ...timing }} />;
                   })}
+                  {/* A sea lion on its crate by the Wharf, and now and then a dragon dance along the Chinatown sidewalk. */}
+                  <img src={SEALION.src} alt="" width={SEALION.width} height={SEALION.height} draggable={false} className="covers-bob absolute [image-rendering:pixelated]" style={{ left: SEALION.x, top: CRAWL.top + SEALION.sink - SEALION.height, animationDuration: 'calc(var(--motion-duration-slow) * 18)' }} />
+                  {[FLOWERS, RAMP_BOARD].map((p) => <img key={p.src} src={p.src} alt="" width={p.width} height={p.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: p.x, top: CRAWL.top + p.sink - p.height }} />)}
+                  <span className="covers-parade absolute" style={{ left: DRAGON.x, top: CRAWL.top + DRAGON.sink - DRAGON.height, ['--travel' as string]: `${DRAGON.travel}px`, animationDuration: `calc(var(--motion-duration-slow) * ${DRAGON.every})` }}>
+                    <img src={DRAGON.src} alt="" width={DRAGON.width} height={DRAGON.height} draggable={false} className="covers-bob block [image-rendering:pixelated]" style={{ animationDuration: 'calc(var(--motion-duration-slow) * 2)' }} />
+                  </span>
                   <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.height} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
                   <svg className="pointer-events-none absolute inset-0 overflow-visible" width={CRAWL.width} height={CRAWL.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />

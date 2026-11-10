@@ -34,6 +34,9 @@
   15% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, calc(var(--space-6) * -1)); }
 }
+/* Now and then a dragon dance parades along the Chinatown sidewalk (distance set per element), then is gone a while. */
+@keyframes covers-parade { 0% { opacity: 0; transform: translateX(0); } 2% { opacity: 1; } 34% { opacity: 1; transform: translateX(var(--travel)); } 36%, 100% { opacity: 0; transform: translateX(var(--travel)); } }
+.covers-parade { opacity: 0; animation-name: covers-parade; animation-timing-function: steps(160, end); animation-iteration-count: infinite; }
 /* Life inside the bars, cut from the art: a pixel of movement now and then, never all together (timing set per element). */
 @keyframes covers-bob { 0%, 64%, 100% { transform: translateY(0); } 68%, 80% { transform: translateY(-1px); } 84%, 90% { transform: translateX(1px); } }
 @keyframes covers-sway { 0%, 36%, 100% { transform: translateX(0); } 42%, 62% { transform: translateX(1px); } 68%, 84% { transform: translateX(-1px); } }
@@ -46,6 +49,6 @@
 .covers-cheer { transform: translate(-50%, 0); animation: covers-cheer calc(var(--motion-duration-slow) * 3) steps(8, end) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .covers-cheer { animation: none; opacity: 0; }
-  .covers-bob, .covers-sway, .covers-flicker, .covers-warm { animation: none; }
+  .covers-bob, .covers-sway, .covers-flicker, .covers-warm, .covers-parade { animation: none; }
   .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
 }

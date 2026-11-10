@@ -74,6 +74,17 @@ export const LIVES: { kind: 'bob' | 'sway' | 'flicker' | 'warm'; bar: number; re
   { kind: 'bob', bar: 5, rect: [134, 160, 14, 16], every: 7, delay: 4.5 },
 ];
 
+/**
+ * Two of the city's own, in the bars' style (public/crawl/): a sea lion on a dock crate in the gap after the Buena
+ * Vista, and a dragon dance that now and then parades along the Chinatown sidewalk past Li Po, head first, then is gone.
+ * `travel` is how far the parade goes (grid pixels, leftward), `every` its cycle in slow-motion units.
+ */
+export const SEALION = { src: '/crawl/sealion.png', x: 424, width: 47, height: 57, sink: 3 } as const;
+/** The flower stand by Pacific Cocktail Haven, and for the judges a Ramp Happy Hour chalkboard pointing into Trick Dog. */
+export const FLOWERS = { src: '/crawl/flowercart.png', x: 1586, width: 59, height: 60, sink: 2 } as const;
+export const RAMP_BOARD = { src: '/crawl/rampboard.png', x: 1918, width: 50, height: 54, sink: 3 } as const;
+export const DRAGON = { src: '/crawl/dragon.png', x: 1400, width: 83, height: 54, sink: 12, travel: -330, every: 100 } as const;
+
 /** The two stretches of the street. The second opens at Dinner. */
 export const STREETS = [
   { name: 'Fisherman’s Wharf to North Beach', from: 0, to: 1080 },
@@ -148,7 +159,7 @@ export function drawGround(g: CanvasRenderingContext2D, walk: HTMLImageElement) 
 const GLYPH: Record<string, string> = { R: '110101110101101', A: '010101111101101', M: '101111111101101', P: '110101110100100', H: '101101111101101', Y: '101101010010010', O: '010101101101010', U: '101101101101111' };
 
 /**
- * Lamps, strings of lights, the flower stand, the chalkboard and the city's own touches. `frame` advances about six
+ * Lamps, strings of lights and the city's own touches. `frame` advances about six
  * times a second: slow things (lights, lanterns, flags) move on `tick`, every third frame; passers-by move every frame.
  * Everything sits in a gap between bars or far behind them, and the passers-by come by only now and then.
  */
@@ -173,9 +184,9 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
   g.clearRect(0, 0, CRAWL.width, CRAWL.height);
   drawCity(g, R, frame, 'behind');
 
-  // The Wharf: an SF lamp with a gull that hops now and then.
-  lamp(468, false);
-  const gx = 466, gy = TOP - 136 - (tick % 7 === 0 ? 2 : 0);
+  // The Wharf: an SF lamp with a gull that hops now and then (the sea lion's crate sits just before it).
+  lamp(496, false);
+  const gx = 494, gy = TOP - 136 - (tick % 7 === 0 ? 2 : 0);
   R(gx - 4, gy - 6, 9, 5, '#f4f4f0'); R(gx + 3, gy - 9, 4, 4, '#f4f4f0'); R(gx - 4, gy - 6, 6, 2, '#9aa0a6'); R(gx + 7, gy - 8, 2, 1, '#e8a33a'); R(gx + 5, gy - 8, 1, 1, '#141414');
 
   // North Beach: Italian lights from Tosca's cornice to a hook on a green, white and red lamp post.
@@ -185,25 +196,6 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
   // Chinatown: red lanterns from the tip of Li Po's eave to a pole, swaying a pixel.
   post(1404, 186, '#7a2a20');
   strand(1339, TOP - 203, 1404, TOP - 186, 12, 16, (x, y, k) => { const s = (k + tick) % 2; R(x, y + 1, 1, 2, '#3a3330'); R(x - 2 + s, y + 3, 5, 6, '#d0322b'); R(x - 2 + s, y + 3, 5, 1, '#f2c14e'); R(x - 2 + s, y + 8, 5, 1, '#f2c14e'); R(x + s, y + 9, 1, 2, '#f2c14e'); });
-
-  // Union Square: a flower stand, a wooden cart under a striped awning with buckets of flowers.
-  const fx = 1590, OUT = '#2a221c', WOOD = '#8a5a34', WOODL = '#a9744a', WOODD = '#6a4226';
-  R(fx + 3, TOP - 46, 2, 26, WOODD); R(fx + 37, TOP - 46, 2, 26, WOODD); R(fx - 1, TOP - 52, 44, 7, OUT);
-  for (let i = 0; i < 42; i++) R(fx + i, TOP - 51, 1, 5, ((i / 6) | 0) % 2 ? '#f4f1e8' : '#c8322b');
-  for (let i = 0; i < 42; i += 6) { const c = ((i / 6) | 0) % 2 ? '#f4f1e8' : '#c8322b'; R(fx + i, TOP - 46, 6, 1, c); R(fx + i + 1, TOP - 45, 4, 1, c); }
-  [['#ff6fa8', '#ff9cc2'], ['#f2c14e', '#ffe08a'], ['#e0413a', '#ff7a6a'], ['#ffffff', '#e6e2f0'], ['#b07ad8', '#d4a8f0']].forEach(([c, hi], k) => {
-    const bx = fx + 3 + k * 7, up = (k + tick) % 4 === 0 ? 1 : 0;
-    R(bx, TOP - 26, 6, 5, '#8a9098'); R(bx, TOP - 26, 6, 1, '#b8bec6'); R(bx + 5, TOP - 25, 1, 4, '#6a7078');
-    R(bx + 1, TOP - 30, 1, 4, '#2e7d4f'); R(bx + 4, TOP - 30, 1, 4, '#2e7d4f');
-    R(bx, TOP - 33 - up, 6, 3, c!); R(bx + 1, TOP - 34 - up, 4, 1, c!); R(bx + 1, TOP - 33 - up, 1, 1, hi!); R(bx + 4, TOP - 32 - up, 1, 1, hi!);
-  });
-  R(fx, TOP - 22, 42, 12, OUT); R(fx + 1, TOP - 21, 40, 10, WOOD); R(fx + 1, TOP - 21, 40, 1, WOODL);
-  for (let i = fx + 8; i < fx + 41; i += 8) R(i, TOP - 20, 1, 9, WOODD);
-  R(fx + 41, TOP - 18, 8, 2, WOODD); R(fx + 48, TOP - 19, 2, 4, OUT);
-  for (const wx of [fx + 9, fx + 32]) {
-    for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) { const d = Math.hypot(dx, dy); if (d <= 5.4 && d >= 4.2) R(wx + dx, TOP - 6 + dy, 1, 1, OUT); }
-    R(wx - 4, TOP - 6, 9, 1, WOODD); R(wx, TOP - 10, 1, 9, WOODD); R(wx - 1, TOP - 7, 3, 3, OUT);
-  }
 
   // Hayes Valley: rope and ship lanterns from Smuggler's Cove's roof to a wooden piling.
   post(1840, 150, '#5a3a22');
@@ -215,15 +207,6 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
   strand(1885, TOP - 180, 1981, TOP - 188, 10, 10, (x, y, k) => { const f = (k + tick) % 2; R(x - 3, y + 1, 7, 7 - f, pc[k % pc.length]!); R(x - 1, y + 3, 1, 1, '#ffffff'); R(x + 1, y + 4, 1, 1, '#ffffff'); });
   R(1979, TOP - 190, 3, 3, '#3a3330');
 
-  // For the judges: a chalkboard on the sidewalk pointing into Trick Dog.
-  const bx = 1920, BW = 46, BH = 34, by = TOP - BH - 2;
-  R(bx + 3, by + BH - 2, 3, 6, WOODD); R(bx + BW - 6, by + BH - 2, 3, 6, WOODD);
-  R(bx, by, BW, BH, OUT); R(bx + 1, by + 1, BW - 2, BH - 2, WOOD); R(bx + 3, by + 3, BW - 6, BH - 6, '#2b302e');
-  for (let i = 0; i < 14; i++) R(bx + 4 + ((i * 7) % (BW - 8)), by + 4 + ((i * 5) % (BH - 8)), 1, 1, '#363c3a');
-  const mid = (s: string) => bx + (((BW - (s.length * 4 - 1)) / 2) | 0);
-  text('RAMP', mid('RAMP'), by + 5, '#E4F222'); text('HAPPY', mid('HAPPY'), by + 12, '#f4f1e8'); text('HOUR', mid('HOUR'), by + 18, '#f4f1e8');
-  const ax = bx + 13 + (tick % 2), ay = by + 27;
-  R(ax, ay, 16, 1, '#E4F222'); R(ax + 13, ay - 2, 1, 5, '#E4F222'); R(ax + 14, ay - 1, 1, 3, '#E4F222'); R(ax + 15, ay, 1, 1, '#E4F222');
   drawCity(g, R, frame, 'front');
 }
 
