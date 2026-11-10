@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BELL_ART, camera as frameOf, GATE, LAMPS, LIFE, PEOPLE, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
+import { BELL_ART, camera as frameOf, FOLK, GATE, LAMPS, LIFE, PEOPLE, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
@@ -45,6 +45,7 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
   const body = useRef<HTMLDivElement>(null);
   const position = useRef<number | null>(null);
   const wasAtStart = useRef(false);
+  const lastX = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
 
   useLayoutEffect(() => {
@@ -68,17 +69,19 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
           setPrints((list) => [...list.slice(-30), { id, x: Math.round(p.x + side), y: Math.round(p.y + 1) }]);
         }
       }
+      if (art) { const dx = p.x - (lastX.current ?? p.x); if (Math.abs(dx) > 0.2) facing = dx < 0 ? -1 : 1; lastX.current = p.x; }
       sprite.style.transform = `scaleX(${facing})`;
       if (trail) trail.style.strokeDashoffset = String(total - length);
     };
     const to = (target / 100) * total;
-    if (position.current === null) { place(startAtZero ? 0 : to); if (!startAtZero) return; }
-    else if (startAtZero && !wasAtStart.current) place(0);
+    // In town the bell never jumps: it appears where it belongs once, then always walks there along the sidewalks.
+    if (position.current === null) { place(startAtZero && !art ? 0 : to); if (!startAtZero || art) return; }
+    else if (startAtZero && !wasAtStart.current && !art) place(0);
     wasAtStart.current = startAtZero;
     const from = position.current!;
-    facing = to < from ? -1 : 1;
+    if (!art) facing = to < from ? -1 : 1;
     if (Math.abs(to - from) < 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { place(to); setFrame(0); return; }
-    const duration = paced ? WALK_MS - tokens['motion/duration/fast'] / 2 : art ? Math.min(4000, Math.max(600, Math.abs(to - from) * 18)) : Math.min(1500, Math.max(420, Math.abs(to - from) * 3)), start = performance.now();
+    const duration = paced ? WALK_MS - tokens['motion/duration/fast'] / 2 : art ? Math.min(6500, Math.max(600, Math.abs(to - from) * 11)) : Math.min(1500, Math.max(420, Math.abs(to - from) * 3)), start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration), eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2, length = from + (to - from) * eased;
@@ -338,7 +341,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   const showDecision = canDecide && decisionOpen && picked === null;
 
   const resting = picked ?? (shown === step ? restingStation(stations) : stations.length - 1);
-  const target = run?.exit ? 100 : geometry.stops[(run ? run.at : resting) + 1] ?? 0;
+  const target = run?.exit ? geometry.stops.at(-1)! : geometry.stops[(run ? run.at : resting) + 1] ?? geometry.stops[0]!;
   const visible = (i: number) => !run || run.step !== shown || (run.recheck ? !run.recheck.includes(i) : i < run.seen);
   // The gate: down until the red-flag check has been seen clear; held down (beacon racing) while it is flagged.
   const redFlags = shown === 1 ? stations.findIndex((s) => s.name === 'Red flags') : -1;
@@ -522,6 +525,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                   {/* The bank's vault wheel turns when the card is issued. */}
                   <img key={`wheel-${vaultTurn}`} src="/town/wheel.png" alt="" width={WHEEL.size} height={WHEEL.size} draggable={false} className={`absolute [image-rendering:pixelated] ${vaultTurn ? 'covers-vault' : ''}`} style={{ left: WHEEL.x, top: WHEEL.y }} />
                   <img src="/town/mullion.png" alt="" width={WHEEL.bar.width} height={WHEEL.bar.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: WHEEL.bar.x, top: WHEEL.bar.y }} />
+                  {FOLK.map((f, n) => <i key={`folk-${n}`} className="covers-stroll absolute" style={{ left: f.x - 5, top: f.y - 15, width: 10, height: 15, backgroundImage: `url(/town/folk-${f.look}.png)`, backgroundSize: '20px 15px', imageRendering: 'pixelated', '--dx': `${f.dx}px`, '--dy': `${f.dy}px`, animationDuration: `calc(var(--motion-duration-slow) * ${f.every * 2}), var(--motion-duration-slow)`, animationDelay: `calc(var(--motion-duration-slow) * ${-f.delay * 2}), 0s` } as React.CSSProperties} />)}
                   {PEOPLE.far.map(([x, y, look], n) => <img key={`far-${n}`} src={`/town/diner-${look}.png`} alt="" width={5} height={6} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x - 2, top: y - 6 }} />)}
                   {PEOPLE.near.map(([x, y, look], n) => <img key={`near-${n}`} src={`/town/diner-back-${look}.png`} alt="" width={5} height={5} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x - 2, top: y - 5 }} />)}
                   <i className="covers-waiter absolute" style={{ left: PEOPLE.waiter.x, top: PEOPLE.waiter.y - PEOPLE.waiter.height, width: PEOPLE.waiter.width, height: PEOPLE.waiter.height, backgroundImage: 'url(/town/waiter.png)', backgroundSize: `${PEOPLE.waiter.width * 2}px ${PEOPLE.waiter.height}px`, imageRendering: 'pixelated' }} />
@@ -529,7 +533,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
                     <path key={`trail-${shown}`} ref={trailRef} d={geometry.artD} fill="none" stroke="none" />
                   </svg>
-                  <Walker key={`bell-${shown}-${size.w}-${size.h}`} art pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={run?.at === -1} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
+                  <Walker key={`bell-${size.w}-${size.h}`} art pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={run?.at === -1} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
                 </div>
                 {stations.map((s, i) => {
                   const p = geometry.points[i]!, seen = visible(i), mark = seen ? s.mark : 'waiting';

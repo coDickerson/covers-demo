@@ -24,6 +24,16 @@ export const PEOPLE = {
   waiter: { x: 498, y: 374, width: 10, height: 15 },
 };
 
+/**
+ * Townsfolk strolling the sidewalks and back (feet at x, y; they walk dx, dy and turn round). Each takes its own time,
+ * so they never move in step with each other or the trees.
+ */
+export const FOLK = [
+  { look: 0, x: 432, y: 128, dx: 72, dy: 23, every: 17, delay: 2 },
+  { look: 1, x: 296, y: 369, dx: 84, dy: 19, every: 21, delay: 9 },
+  { look: 2, x: 352, y: 467, dx: 88, dy: 20, every: 19, delay: 5 },
+];
+
 /** Evening light: street lamps (bottom-centre of the post) at the back edge of the sidewalks. */
 export const LAMPS: [number, number][] = [[548, 156], [452, 128], [232, 90], [276, 164], [232, 236], [150, 318], [306, 340], [420, 374], [482, 388], [108, 450], [240, 458], [380, 462], [540, 472]];
 /** The checkpoint's boom gate: pivot, arm length, and its closed and lifted angles (degrees). */
@@ -32,67 +42,71 @@ export const GATE = { x: 181, y: 224, length: 46, closed: -13.5, open: -75 } as 
 export const WHEEL = { x: 160, y: 289, size: 34, bar: { x: 175, y: 288, width: 3, height: 36 } } as const;
 
 type Pt = { x: number; y: number };
-type Place = { name: string; region: [number, number, number, number] };
 
-/** Step index → where it happens, the part of town the camera frames, and the station spots in walking order. */
-export const PLACES: Place[] = [
-  { name: 'Halden HQ', region: [390, 70, 650, 200] },
-  { name: 'Compliance row', region: [140, 40, 410, 290] },
-  { name: 'The bank (Ramp)', region: [60, 230, 360, 350] },
-  { name: 'The restaurant', region: [180, 290, 560, 420] },
-  { name: 'The phone kiosk', region: [50, 320, 470, 505] },
-  { name: 'The accounting office', region: [60, 395, 350, 505] },
-  { name: 'Parcel depot to the federal building', region: [300, 385, 720, 505] },
-];
+/** Each step's place, for the image's alt text. The camera frames a step from its walk, so no regions are needed. */
+export const PLACES = ['Halden HQ', 'Compliance row', 'The bank (Ramp)', 'The restaurant', 'The phone kiosk', 'The accounting office', 'Parcel depot to the federal building'].map((name) => ({ name }));
 
 /**
- * The walk for each step, along the town's sidewalks: [x, y, station]. A station point is where a check happens; the
- * others are corners. Each step's walk starts where the previous one ended.
+ * The bell's tour of town, one leg per step, along the centre lines of the sidewalks and walkways ([x, y, station]).
+ * Each leg starts where the previous one ended, so the whole dinner is one continuous walk: HQ, down the compliance
+ * spine, the bank, the restaurant, back past the bank to the kiosk, along the bottom row to the federal building.
  */
 export const ROUTES: [number, number, 0 | 1][][] = [
-  [[560, 165, 0], [530, 156, 1], [500, 147, 1], [470, 138, 1], [440, 129, 1], [400, 118, 0]],
-  [[300, 97, 0], [212, 98, 1], [342, 100, 1], [262, 100, 0], [262, 168, 0], [212, 170, 1], [342, 172, 1], [256, 172, 0], [256, 244, 0], [212, 244, 1], [340, 246, 1]],
-  [[288, 248, 0], [288, 328, 0], [232, 330, 1], [200, 329, 1], [168, 328, 1], [138, 327, 1]],
-  [[200, 330, 0], [252, 336, 0], [300, 352, 0], [340, 368, 1], [400, 380, 1], [455, 392, 1], [505, 400, 1]],
-  [[455, 392, 0], [300, 352, 0], [252, 336, 0], [145, 338, 0], [152, 394, 0], [160, 451, 0], [140, 458, 1], [118, 462, 1], [98, 462, 1], [84, 458, 1]],
-  [[120, 462, 0], [165, 462, 0], [188, 464, 1], [210, 467, 1], [232, 469, 1], [254, 469, 1], [276, 467, 1], [298, 464, 1]],
-  [[330, 464, 0], [352, 467, 1], [400, 474, 1], [450, 478, 1], [505, 478, 0], [600, 482, 1]],
+  [[535, 161, 0], [510, 153, 1], [480, 144, 1], [450, 134, 1], [420, 124, 1], [401, 117, 0], [389, 100, 0]],
+  [[340, 94, 0], [300, 86, 0], [270, 80, 0], [259, 82, 0], [222, 104, 0], [188, 103, 1], [222, 104, 0], [259, 84, 0], [322, 90, 1], [259, 84, 0],
+    [259, 160, 0], [232, 172, 0], [196, 180, 1], [232, 172, 0], [259, 160, 0], [300, 165, 1], [259, 162, 0], [259, 238, 0], [215, 242, 1], [259, 238, 0], [296, 243, 1]],
+  [[259, 239, 0], [276, 262, 0], [276, 360, 0], [232, 354, 1], [204, 345, 1], [176, 340, 1], [150, 334, 1]],
+  [[200, 344, 0], [276, 364, 0], [345, 378, 1], [395, 391, 1], [440, 401, 1], [482, 407, 1]],
+  [[440, 401, 0], [360, 383, 0], [276, 364, 0], [200, 344, 0], [146, 336, 0], [152, 394, 0], [160, 452, 0], [150, 459, 0], [140, 463, 1], [125, 466, 1], [110, 462, 1], [96, 457, 1]],
+  [[125, 466, 0], [150, 459, 0], [170, 456, 0], [188, 461, 1], [210, 466, 1], [232, 470, 1], [254, 475, 1], [266, 478, 0], [280, 472, 1], [300, 462, 1]],
+  [[334, 464, 0], [360, 468, 1], [410, 479, 1], [452, 488, 1], [484, 489, 0], [524, 470, 0], [545, 475, 0], [585, 482, 1], [600, 489, 0]],
 ];
 
-
+/** The whole tour as one path: its points, the length along it at each point, and where each leg starts and ends. */
+const TOUR = (() => {
+  const pts: Pt[] = [], along: number[] = [], legs: { from: number; to: number; stations: number[] }[] = [];
+  for (const leg of ROUTES) {
+    const from = along.at(-1) ?? 0, stations: number[] = [];
+    for (const [x, y, station] of leg) {
+      const last = pts.at(-1);
+      along.push(last ? along.at(-1)! + Math.hypot(x - last.x, y - last.y) : 0);
+      pts.push({ x, y });
+      if (station) stations.push(pts.length - 1);
+    }
+    legs.push({ from, to: along.at(-1)!, stations });
+  }
+  return { pts, along, legs, total: along.at(-1)!, d: pts.map((q, i) => `${i ? 'L' : 'M'}${q.x} ${q.y}`).join(' ') };
+})();
 
 export type Camera = { x: number; y: number; scale: number };
 
-/** The camera for a step: scale and offset that frame its place in a w×h viewport. */
+/** The camera for a step: frames that step's whole walk (from where the bell comes in) and the buildings above it. */
 export function camera(step: number, w: number, h: number, overview = false): Camera {
-  const [x0, y0, x1, y1] = overview ? [0, 0, TOWN.width, TOWN.height] : (PLACES[step] ?? PLACES[0]!).region;
-  const scale = Math.min(3.2, (w * 0.9) / (x1 - x0), (h * 0.86) / (y1 - y0));
+  const leg = ROUTES[step] ?? ROUTES[0]!, prev = ROUTES[step - 1]?.at(-1);
+  const xs = [...leg, ...(prev ? [prev] : [])].map((q) => q[0]), ys = [...leg, ...(prev ? [prev] : [])].map((q) => q[1]);
+  const [x0, y0, x1, y1] = overview ? [0, 0, TOWN.width, TOWN.height] : [Math.min(...xs) - 40, Math.min(...ys) - 85, Math.max(...xs) + 40, Math.max(...ys) + 30];
+  const scale = Math.min(3, (w * 0.92) / (x1 - x0), (h * 0.88) / (y1 - y0));
   return { scale, x: w / 2 - ((x0 + x1) / 2) * scale, y: h / 2 - ((y0 + y1) / 2) * scale };
 }
 
 /**
- * Screen geometry for one step: the station points, the walk through them along the sidewalks (starting where the
- * previous step ended), and each station's position along the walk (0–100). stops[0] is the start, stops[i + 1] is
- * station i, and the walk's end is 100. `view` overrides the camera when the viewer has dragged or zoomed the town.
+ * Geometry for one step. The path (artD) is the whole tour, the same for every step, so the bell never jumps: it walks
+ * from wherever it is to wherever it is going. stops[0] is where this step's leg starts, stops[i + 1] is station i, and
+ * the last stop is where the leg ends, all as a percentage of the whole tour. `view` overrides the camera after the
+ * viewer drags or zooms.
  */
 export function townPath(step: number, count: number, w: number, h: number, overview = false, view?: Camera | null) {
-  const cam = view ?? camera(step, w, h, overview), route = ROUTES[step] ?? ROUTES[0]!;
-  const art: Pt[] = [...(step > 0 ? [ROUTES[step - 1]!.at(-1)!] : []), ...route].map(([x, y]) => ({ x, y }));
-  const at = [0];
-  for (let i = 1; i < art.length; i++) at.push(at[i - 1]! + Math.hypot(art[i]!.x - art[i - 1]!.x, art[i]!.y - art[i - 1]!.y));
-  const total = at.at(-1) || 1, offset = step > 0 ? 1 : 0;
-  const spots = route.flatMap(([x, y, s], i) => (s ? [{ x, y, along: at[i + offset]! }] : []));
-  // More stations than spots: the extras line up a few steps past the last spot, along the sidewalk.
+  const cam = view ?? camera(step, w, h, overview), leg = TOUR.legs[step] ?? TOUR.legs[0]!;
+  const pct = (l: number) => (l / TOUR.total) * 100;
+  // More stations than spots: the extras line up a few steps past the last spot.
   const stations = Array.from({ length: Math.max(1, count) }, (_, i) => {
-    const s = spots[Math.min(i, spots.length - 1)]!, extra = Math.max(0, i - spots.length + 1);
-    return { x: s.x + extra * 14, y: s.y + extra * 2, along: Math.min(total, s.along + extra * 14) };
+    const k = leg.stations[Math.min(i, leg.stations.length - 1)]!, extra = Math.max(0, i - leg.stations.length + 1);
+    return { x: TOUR.pts[k]!.x + extra * 14, y: TOUR.pts[k]!.y + extra * 3, along: TOUR.along[k]! };
   });
-  const toScreen = (p: Pt) => ({ x: cam.x + p.x * cam.scale, y: cam.y + p.y * cam.scale });
-  const artD = art.map((q, i) => `${i ? 'L' : 'M'}${q.x} ${q.y}`).join(' ');
   return {
-    points: stations.map(toScreen),
-    stops: [0, ...stations.map((s) => (s.along / total) * 100), 100],
+    points: stations.map((p) => ({ x: cam.x + p.x * cam.scale, y: cam.y + p.y * cam.scale })),
+    stops: [pct(leg.from), ...stations.map((s) => pct(s.along)), pct(leg.to)],
     camera: cam,
-    artD,
+    artD: TOUR.d,
   };
 }
