@@ -3,13 +3,15 @@
 // Opened from the "Close it out" button in the close-out ping (/m/{planId}). Phone-sized, one column, big targets.
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CloseOut, PlanView, Receipt, ReceiptLine, Settlement } from '@covers/contract';
+import type { CloseOut, Hcp, PlanView, Receipt, ReceiptLine, Settlement } from '@covers/contract';
 import { IDS } from '@covers/contract/fixtures';
 import { covers, CoversClientError } from '../lib/client';
 import { usd } from '../lib/dinner';
 import { dayOf, nameOf, speakerOf, venueOf } from '../lib/map';
+import { buildAttendance, doubleCheck, needsAnswers, noteFor, RELATIONS, type Added, type Finding, type Present, type Relation } from '../lib/attendance';
 
-type Phase = 'loading' | 'receipt' | 'reading' | 'review' | 'who' | 'sending' | 'done' | 'missing';
+type Phase = 'loading' | 'receipt' | 'reading' | 'review' | 'who' | 'check' | 'sending' | 'done' | 'missing';
+type GuestDraft = Partial<Extract<Added, { kind: 'guest' }>>;
 
 const primary = 'block w-full cursor-pointer border border-ink-primary bg-accent px-4 py-3 text-center font-strong text-on-accent disabled:cursor-default disabled:opacity-60';
 const secondary = 'block w-full cursor-pointer border border-ink-primary px-4 py-3 text-center font-strong';
@@ -39,6 +41,8 @@ export function CloseOutPhone({ planId }: { planId: string }) {
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [absent, setAbsent] = useState<Set<string>>(new Set());
+  const [added, setAdded] = useState<Added[]>([]);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<HTMLInputElement>(null);
 
@@ -76,12 +80,25 @@ export function CloseOutPhone({ planId }: { planId: string }) {
   const speakerNpi = speakerOf(plan)?.hcp.npi;
   const people = [...(speakerNpi ? [speakerNpi] : []), ...plan.inviteeNpis];
   const toggle = (id: string) => setAbsent((a) => { const n = new Set(a); if (!n.delete(id)) n.add(id); return n; });
+  const attendance = buildAttendance({ planId, repId: plan.repId, people, absent, added });
+  const headcount = attendance.attendedNpis.length + attendance.employeesPresent + attendance.extraGuests;
+  const present: Present[] = [
+    ...people.filter((n) => !absent.has(n)).map((id) => ({ id, name: nameOf(id) })),
+    ...(absent.has('rep') ? [] : [{ id: 'rep', name: `You (${nameOf(plan.repId)})` }]),
+  ];
+  const findings = doubleCheck({ present, added, headcount, printedCovers: receipt?.printedCovers });
+  const coversGap = receipt?.printedCovers !== undefined && receipt.printedCovers > headcount;
+  const blocked = needsAnswers(findings);
+  const update = (id: string, patch: GuestDraft) => setAdded((xs) => xs.map((x) => (x.id === id && x.kind === 'guest' ? { ...x, ...patch, kind: 'guest' } : x)));
   const confirm = async () => {
     setPhase('sending'); setError(null);
     try {
-      setSettlement(await covers.confirmAttendance({ planId, attendedNpis: people.filter((n) => !absent.has(n)), employeesPresent: absent.has('rep') ? 0 : 1, extraGuests: 0, confirmedBy: plan.repId }));
+      const s = await covers.confirmAttendance(attendance);
+      // Every added person goes on the audit trail with who they are, so compliance sees what the rep said.
+      for (const x of added) await covers.addNote(planId, { step: 'close_out', target: x.name, text: noteFor(x, present) });
+      setSettlement(s);
       setPhase('done');
-    } catch (e) { setError(errorText(e, 'That did not go through. Try again.')); setPhase('who'); }
+    } catch (e) { setError(errorText(e, 'That did not go through. Try again.')); setPhase('check'); }
   };
 
   return (
@@ -136,7 +153,7 @@ export function CloseOutPhone({ planId }: { planId: string }) {
         </section>
       )}
 
-      {(phase === 'who' || phase === 'sending') && (
+      {phase === 'who' && (
         <section className="mt-8">
           <h2 className="text-heading font-bold">2. Who came?</h2>
           <p className="mt-1 text-small text-ink-secondary">Tap anyone who did not make it.</p>
@@ -153,13 +170,122 @@ export function CloseOutPhone({ planId }: { planId: string }) {
                 </li>
               );
             })}
+            {added.map((x) => (
+              <li key={x.id} className="flex items-center justify-between gap-3 border-b border-border py-3">
+                <span>{x.name}<span className="text-small text-ink-muted"> · {x.kind === 'doctor' ? 'doctor, not invited' : x.kind}</span></span>
+                <button className={quiet} onClick={() => setAdded((xs) => xs.filter((y) => y.id !== x.id))}>Remove</button>
+              </li>
+            ))}
           </ul>
-          <button className={`${primary} mt-5`} disabled={phase === 'sending'} onClick={() => void confirm()}>{phase === 'sending' ? 'Closing out…' : 'Close it out'}</button>
+          {coversGap && <p className="mt-3 border-l-2 border-status-near pl-3 text-small">The receipt prints {receipt?.printedCovers} covers but {headcount} {headcount === 1 ? 'person is' : 'people are'} marked. Did someone else eat?</p>}
+          {adding
+            ? <AddPerson present={present} taken={new Set([...people, ...attendance.attendedNpis])} onAdd={(x) => { setAdded((xs) => [...xs, x]); setAdding(false); }} onCancel={() => setAdding(false)} />
+            : <button className={`${quiet} mt-3`} onClick={() => setAdding(true)}>+ Add someone who wasn&apos;t on the invite</button>}
+          <button className={`${primary} mt-5`} onClick={() => { setAdding(false); setPhase('check'); }}>Close it out</button>
+        </section>
+      )}
+
+      {(phase === 'check' || phase === 'sending') && (
+        <section className="mt-8">
+          <h2 className="text-heading font-bold">3. Double check</h2>
+          <p className="mt-1 text-small text-ink-secondary">{headcount} {headcount === 1 ? 'person' : 'people'} ate{receipt?.printedCovers !== undefined ? `; the receipt prints ${receipt.printedCovers} covers` : ''}.</p>
+          {findings.length === 0 && <p className="mt-3 border-l-2 border-status-ok pl-3 text-small">Everyone was on the invite and the headcount matches the receipt.</p>}
+          <ul className="mt-3 space-y-3">
+            {findings.map((f, i) => {
+              const guest = added.find((x) => x.id === f.addedId);
+              const firstAsk = guest?.kind === 'guest' && findings.findIndex((g) => g.addedId === f.addedId && g.tone === 'ask') === i;
+              return (
+                <li key={i} className={`border-l-2 pl-3 text-small ${toneBorder(f)}`}>
+                  {f.text}
+                  {firstAsk && guest.kind === 'guest' && <GuestFields guest={guest} present={present} onChange={(p) => update(guest.id, p)} />}
+                </li>
+              );
+            })}
+          </ul>
+          <button className={`${primary} mt-5`} disabled={phase === 'sending' || blocked} onClick={() => void confirm()}>{phase === 'sending' ? 'Closing out…' : blocked ? 'Answer the questions above' : 'Confirm and close out'}</button>
+          <button className={`${quiet} mt-3`} disabled={phase === 'sending'} onClick={() => setPhase('who')}>Back to who came</button>
         </section>
       )}
 
       {phase === 'done' && settlement && <Done settlement={settlement} planId={planId} />}
     </Shell>
+  );
+}
+
+const toneBorder = (f: Finding) => (f.tone === 'ok' ? 'border-status-ok' : f.tone === 'review' ? 'border-status-near' : 'border-status-over');
+const field = 'mt-1 block w-full border border-border bg-bg-surface px-3 py-2';
+let nextId = 0;
+const newId = () => `added-${++nextId}`;
+
+/** The "+ Add someone" form: a doctor from the registry, a coworker, or a guest with who they came with and why. */
+function AddPerson({ present, taken, onAdd, onCancel }: { present: Present[]; taken: Set<string>; onAdd: (x: Added) => void; onCancel: () => void }) {
+  const [kind, setKind] = useState<Added['kind']>('guest');
+  const [name, setName] = useState('');
+  const [hits, setHits] = useState<Hcp[] | null>(null);
+  const [guest, setGuest] = useState<GuestDraft>({});
+  const search = async () => {
+    setHits(null);
+    try { setHits((await covers.searchHcps(name.trim())).filter((h) => !taken.has(h.npi))); } catch { setHits([]); }
+  };
+  const add = () => onAdd(kind === 'coworker' ? { kind: 'coworker', id: newId(), name: name.trim() } : { ...guest, kind: 'guest', id: newId(), name: name.trim() });
+  return (
+    <div className="mt-3 border border-border bg-bg-surface p-3">
+      <div className="flex gap-2" role="radiogroup" aria-label="Who are you adding?">
+        {(['doctor', 'coworker', 'guest'] as const).map((k) => (
+          <button key={k} role="radio" aria-checked={kind === k} onClick={() => { setKind(k); setHits(null); }}
+            className={`flex-1 cursor-pointer border px-2 py-2 text-small font-strong ${kind === k ? 'border-ink-primary bg-accent text-on-accent' : 'border-border'}`}>
+            {k === 'doctor' ? 'Doctor' : k === 'coworker' ? 'Coworker' : 'Guest'}
+          </button>
+        ))}
+      </div>
+      <label className="mt-3 block text-small">{kind === 'doctor' ? 'Name or NPI' : 'Name'}
+        <input id="add-person-name" className={field} value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      {kind === 'guest' && <GuestFields guest={guest} present={present} onChange={(p) => setGuest((g) => ({ ...g, ...p }))} />}
+      {kind === 'doctor' && hits && (
+        <ul className="mt-2">
+          {hits.length === 0 && <li className="text-small text-ink-muted">No match in the registry.</li>}
+          {hits.slice(0, 5).map((h) => (
+            <li key={h.npi}>
+              <button className="w-full cursor-pointer border-b border-border py-2 text-left text-small" onClick={() => onAdd({ kind: 'doctor', id: newId(), npi: h.npi, name: h.name })}>
+                {h.name}<span className="text-ink-muted"> · {h.specialty ?? 'clinician'} · {h.state} · NPI {h.npi}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex items-center gap-4">
+        {kind === 'doctor'
+          ? <button className={`${secondary} flex-1`} disabled={name.trim().length < 2} onClick={() => void search()}>Find in the registry</button>
+          : <button className={`${secondary} flex-1`} disabled={!name.trim()} onClick={add}>Add</button>}
+        <button className={quiet} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function GuestFields({ guest, present, onChange }: { guest: GuestDraft; present: Present[]; onChange: (p: GuestDraft) => void }) {
+  const key = guest.id ?? 'new';
+  return (
+    <div className="mt-2 space-y-2 text-ink-primary">
+      <label className="block text-small">Came with
+        <select id={`guest-with-${key}`} className={field} value={guest.withId ?? ''} onChange={(e) => onChange({ withId: e.target.value || undefined })}>
+          <option value="">Choose…</option>
+          {present.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </label>
+      <label className="block text-small">How they&apos;re related
+        <select id={`guest-relation-${key}`} className={field} value={guest.relation ?? ''} onChange={(e) => onChange({ relation: (e.target.value || undefined) as Relation | undefined })}>
+          <option value="">Choose…</option>
+          {RELATIONS.map(([r, label]) => <option key={r} value={r}>{label}</option>)}
+        </select>
+      </label>
+      {guest.relation === 'other' && (
+        <label className="block text-small">Business reason
+          <input id={`guest-reason-${key}`} className={field} value={guest.reason ?? ''} onChange={(e) => onChange({ reason: e.target.value })} />
+        </label>
+      )}
+    </div>
   );
 }
 
