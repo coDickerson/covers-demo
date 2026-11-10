@@ -11,7 +11,7 @@
       { "id": "s2-meals", "label": "§2 Meals", "text": "Out-of-office dinners may not exceed $125 per person, including food, beverage, tax and tip." },
       { "id": "s3-annual", "label": "§3 Annual limit", "text": "Meals provided to any one health care professional may not exceed $2,000 in a calendar year." },
       { "id": "s4-repeat", "label": "§4 Repeat attendance", "text": "A third program on the same topic within 12 months goes to compliance." },
-      { "id": "s5-card", "label": "§5 Card charge", "text": "The dinner card is used only at a restaurant, and the amount charged must match the itemized receipt. Any difference goes to compliance." },
+      { "id": "s5-card", "label": "§5 Card charge", "text": "The dinner card is used only at a restaurant, at the venue named in the approved plan, and the amount charged must match the itemized receipt. Any difference goes to compliance." },
       { "id": "s6-receipts", "label": "§6 Receipts", "text": "A receipt line the reader is not confident about is confirmed by a person before it is used." }
     ]
   },

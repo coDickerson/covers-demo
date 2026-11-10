@@ -35,6 +35,31 @@ describe('settle: the card charge', () => {
     expect(gym.perPersonCents).toBe(10_200);
   });
 
+  it('passes P6.card-venue at the planned venue, even with a card-style merchant name, and flags anywhere else', () => {
+    const at = (merchantName: string) => find(settle(input({ charge: { amountCents: 61_200, source: 'ramp', merchantName, transactionId: 'tx-9' } })), 'P6.card-venue:plan');
+    // The plan is at "Nopa, San Francisco".
+    for (const ok of ['Nopa', 'NOPA SAN FRANCISCO', 'Nopa Restaurant']) expect(at(ok)?.outcome, ok).toBe('pass');
+    const elsewhere = at("Pat O'Brien's Courtyard Restaurant");
+    expect(elsewhere?.outcome).toBe('flag');
+    expect(elsewhere?.message).toBe("The card was charged at Pat O'Brien's Courtyard Restaurant, but the approved plan is for Nopa.");
+    expect(elsewhere?.citation.label).toContain('venue named in the approved plan');
+    expect(elsewhere?.evidence).toEqual(['ramp:tx-9']);
+  });
+
+  it('matches card descriptors for multi-word venues and tells different restaurants apart', async () => {
+    const { sameVenue } = await import('../src/common');
+    expect(sameVenue('Alder & Vine, San Francisco', 'ALDER AND VINE SF')).toBe(true);
+    expect(sameVenue("Pat O'Brien's, New Orleans", 'PAT OBRIENS COURTYARD')).toBe(true);
+    expect(sameVenue('The Larder, Oakland', "Pat O'Brien's Courtyard Restaurant")).toBe(false);
+    expect(sameVenue('Harbor Room, San Francisco', 'Harbor Grill')).toBe(true); // shared distinctive word: a person decides
+    expect(sameVenue('The Restaurant', 'Anywhere')).toBeNull();
+  });
+
+  it('does not check the venue without a merchant name, or for a simulated charge', () => {
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'ramp' } })), 'P6.card-venue:plan')).toBeUndefined();
+    expect(find(settle(input({ charge: { amountCents: 61_200, source: 'simulated', merchantName: 'Elsewhere' } })), 'P6.card-venue:plan')).toBeUndefined();
+  });
+
   it('does not check the merchant when Ramp sent no category', () => {
     expect(find(settle(input({ charge: { amountCents: 61_200, source: 'ramp' } })), 'P6.card-merchant:plan')).toBeUndefined();
   });

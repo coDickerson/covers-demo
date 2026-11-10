@@ -59,3 +59,21 @@ export function capFor(npi: string, ledger: Map<string, LedgerEntry>, s: EngineS
   const e = ledger.get(npi);
   return { capCents: e?.capCents ?? s.defaultAnnualCapCents, ytdCents: e?.ytdCents ?? 0, priorRepeats: e?.sameTopicCount12mo ?? 0 };
 }
+
+const VENUE_FILLER = new Set(['the', 'and', 'of', 'at', 'restaurant', 'restaurants', 'bar', 'grill', 'cafe', 'kitchen', 'co', 'inc', 'llc']);
+/** The distinctive words of a venue or merchant name: "The Larder, Oakland" -> ["larder"]. Only the part before a comma. */
+export function venueWords(name: string): string[] {
+  return name.split(',')[0]!.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/['\u2019]s\b/g, '').replace(/['\u2019]/g, '').replace(/[^a-z0-9]+/g, ' ').split(' ').filter((w) => w.length > 1 && !VENUE_FILLER.has(w));
+}
+/**
+ * Does a card merchant name look like the planned venue? Card descriptors vary ("ALDER AND VINE SF" for "Alder & Vine"),
+ * so: one name's words, run together, appear in the other's, or they share a word of 4+ letters. Null when the venue has no
+ * distinctive words to compare.
+ */
+export function sameVenue(venue: string, merchant: string): boolean | null {
+  const v = venueWords(venue), m = venueWords(merchant);
+  if (v.length === 0 || m.length === 0) return null;
+  const vj = v.join(''), mj = m.join('');
+  return mj.includes(vj) || vj.includes(mj) || v.some((w) => w.length >= 4 && m.includes(w));
+}
