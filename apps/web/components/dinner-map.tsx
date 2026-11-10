@@ -288,7 +288,7 @@ export function DinnerMap({ planId }: { planId: string }) {
     let tick = 0;
     drawDeco(deco, tick);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = window.setInterval(() => drawDeco(deco, ++tick), tokens['motion/duration/slow']);
+    const id = window.setInterval(() => drawDeco(deco, ++tick), tokens['motion/duration/fast']);
     return () => window.clearInterval(id);
   }, [groundEl, decoEl]);
   // A cheer from the bar each time one of its checks comes back clear.
@@ -570,7 +570,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                       ? <i key={n} className="covers-warm absolute bg-accent-tint mix-blend-soft-light" style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, ...timing }} />
                       : <i key={n} className={`covers-${l.kind} absolute`} style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, backgroundImage: `url(${b.src})`, backgroundPosition: `${-x}px ${-y}px`, imageRendering: 'pixelated', ...timing }} />;
                   })}
-                  <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.top + 10} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
+                  <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.height} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
                   <svg className="pointer-events-none absolute inset-0 overflow-visible" width={CRAWL.width} height={CRAWL.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
                     <path key={`trail-${shown}`} ref={trailRef} d={geometry.artD} fill="none" stroke="none" />
