@@ -28,6 +28,19 @@
 .covers-charge { animation: covers-slide-up var(--motion-duration-slow) var(--ease-standard) both; }
 .covers-line { animation: covers-line-in var(--motion-duration-base) var(--ease-standard) both; }
 .covers-flash { animation: covers-flash var(--motion-duration-slow) var(--ease-standard) 3 both; }
+/* The town's life (dinner map). steps() keeps every move on whole art pixels. */
+/* Mostly still; now and then a short rustle of one pixel each way. Each tree layer runs on its own length and offset. */
+@keyframes covers-rustle { 0%, 86%, 100% { transform: translateX(0); } 89% { transform: translateX(1px); } 92% { transform: translateX(0); } 95% { transform: translateX(-1px); } }
+@keyframes covers-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+@keyframes covers-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes covers-steam { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(calc(var(--space-3) * -1)); } }
+@keyframes covers-print { 0% { opacity: 0.6; } 100% { opacity: 0; } }
+.covers-rustle { animation-name: covers-rustle; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-blink { animation: covers-blink calc(var(--motion-duration-slow) * 2) steps(1, end) infinite; }
+.covers-twinkle { animation: covers-twinkle calc(var(--motion-duration-slow) * 3) steps(2, end) infinite; }
+.covers-steam { animation: covers-steam calc(var(--motion-duration-slow) * 6) steps(6, end) infinite; }
+.covers-print { animation: covers-print calc(var(--motion-duration-slow) * 4) steps(4, end) forwards; }
 @media (prefers-reduced-motion: reduce) {
+  .covers-rustle, .covers-blink, .covers-twinkle, .covers-steam { animation: none; }
   .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
 }
