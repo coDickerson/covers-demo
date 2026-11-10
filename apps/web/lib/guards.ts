@@ -33,16 +33,44 @@ export function guardSpeakerNotInvited(inviteeNpis: unknown, speakerNpi: string 
   }
 }
 
-/** Runs the guard for the methods that take plan input. speakerNpiOf finds the NPI of a speaker id (or of a plan's speaker). */
-export async function guardCall(method: string, args: unknown[], speakerNpiOf: (q: { speakerId?: string; planId?: string }) => Promise<string | undefined> = async () => undefined, now = new Date()): Promise<void> {
+/** What the guard needs to know about a plan: its speaker's NPI and its current invitees. */
+export type PlanLookup = (q: { speakerId?: string; planId?: string }) => Promise<{ speakerNpi?: string | undefined; inviteeNpis?: string[] | undefined }>;
+
+/** Runs the guard for the methods that take plan input. */
+export async function guardCall(method: string, args: unknown[], lookup: PlanLookup = async () => ({}), now = new Date()): Promise<void> {
   if (method === 'createPlan') {
     const input = (args[0] ?? {}) as PlanFields & { speakerId?: string };
     guardPlanInput(input, now);
-    guardSpeakerNotInvited(input.inviteeNpis, await speakerNpiOf({ speakerId: input.speakerId }));
+    guardSpeakerNotInvited(input.inviteeNpis, (await lookup({ speakerId: input.speakerId })).speakerNpi);
   }
   if (method === 'updatePlan') {
     const patch = (args[1] ?? {}) as PlanFields & { speakerId?: string };
     guardPlanInput(patch, now);
-    if (patch.inviteeNpis || patch.speakerId) guardSpeakerNotInvited(patch.inviteeNpis, await speakerNpiOf({ speakerId: patch.speakerId, planId: String(args[0]) }));
+    if (patch.inviteeNpis || patch.speakerId) {
+      // A new speaker is checked against the invitees the plan will have: the new list, or the current one if unchanged.
+      const found = await lookup({ speakerId: patch.speakerId, planId: String(args[0]) });
+      guardSpeakerNotInvited(patch.inviteeNpis ?? found.inviteeNpis, found.speakerNpi);
+    }
   }
+}
+
+/** People at the table who weren't on the plan: uninvited doctors, extra employees and guests. */
+export function addedAtCloseOut(a: { attendedNpis: string[]; employeesPresent: number; extraGuests: number }, plan: { inviteeNpis: string[]; employeeCount: number }, speakerNpi: string | undefined): number {
+  const expected = new Set([...plan.inviteeNpis, ...(speakerNpi ? [speakerNpi] : [])]);
+  return a.attendedNpis.filter((n) => !expected.has(n)).length + Math.max(0, a.employeesPresent - plan.employeeCount) + a.extraGuests;
+}
+
+export const MAX_ADDED_AT_CLOSE_OUT = 10;
+
+/** Refuses a close-out that adds more people than the phone allows, for anyone calling the API directly. */
+export function guardAdded(added: number): void {
+  if (added > MAX_ADDED_AT_CLOSE_OUT) throw new CoversError('validation', `Up to ${MAX_ADDED_AT_CLOSE_OUT} people who weren't on the plan can be added at close-out.`);
+}
+
+/** The padding finding, worked out on the server: added people that pull the cost per person under the cap. */
+export function paddingFinding(totalCents: number, headcount: number, added: number, capCents: number): string | null {
+  const base = headcount - added;
+  if (added <= 0 || base <= 0 || totalCents <= capCents * base || totalCents > capCents * headcount) return null;
+  const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
+  return `Adding ${added} ${added === 1 ? 'person' : 'people'} at close-out brought the cost from ${usd(totalCents / base)} to ${usd(totalCents / headcount)} a person, under the ${usd(capCents)} limit. Check who was added.`;
 }

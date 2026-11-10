@@ -1,9 +1,10 @@
 // POST /api/covers/<method>  body: { args: [...] }  → { ok: true, data } | { ok: false, error: { code, message } }
 // The browser's only door to CoversService. ctx (session + acting role) always comes from cookies, never the body.
 import { NextResponse } from 'next/server';
-import { CoversError, type CoversErrorBody } from '@covers/contract';
+import { Attendance, CoversError, type CoversErrorBody, type Ctx } from '@covers/contract';
+import { fixtures } from '@covers/contract/fixtures';
 import { ZodError } from 'zod';
-import { guardCall } from '@/lib/guards';
+import { addedAtCloseOut, guardAdded, guardCall, paddingFinding } from '@/lib/guards';
 import { isMethod, NO_CTX } from '@/lib/methods';
 import { getService } from '@/lib/service';
 import { getCtx } from '@/lib/session';
@@ -25,12 +26,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ met
     args = (body.args as unknown[] | undefined) ?? [];
 
     const svc = await getService();
+    const speakerNpiOf = async (ctx: Ctx, id: string | undefined) => (await svc.listSpeakers(ctx)).find((s) => s.id === id)?.hcp.npi;
     await guardCall(method, args, async ({ speakerId, planId }) => {
       const ctx = await getCtx();
       const plan = planId ? (await svc.getPlan(ctx, planId)).plan : undefined;
-      const id = speakerId ?? plan?.speakerId;
-      return (await svc.listSpeakers(ctx)).find((s) => s.id === id)?.hcp.npi;
+      return { speakerNpi: await speakerNpiOf(ctx, speakerId ?? plan?.speakerId), inviteeNpis: plan?.inviteeNpis };
     });
+
+    // Close-out: the phone's double check is a convenience; the limits that matter are enforced here, on the server.
+    if (method === 'confirmAttendance') {
+      const ctx = await getCtx();
+      const att = Attendance.parse(args[0]);
+      const { plan } = await svc.getPlan(ctx, att.planId);
+      const added = addedAtCloseOut(att, plan, await speakerNpiOf(ctx, plan.speakerId));
+      guardAdded(added);
+      const settlement = await svc.confirmAttendance(ctx, att);
+      const receipt = await svc.getReceipt(ctx, att.planId);
+      const padding = receipt && paddingFinding(receipt.totalCents, settlement.headcount, added, fixtures.company.perPersonCapCents);
+      if (padding) await svc.addNote(ctx, att.planId, { step: 'close_out', target: 'Server check', text: padding });
+      return NextResponse.json({ ok: true, data: settlement });
+    }
+
     const fn = svc[method] as (...a: unknown[]) => Promise<unknown>;
     const data = NO_CTX.includes(method) ? await fn.call(svc) : await fn.call(svc, await getCtx(), ...args);
     return NextResponse.json({ ok: true, data: data ?? null });

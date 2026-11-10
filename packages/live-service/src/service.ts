@@ -570,13 +570,15 @@ export class LiveService implements CoversService {
         !best || Math.abs(t.amountCents - receipt.totalCents) < Math.abs(best.amountCents - receipt.totalCents) ? t : best, undefined);
       // A bill split across charges: when the charges together are closer to the printed total than any one of them,
       // use the sum (with the largest charge's merchant) so the card-vs-receipt check compares like with like.
-      const sum = settled.reduce((s, t) => s + t.amountCents, 0);
-      if (settled.length > 1 && charge && Math.abs(sum - receipt.totalCents) < Math.abs(charge.amountCents - receipt.totalCents)) {
-        const largest = settled.reduce((a, b) => (b.amountCents > a.amountCents ? b : a));
+      // Only charges at the same merchant and category as the largest are added, so a bar tab can't ride along with the dinner.
+      const largest = settled.reduce<(typeof settled)[number] | undefined>((a, b) => (!a || b.amountCents > a.amountCents ? b : a), undefined);
+      const parts = largest ? settled.filter((t) => t.merchantName === largest.merchantName && t.categoryId === largest.categoryId) : [];
+      const sum = parts.reduce((s, t) => s + t.amountCents, 0);
+      if (parts.length > 1 && charge && largest && Math.abs(sum - receipt.totalCents) < Math.abs(charge.amountCents - receipt.totalCents)) {
         charge = { ...largest, amountCents: sum };
         await write(this.sql, ctx, {
-          action: 'ramp.charge_split', planId: plan.id, input: { cardId: link.cardId, candidates: settled.map((t) => t.id) },
-          detail: `The bill was split across ${settled.length} charges on card …${link.lastFour}, ${formatCents(sum)} together`,
+          action: 'ramp.charge_split', planId: plan.id, input: { cardId: link.cardId, candidates: parts.map((t) => t.id) },
+          detail: `The bill was split across ${parts.length} charges at ${largest.merchantName ?? 'one merchant'} on card …${link.lastFour}, ${formatCents(sum)} together`,
         }, async () => {});
       } else if (settled.length > 1) {
         await write(this.sql, ctx, {
