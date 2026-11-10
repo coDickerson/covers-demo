@@ -457,7 +457,7 @@ The before and after use different doctors on purpose: Dr. Ruvane is blocked and
 >
 > New regulations become new rule packs, not new software. Write the rule in English; Covers compiles it, replays it over past dinners, and a person promotes it.
 >
-> The model reads receipts and registries. It never decides an amount. Here's our accuracy on forty receipts, including the misses, and fifteen attacks we ran against it.
+> The model reads receipts and registries. It never decides an amount. Here's our accuracy on twenty-five receipts, including the misses, and fifteen attacks we ran against it.
 >
 > Ramp knows when money moves. Covers knows who it reaches, and whether the law cares.
 
