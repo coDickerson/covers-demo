@@ -5,17 +5,16 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { AuditEvent, PlanView, PolicyDocument, Receipt, Settlement, StepNote, Evaluation } from '@covers/contract';
 import { fixtures, IDS } from '@covers/contract/fixtures';
 import { ReceiptLine as ReceiptLineSchema } from '@covers/contract';
-import { HISTORY_LIMITS } from '../lib/ask-limits';
 import { covers, CoversClientError } from '../lib/client';
 import { buildCard } from '../lib/doc-cards';
-import { AUDIT_LABEL } from '../lib/documents';
 import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
-import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
+import { cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BARS, CAR, CRAWL, camera as frameOf, crawlPath, drawDeco, drawGround, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
+import { band, BARS, CAR, CRAWL, crawlPath, middle, drawDeco, drawGround, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
 import { DocCard } from './doc-card';
-import { RampCard } from './ramp-card';
+import { AuditLog } from './audit-log';
+import { CARD_STEPS, CardSlip } from './ramp-card';
 import type { StampTone } from './stamp';
 import { tokens } from '../lib/tokens';
 import { TRAVEL_MS, useRuns, WALK_MS, type Stage } from './run-provider';
@@ -28,7 +27,6 @@ const MARK_BOX: Record<Station['mark'], string> = { clear: 'border-ink-primary b
 const MARK_TEXT: Record<Station['mark'], string> = { clear: 'text-status-ok', blocked: 'font-strong text-status-over', flagged: 'font-strong text-status-near', waiting: 'text-ink-muted', none: 'text-ink-muted' };
 const MARK_WORD: Record<Station['mark'], string> = { clear: 'Clear', blocked: 'Blocked', flagged: 'Flagged', waiting: 'Waiting', none: 'After the dinner' };
 const CARD_EDGE: Record<Station['mark'], string> = { clear: 'border-ink-primary', blocked: 'border-status-over', flagged: 'border-status-near', waiting: 'border-border', none: 'border-border' };
-const ZOOM = 1.7;
 const TONE_TEXT = { '': '', ok: 'text-status-ok', near: 'text-status-near', over: 'text-status-over' } as const;
 
 /** The walker on the path: legs follow distance at a walking pace, it faces where it is going and hops on arrival. */
@@ -126,14 +124,11 @@ export function DinnerMap({ planId }: { planId: string }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [doc, setDoc] = useState<DocRef | null>(null);
   const [decisionOpen, setDecisionOpen] = useState(true);
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  const [asking, setAsking] = useState(false);
-  const [auditRow, setAuditRow] = useState<string | null>(null);
   const [absent, setAbsent] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
   const [stationNote, setStationNote] = useState('');
+  const detailRef = useRef<HTMLElement>(null);
+  useEffect(() => { if (picked !== null) detailRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [picked]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -214,15 +209,28 @@ export function DinnerMap({ planId }: { planId: string }) {
   const stations = useMemo(() => (state ? stationsFor(shown, state, shown === 1 && round !== null ? round : undefined) : []), [state, shown, round]);
   // `street`: looking at a whole stretch of the street (0 the Wharf to North Beach, 1 Chinatown to the Mission) instead of following.
   const [street, setStreet] = useState<number | null>(null);
-  const overview = street !== null;
-  useEffect(() => setStreet(null), [shown]);
-  // The viewer can drag the town and zoom with the wheel; following the dinner (or a new step) puts the camera back.
-  const [look, setLook] = useState<Camera | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ x: number; y: number; cam: Camera } | null>(null);
-  useEffect(() => setLook(null), [shown, street]);
+  // `whole`: the whole crawl at once. The camera only moves by buttons (and the arrow keys): no wheel zoom, no dragging.
+  const [whole, setWhole] = useState(false);
+  const overview = street !== null || whole;
+  useEffect(() => { setStreet(null); setWhole(false); }, [shown]);
+  const look = useMemo<Camera | null>(() => {
+    if (!whole || !size.w) return null;
+    const y0 = CRAWL.top - 250, scale = Math.min(1, (size.w - 48) / CRAWL.width, band(size.h) / (CRAWL.height - y0));
+    return { scale, x: Math.round((size.w - CRAWL.width * scale) / 2), y: middle(size.h, y0, CRAWL.height, scale) };
+  }, [whole, size.w, size.h]);
+  // ← and → move between bars, the same as the step strip's buttons (ignored while typing).
+  const navRef = useRef<(dir: -1 | 1) => void>(() => {});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable]'))) return;
+      if (e.key === 'ArrowLeft') navRef.current(-1);
+      if (e.key === 'ArrowRight') navRef.current(1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   // The task panel slides in beside each bar; while it is open the camera frames the bar in the space left of it.
-  const panelRoom = picked === null && !overview ? PANEL_SPACE : 0;
+  const panelRoom = !overview ? PANEL_SPACE : 0;
   const geometry = useMemo(() => crawlPath(shown, stations.length || 1, size.w, size.h, street, look, panelRoom), [shown, stations.length, size.w, size.h, street, look, panelRoom]);
   const camRef = useRef(geometry.camera);
   camRef.current = geometry.camera;
@@ -251,30 +259,6 @@ export function DinnerMap({ planId }: { planId: string }) {
       setChasing(false);
     }
   }, []);
-  useEffect(() => {
-    const el = world.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const cam = camRef.current, box = el.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
-      const least = frameOf(0, el.clientWidth, el.clientHeight, 0).scale * 0.5;
-      const scale = Math.min(4, Math.max(least, cam.scale * Math.exp(-e.deltaY * 0.0015)));
-      setLook({ scale, x: px - ((px - cam.x) / cam.scale) * scale, y: py - ((py - cam.y) / cam.scale) * scale });
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [core === null]); // eslint-disable-line react-hooks/exhaustive-deps
-  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest('button, a, [role=dialog], input, textarea')) return;
-    drag.current = { x: e.clientX, y: e.clientY, cam: camRef.current };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging(true);
-  };
-  const moveDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (d) setLook({ ...d.cam, x: d.cam.x + e.clientX - d.x, y: d.cam.y + e.clientY - d.y });
-  };
-  const endDrag = () => { drag.current = null; setDragging(false); };
   // The street's drawn details: the sidewalk once, and the lamps, strings of lights and chalkboard on a slow tick.
   const groundRef = useRef<HTMLCanvasElement>(null);
   const decoRef = useRef<HTMLCanvasElement>(null);
@@ -375,7 +359,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   const target = run?.exit ? geometry.stops.at(-1)! : geometry.stops[(run ? run.at : resting) + 1] ?? geometry.stops[0]!;
   const visible = (i: number) => !run || run.step !== shown || (run.recheck ? !run.recheck.includes(i) : i < run.seen);
   // The panel with this bar's checks: open while the cable car is at the bar, tucked away while it walks between bars.
-  const panelOpen = picked === null && !overview && !chasing && !run?.exit;
+  const panelOpen = !overview && !chasing && !run?.exit;
   const doneCount = stations.filter((s, i) => visible(i) && s.mark !== 'waiting').length;
   // This step's action opens as a dropdown in the panel, under the check it belongs to: the one that is blocked or
   // flagged, the row it fills in (who ate), or the next row still waiting; at the foot of the panel if none is.
@@ -391,9 +375,6 @@ export function DinnerMap({ planId }: { planId: string }) {
   const docModel = doc && buildCard(doc, state, documents);
   const caps = settlement?.caps.length ? settlement.caps : evaluation?.caps ?? [];
   const pickedStation = picked !== null ? stations[picked] : undefined;
-  const zoomed = picked !== null;
-  const zoomPoint = picked !== null ? geometry.points[picked] : undefined;
-  const zoomLeft = picked !== null && picked < stations.length / 2;
   const stationNotes = pickedStation ? notes.filter((n) => n.step === STEP_KEYS[shown] && n.target === pickedStation.name) : [];
 
   function Decision() {
@@ -477,61 +458,45 @@ export function DinnerMap({ planId }: { planId: string }) {
     const trouble = pickedStation.checks?.find((c) => c.outcome !== 'pass');
     const headline = pickedStation.checks?.length ? trouble?.message ?? `All ${pickedStation.checks.length} checks passed` : pickedStation.found;
     return (
-      <div role="region" aria-label={pickedStation.name} className={`absolute top-1/2 z-25 flex max-h-[96%] min-h-[62%] -translate-y-1/2 flex-col border border-ink-primary bg-bg-surface ${zoomLeft ? 'right-[2%] left-[27%]' : 'right-[27%] left-[2%]'}`}>
-        <header className="flex items-start justify-between gap-6 border-b border-border px-7 pt-5 pb-4">
-          <div className="min-w-0"><span className={`font-mono text-micro ${MARK_TEXT[pickedStation.mark]}`}>{STEPS[shown]!.toUpperCase()} · {pickedStation.name.toUpperCase()} · {(pickedStation.word ?? MARK_WORD[pickedStation.mark]).toUpperCase()}</span><h2 className="mt-1 line-clamp-2 text-verdict leading-tight font-bold tracking-tight">{headline}</h2></div>
-          <button aria-label="Zoom out" className="cursor-pointer text-title leading-none" onClick={() => setPicked(null)}>×</button>
-        </header>
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-          <section className="min-h-0 overflow-auto px-7 py-5">
-            <div className="flex items-center justify-between gap-3"><h3 className="text-small font-bold text-ink-muted">What the agent did</h3>{shown === 1 && rounds.length > 1 && <div className="flex gap-1.5">{rounds.map((_, n) => <button key={n} onClick={() => setRound(n)} className={`cursor-pointer border px-2 py-0.5 text-small ${(round ?? rounds.length - 1) === n ? 'border-ink-primary bg-accent-tint' : 'border-border'}`}>Round {n + 1}</button>)}</div>}</div>
-            <ol className="mt-2 border-t border-border">
-              {pickedStation.checks?.length ? pickedStation.checks.map((c) => (
-                <li key={c.id} className="flex items-start gap-2.5 border-b border-border py-2.5">
-                  <i className={`mt-1.5 size-2 shrink-0 rounded-pill ${DOT[c.outcome]}`} />
-                  <span className="min-w-0 flex-1">{c.message}{(c.approval || c.denial) && <small className="mt-0.5 block text-small text-ink-muted">{c.denial ? 'Denied' : 'Approved'} by {nameOf((c.denial ?? c.approval)!.by)}: {(c.denial ?? c.approval)!.note}</small>}</span>
-                  <button className="shrink-0 cursor-pointer text-small underline" onClick={() => openDoc(sourceOf(c))}>Rule</button>
-                </li>
-              )) : thinkingLines(pickedStation).map((line, i) => <li key={i} className="border-b border-border py-2.5">{line}</li>)}
-            </ol>
-            {showCaps && <><h3 className="mt-5 text-small font-bold text-ink-muted">Annual totals with this dinner</h3>{caps.map((c) => <div key={c.npi} className="py-1.5"><div className="flex justify-between gap-2"><span>{nameOf(c.npi)}</span><span className="font-mono text-small">{usd(c.projectedCents)} of {usd(c.capCents)}</span></div><div className="relative mt-1 h-(--size-capbar-height) bg-border"><u className={`absolute inset-y-0 left-0 ${c.state === 'over' ? 'bg-status-over' : c.state === 'near' ? 'bg-status-near' : 'bg-ink-primary'}`} style={{ width: `${Math.min(100, (c.projectedCents / c.capCents) * 100)}%` }} /></div></div>)}</>}
-          </section>
-          <section className="flex min-h-0 flex-col gap-5 overflow-auto border-l border-border bg-bg-canvas px-6 py-5">
-            {editor && <div><h3 className="mb-2 text-small font-bold text-ink-muted">Change this</h3>{editor}</div>}
-            {error && <div role="alert" className="text-status-over">{error}</div>}
-            {pickedStation.link && <a href={pickedStation.link.url} target="_blank" rel="noreferrer" className="self-start border border-ink-primary px-3 py-1.5 font-strong hover:bg-bg-surface">{pickedStation.link.label} ↗</a>}
-            {pickedStation.looked.length > 0 && <div><h3 className="text-small font-bold text-ink-muted">Sources</h3><div className="mt-1.5 flex flex-wrap gap-1.5">{pickedStation.looked.map((r) => <button key={`${r.doc}:${r.at}`} onClick={() => openDoc(r)} className="cursor-pointer border border-border bg-bg-surface px-2 py-1 text-small hover:border-ink-primary">{r.label}</button>)}</div></div>}
-            <div><h3 className="text-small font-bold text-ink-muted">On the record</h3>
-              {stationNotes.map((n) => <div key={n.id} className="mt-1.5 border-b border-border pb-1.5 text-small"><span className="text-ink-muted">{nameOf(n.by)}: </span>{n.text}</div>)}
-              <div className="mt-2 flex gap-1.5"><input value={stationNote} onChange={(e) => setStationNote(e.target.value)} placeholder="Add a note" className="min-w-0 flex-1 border border-border bg-bg-surface px-2 py-1.5" /><button className="cursor-pointer border border-ink-primary px-3 font-strong" onClick={() => addStationNote(pickedStation)}>Add</button></div>
-            </div>
-          </section>
+      <section ref={detailRef} aria-label={pickedStation.name} className="covers-line border-t border-ink-primary px-4 pt-3 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0"><span className={`font-mono text-micro ${MARK_TEXT[pickedStation.mark]}`}>{pickedStation.name.toUpperCase()} · {(pickedStation.word ?? MARK_WORD[pickedStation.mark]).toUpperCase()}</span><h3 className="mt-0.5 text-amount leading-snug font-bold tracking-tight">{headline}</h3></div>
+          <button aria-label={`Close ${pickedStation.name}`} className="cursor-pointer text-heading leading-none" onClick={() => setPicked(null)}>×</button>
         </div>
-      </div>
+        <div className="mt-3 flex items-center justify-between gap-3"><h4 className="text-small font-bold text-ink-muted">What the agent did</h4>{shown === 1 && rounds.length > 1 && <div className="flex gap-1.5">{rounds.map((_, n) => <button key={n} onClick={() => setRound(n)} className={`cursor-pointer border px-2 py-0.5 text-small ${(round ?? rounds.length - 1) === n ? 'border-ink-primary bg-accent-tint' : 'border-border'}`}>Round {n + 1}</button>)}</div>}</div>
+        <ol className="mt-1.5 border-t border-border text-small">
+          {pickedStation.checks?.length ? pickedStation.checks.map((c) => (
+            <li key={c.id} className="flex items-start gap-2.5 border-b border-border py-2">
+              <i className={`mt-1.5 size-2 shrink-0 rounded-pill ${DOT[c.outcome]}`} />
+              <span className="min-w-0 flex-1">{c.message}{(c.approval || c.denial) && <small className="mt-0.5 block text-ink-muted">{c.denial ? 'Denied' : 'Approved'} by {nameOf((c.denial ?? c.approval)!.by)}: {(c.denial ?? c.approval)!.note}</small>}</span>
+              <button className="shrink-0 cursor-pointer underline" onClick={() => openDoc(sourceOf(c))}>Rule</button>
+            </li>
+          )) : thinkingLines(pickedStation).map((line, i) => <li key={i} className="border-b border-border py-2">{line}</li>)}
+        </ol>
+        {showCaps && <><h4 className="mt-4 text-small font-bold text-ink-muted">Annual totals with this dinner</h4>{caps.map((c) => <div key={c.npi} className="py-1.5 text-small"><div className="flex justify-between gap-2"><span>{nameOf(c.npi)}</span><span className="font-mono">{usd(c.projectedCents)} of {usd(c.capCents)}</span></div><div className="relative mt-1 h-(--size-capbar-height) bg-border"><u className={`absolute inset-y-0 left-0 ${c.state === 'over' ? 'bg-status-over' : c.state === 'near' ? 'bg-status-near' : 'bg-ink-primary'}`} style={{ width: `${Math.min(100, (c.projectedCents / c.capCents) * 100)}%` }} /></div></div>)}</>}
+        {editor && <div className="mt-4"><h4 className="mb-2 text-small font-bold text-ink-muted">Change this</h4>{editor}</div>}
+        {error && <div role="alert" className="mt-3 text-status-over">{error}</div>}
+        {pickedStation.link && <a href={pickedStation.link.url} target="_blank" rel="noreferrer" className="mt-4 inline-block border border-ink-primary px-3 py-1.5 font-strong hover:bg-bg-canvas">{pickedStation.link.label} ↗</a>}
+        {pickedStation.looked.length > 0 && <div className="mt-4"><h4 className="text-small font-bold text-ink-muted">Sources</h4><div className="mt-1.5 flex flex-wrap gap-1.5">{pickedStation.looked.map((r) => <button key={`${r.doc}:${r.at}`} onClick={() => openDoc(r)} className="cursor-pointer border border-border bg-bg-canvas px-2 py-1 text-small hover:border-ink-primary">{r.label}</button>)}</div></div>}
+        <div className="mt-4"><h4 className="text-small font-bold text-ink-muted">On the record</h4>
+          {stationNotes.map((n) => <div key={n.id} className="mt-1.5 border-b border-border pb-1.5 text-small"><span className="text-ink-muted">{nameOf(n.by)}: </span>{n.text}</div>)}
+          <div className="mt-2 flex gap-1.5"><input value={stationNote} onChange={(e) => setStationNote(e.target.value)} placeholder="Add a note" className="min-w-0 flex-1 border border-border bg-bg-canvas px-2 py-1.5" /><button className="cursor-pointer border border-ink-primary px-3 font-strong" onClick={() => addStationNote(pickedStation)}>Add</button></div>
+        </div>
+      </section>
     );
   }
 
-  const ask = async () => {
-    const q = question.trim();
-    if (!q || asking) return;
-    const history = chat.slice(-HISTORY_LIMITS.turns).map((m) => ({ ...m, content: m.content.slice(0, HISTORY_LIMITS.chars) }));
-    setChat((c) => [...c, { role: 'user', content: q }]); setQuestion(''); setAsking(true);
-    try {
-      const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ planId, question: q, history }) });
-      const body = (await res.json()) as { ok: true; answer: string } | { ok: false; error: string };
-      setChat((c) => [...c, { role: 'assistant', content: body.ok ? body.answer : body.error }]);
-    } catch { setChat((c) => [...c, { role: 'assistant', content: 'The agent could not be reached. Try again.' }]); }
-    finally { setAsking(false); }
-  };
   const allChecks = [...(evaluation?.checks ?? []), ...(settlement?.checks ?? [])];
 
   const prev = shown > 0 ? shown - 1 : null;
   const next = shown < step ? shown + 1 : null;
-  const arrow = (dir: 'l' | 'r', to: number | null) => (
-    <button disabled={to === null} onClick={() => { if (to !== null) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} title={to !== null ? `${STEPS[to]} · ${STOPS[to]!.name}` : undefined} className={`group absolute top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 transition-[right] duration-(--motion-duration-slow) ease-standard ${dir === 'l' ? 'left-3' : panelOpen ? 'right-[26.5rem]' : 'right-3'} ${to === null ? 'cursor-default text-border' : 'cursor-pointer text-ink-primary'}`}>
-      <svg viewBox="0 0 20 44" className="h-14 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d={dir === 'l' ? 'M17 2 3 22l14 20' : 'M3 2l14 20L3 42'} /></svg>
-      {to !== null && <span className="hidden text-small font-strong group-hover:block">{STEPS[to]}</span>}
-      <span className="sr-only">{dir === 'l' ? 'Previous step' : 'Next step'}</span>
+  const go = (to: number | null) => { if (to !== null && !run) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } };
+  navRef.current = (dir) => go(dir < 0 ? prev : next);
+  // The step strip: the bar before and the bar after, named, always in the same place at the bottom of the street.
+  const stepButton = (dir: 'l' | 'r', to: number | null) => (
+    <button disabled={to === null || !!run} onClick={() => go(to)} aria-label={to !== null ? `${dir === 'l' ? 'Back to' : 'On to'} ${STOPS[to]!.name}, ${STEPS[to]}` : dir === 'l' ? 'No earlier bar' : 'No later bar yet'} className={`flex min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2 ${dir === 'r' ? 'flex-row-reverse text-right' : 'text-left'} ${to === null || run ? 'cursor-default text-ink-muted' : 'cursor-pointer hover:bg-accent-tint'}`}>
+      <span aria-hidden="true" className="text-heading leading-none">{dir === 'l' ? '◂' : '▸'}</span>
+      <span className="min-w-0"><b className="block truncate text-small font-strong">{to !== null ? STOPS[to]!.name : dir === 'l' ? 'Start of the crawl' : 'Not reached yet'}</b><span className="block font-mono text-micro text-ink-muted">{to !== null ? STEPS[to]!.toUpperCase() : '—'}</span></span>
     </button>
   );
 
@@ -555,11 +520,11 @@ export function DinnerMap({ planId }: { planId: string }) {
             })}
           </ol>
           <div className="flex min-h-0 flex-1">
-          <div ref={world} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} className={`relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden select-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
+          <div ref={world} className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
             {size.w > 0 && (
               <>
                 {/* The street, framed on this step's bar. The art scales with the camera at whole-number zoom; the panel and cheers sit on top in screen space. */}
-                <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: CRAWL.width, height: CRAWL.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
+                <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none transition-transform duration-[calc(var(--motion-duration-slow)*2)]`} style={{ width: CRAWL.width, height: CRAWL.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
                   <canvas ref={groundRef} width={CRAWL.width} height={CRAWL.height - CRAWL.top} className="absolute left-0 [image-rendering:pixelated]" style={{ top: CRAWL.top }} />
                   {BARS.map((b, n) => <img key={b.src} src={b.src} alt={STOPS.filter((s) => s.bar === n).map((s) => s.name).join(' and ')} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: b.x, top: CRAWL.top - b.rise }} />)}
                   <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.top + 10} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
@@ -571,7 +536,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                 </div>
                 {cheers.map((c) => { const p = geometry.points[c.at]; return p ? <span key={c.id} className="covers-cheer pointer-events-none absolute z-5 text-small font-bold whitespace-nowrap text-status-ok" style={{ left: p.x, top: p.y - 74 * geometry.camera.scale }}>{CHEERS[c.id % CHEERS.length]}</span> : null; })}
                 {/* This bar's checks, sliding in from the side while the cable car is here, one ticking off at a time. */}
-                <aside aria-label={`${STEPS[shown]} at ${stop.name}`} aria-hidden={!panelOpen} className={`absolute top-4 right-4 z-10 flex max-h-[calc(100%-var(--space-8))] w-96 flex-col border border-ink-primary bg-bg-surface transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none ${panelOpen ? '' : 'pointer-events-none translate-x-[calc(100%+var(--space-8))]'}`}>
+                <aside aria-label={`${STEPS[shown]} at ${stop.name}`} aria-hidden={!panelOpen} className={`absolute top-4 right-4 z-10 flex max-h-[calc(100%-var(--space-8))] w-96 flex-col overflow-y-auto border border-ink-primary bg-bg-surface transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none ${panelOpen ? '' : 'pointer-events-none translate-x-[calc(100%+var(--space-8))]'}`}>
                   <header className="border-b border-border px-4 pt-3.5 pb-3">
                     <span className="font-mono text-micro text-ink-muted">STEP {shown + 1} · {STEPS[shown]!.toUpperCase()} · <span className={doneCount === stations.length ? 'text-status-ok' : ''}>{doneCount === stations.length ? 'DONE' : run && run.step === shown ? 'WORKING' : 'WAITING'}</span></span>
                     <h2 className="mt-0.5 text-heading leading-tight font-bold tracking-tight">{stop.name}</h2>
@@ -580,14 +545,14 @@ export function DinnerMap({ planId }: { planId: string }) {
                     <span className="mt-2.5 flex gap-1">{stations.map((s, i) => <i key={s.name} className={`h-1.5 flex-1 transition-colors duration-(--motion-duration-base) ease-standard ${visible(i) && s.mark !== 'waiting' ? (s.mark === 'blocked' ? 'bg-status-over' : s.mark === 'flagged' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>
                     {stamp && <p className={`covers-line mt-2.5 border px-2.5 py-1.5 text-small font-strong ${stamp.tone === 'ok' ? 'border-status-ok text-status-ok' : 'border-status-near text-status-near'}`}>{STAMP_LINE[stamp.text] ?? stamp.text}</p>}
                   </header>
-                  <ol className="min-h-0 overflow-auto px-4 py-1">
+                  <ol className="px-4 py-1">
                     {stations.map((s, i) => {
                       const seen = visible(i), mark = seen ? s.mark : 'waiting';
                       const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0 && !seen;
                       const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0, action = i === actionRow;
                       return (
                         <li key={s.name} className="border-b border-dashed border-border last:border-b-0">
-                          <button aria-label={action ? `${s.name}: ${actionOpen ? 'hide' : 'show'} what to do` : `Open ${s.name}`} aria-expanded={action ? actionOpen : undefined} disabled={!(seen || here || action) || zoomed} onClick={() => (action ? setDecisionOpen((o) => !o) : pickStation(i))} className="flex w-full cursor-pointer items-center gap-3 py-2.5 text-left hover:bg-bg-canvas disabled:cursor-default disabled:hover:bg-transparent">
+                          <button aria-label={action ? `${s.name}: ${actionOpen ? 'hide' : 'show'} what to do` : `Open ${s.name}`} aria-expanded={action ? actionOpen : picked === i} disabled={!(seen || here || action)} onClick={() => (action ? setDecisionOpen((o) => !o) : picked === i ? setPicked(null) : pickStation(i))} className="flex w-full cursor-pointer items-center gap-3 py-2.5 text-left hover:bg-bg-canvas disabled:cursor-default disabled:hover:bg-transparent">
                             <i className={`size-2.5 shrink-0 border ${MARK_BOX[mark]}`} />
                             <span className="min-w-0 flex-1">
                               <b className="block truncate text-small font-strong">{s.name}</b>
@@ -602,6 +567,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                       );
                     })}
                   </ol>
+                  {CARD_STEPS.includes(shown) && <CardSlip view={view} receipt={receipt} settlement={settlement} audit={audit} limitCents={limit} role={role} checking={run?.step === shown ? run.label : undefined} />}
                   {actionRow === -1 && canDecide && (
                     <div className="border-t border-ink-primary">
                       <button aria-expanded={actionOpen} onClick={() => setDecisionOpen((o) => !o)} className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-bg-canvas"><b className="text-small font-strong">Next</b><small className={`border px-1.5 py-0.5 font-mono text-micro ${mine ? 'border-ink-primary bg-accent text-on-accent' : 'border-border text-ink-muted'}`}>{mine ? 'TO DO' : owner === 'compliance' ? 'WITH COMPLIANCE' : 'WITH THE REP'} {actionOpen ? '▴' : '▾'}</small></button>
@@ -609,63 +575,34 @@ export function DinnerMap({ planId }: { planId: string }) {
                     </div>
                   )}
                   {closed && viewing === null && !run && <div className="border-t border-ink-primary px-4 py-3"><Link href="/" className={`block text-center ${primary}`}>Closed, return to dashboard</Link></div>}
+                  {Detail()}
                 </aside>
               </>
             )}
             {/* Follow the dinner, or look along either stretch of the street. The second stretch opens once the dinner gets there. */}
-            {!zoomed && (
+            {(
               <div className="absolute top-3 left-6 z-10 flex flex-wrap items-center gap-1.5">
-                <button onClick={() => { setStreet(null); setLook(null); }} aria-pressed={street === null && !look} className={`cursor-pointer border px-2.5 py-1 text-small font-strong ${street === null && !look ? 'border-ink-primary bg-accent-tint' : 'border-border bg-bg-surface hover:border-ink-primary'}`}>Follow the dinner</button>
+                <button onClick={() => { setStreet(null); setWhole(false); }} aria-pressed={!overview} className={`cursor-pointer border px-2.5 py-1 text-small font-strong ${!overview ? 'border-ink-primary bg-accent-tint' : 'border-border bg-bg-surface hover:border-ink-primary'}`}>Follow the dinner</button>
                 {STREETS.map((st, n) => {
                   const open = n === 0 || step >= 3;
-                  return <button key={st.name} disabled={!open} onClick={() => setStreet(n)} aria-pressed={street === n} className={`border px-2.5 py-1 text-small ${street === n ? 'border-ink-primary bg-accent-tint font-strong' : 'border-border bg-bg-surface'} ${open ? 'cursor-pointer hover:border-ink-primary' : 'cursor-not-allowed text-ink-muted'}`}>{st.name}{open ? '' : ' · opens at Dinner'}</button>;
+                  return <button key={st.name} disabled={!open} onClick={() => { setStreet(n); setWhole(false); }} aria-pressed={street === n} className={`border px-2.5 py-1 text-small ${street === n ? 'border-ink-primary bg-accent-tint font-strong' : 'border-border bg-bg-surface'} ${open ? 'cursor-pointer hover:border-ink-primary' : 'cursor-not-allowed text-ink-muted'}`}>{st.name}{open ? '' : ' · opens at Dinner'}</button>;
                 })}
+                <button disabled={step < 3} onClick={() => { setWhole(true); setStreet(null); }} aria-pressed={whole} className={`border px-2.5 py-1 text-small ${whole ? 'border-ink-primary bg-accent-tint font-strong' : 'border-border bg-bg-surface'} ${step >= 3 ? 'cursor-pointer hover:border-ink-primary' : 'cursor-not-allowed text-ink-muted'}`}>Whole crawl{step >= 3 ? '' : ' · opens at Dinner'}</button>
               </div>
             )}
-            {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
-            {size.w > 0 && Detail()}
+            {(
+              <nav aria-label="Move between bars" className="absolute bottom-3 left-1/2 z-20 flex w-120 max-w-[calc(100%-var(--space-10))] -translate-x-1/2 items-stretch border border-ink-primary bg-bg-surface">
+                {stepButton('l', prev)}
+                <span className="flex shrink-0 flex-col items-center justify-center border-x border-border px-3 text-center"><span className="font-mono text-micro text-ink-muted">STEP {shown + 1} OF {STEPS.length}</span><b className="text-small font-strong">{STOPS[shown]!.name}</b></span>
+                {stepButton('r', next)}
+              </nav>
+            )}
           </div>
-          {/* The dinner's card, beside the map so it never covers a station. */}
-          <aside className="hidden shrink-0 flex-col items-center justify-start pt-6 pr-6 pl-2 lg:flex"><RampCard view={view} settlement={settlement} audit={audit} limitCents={limit} /></aside>
           </div>
           {docModel && <DocCard model={docModel} onDoc={openDoc} onBack={() => setDoc(null)} onClose={() => setDoc(null)} />}
         </section>
 
-        <button onClick={() => { setAuditOpen(true); void loadAudit(); }} className="absolute right-5 bottom-3 z-20 flex cursor-pointer gap-3 border border-border bg-bg-surface px-3 py-2 font-strong"><span>Audit log · {audit.length}</span><span>◂</span></button>
-        {auditOpen && <aside className="absolute inset-y-0 right-0 z-40 flex w-105 max-w-full flex-col border-l border-ink-primary bg-bg-canvas">
-          <div className="flex items-baseline justify-between border-b border-ink-primary px-5 py-3"><h2 className="text-heading font-bold tracking-tight">Audit log<small className="block text-small font-regular tracking-normal text-ink-muted">{audit.length} actions, oldest first. Ask it anything below.</small></h2><button aria-label="Close audit log" onClick={() => setAuditOpen(false)} className="cursor-pointer text-heading leading-none">×</button></div>
-          <div className="min-h-0 flex-1 overflow-auto px-5 pb-3">
-            {audit.length === 0 && <p className="py-2 text-ink-muted">Actions on this dinner appear here.</p>}
-            {audit.map((e) => {
-              const open = auditRow === e.id, target = AUDIT_STEP[e.action], check = allChecks.find((c) => c.ruleId === e.ruleId);
-              return (
-                <div key={e.id}>
-                  <button onClick={() => setAuditRow(open ? null : e.id)} aria-expanded={open} className={`block w-full cursor-pointer border-b border-border px-1.5 py-2 text-left ${open ? 'bg-accent-tint' : 'hover:bg-bg-surface'}`}>
-                    <span className="flex justify-between text-small text-ink-muted"><b className="font-strong text-ink-primary">{nameOf(e.actorId)}</b><span className="font-mono text-micro">{new Date(e.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span></span>
-                    <span className="mt-0.5 block">{AUDIT_LABEL[e.action] ?? e.action}</span>
-                    {e.detail && e.action !== 'plan.updated' && <span className="mt-0.5 block text-small text-ink-secondary">{e.detail.replace(/(\d+) cents/g, (_, c: string) => usd(Number(c)))}</span>}
-                  </button>
-                  {open && (
-                    <div className="border-b border-border bg-bg-surface px-1.5 py-2 text-small">
-                      {([['Date', new Date(e.at).toLocaleString('en-US')], ['Input hash', e.inputHash], ['Rule', e.ruleId ?? 'None']] as const).map(([k, v]) => <div key={k} className="flex justify-between gap-3 py-0.5"><span className="text-ink-muted">{k}</span><span className="font-mono text-micro">{v}</span></div>)}
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {target !== undefined && target <= step && <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => { setViewing(target === step ? null : target); setPicked(null); setAuditOpen(false); }}>Show on the map</button>}
-                        {check && <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => openDoc(sourceOf(check))}>See the rule</button>}
-                        <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => setQuestion(`About "${AUDIT_LABEL[e.action] ?? e.action}": `)}>Ask about this</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {chat.map((m, i) => <div key={i} className={`mt-2.5 ${m.role === 'user' ? 'bg-accent-tint px-2.5 py-1.5' : 'text-ink-secondary'}`}>{m.content}</div>)}
-            {asking && <div className="mt-2.5 text-ink-muted">Reading the record…</div>}
-          </div>
-          <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="flex gap-1.5 border-t border-border px-5 py-3">
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1000} aria-label="Ask the audit log" placeholder="Ask the audit log why something happened" className="min-w-0 flex-1 border border-border bg-bg-surface px-2.5 py-2" />
-            <button disabled={asking || !question.trim()} className="cursor-pointer border border-ink-primary px-3 font-strong disabled:cursor-default disabled:opacity-50">Ask</button>
-          </form>
-        </aside>}
+        <AuditLog planId={planId} audit={audit} loadAudit={loadAudit} checks={allChecks} onDoc={openDoc} onGo={(to) => { if (to <= step && !run) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} />
       </div>
     </div>
   );
