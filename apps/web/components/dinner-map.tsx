@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BARS, CAR, CRAWL, camera as frameOf, crawlPath, drawDeco, drawGround, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
+import { BARS, CAR, CRAWL, camera as frameOf, crawlPath, drawDeco, drawGround, LIVES, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import type { StampTone } from './stamp';
@@ -562,6 +562,13 @@ export function DinnerMap({ planId }: { planId: string }) {
                 <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: CRAWL.width, height: CRAWL.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
                   <canvas ref={groundRef} width={CRAWL.width} height={CRAWL.height - CRAWL.top} className="absolute left-0 [image-rendering:pixelated]" style={{ top: CRAWL.top }} />
                   {BARS.map((b, n) => <img key={b.src} src={b.src} alt={STOPS.filter((s) => s.bar === n).map((s) => s.name).join(' and ')} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: b.x, top: CRAWL.top - b.rise }} />)}
+                  {/* Life inside: guests lean in, bartenders work, neon and lanterns catch, each room's light rises and falls. */}
+                  {LIVES.map((l, n) => {
+                    const b = BARS[l.bar]!, [x, y, w, h] = l.rect, timing = { animationDuration: `calc(var(--motion-duration-slow) * ${l.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${-l.delay * 2})` };
+                    return l.kind === 'warm'
+                      ? <i key={n} className="covers-warm absolute bg-accent-tint mix-blend-soft-light" style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, ...timing }} />
+                      : <i key={n} className={`covers-${l.kind} absolute`} style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, backgroundImage: `url(${b.src})`, backgroundPosition: `${-x}px ${-y}px`, imageRendering: 'pixelated', ...timing }} />;
+                  })}
                   <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.top + 10} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
                   <svg className="pointer-events-none absolute inset-0 overflow-visible" width={CRAWL.width} height={CRAWL.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
