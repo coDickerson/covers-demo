@@ -79,7 +79,8 @@ export const LIVES: { kind: 'bob' | 'sway' | 'flicker' | 'warm'; bar: number; re
  * Vista, and a dragon dance that now and then parades along the Chinatown sidewalk past Li Po, head first, then is gone.
  * `travel` is how far the parade goes (grid pixels, leftward), `every` its cycle in slow-motion units.
  */
-export const SEALION = { src: '/crawl/sealion.png', x: 424, width: 47, height: 57, sink: 3 } as const;
+/** `head`: the piece of the sea lion picture that lifts now and then ([x, y, w, h]); the crate below never moves. */
+export const SEALION = { src: '/crawl/sealion.png', x: 424, width: 47, height: 57, sink: 3, head: [22, 0, 18, 17] as [number, number, number, number] } as const;
 /** The flower stand by Pacific Cocktail Haven, and for the judges a Ramp Happy Hour chalkboard pointing into Trick Dog. */
 export const FLOWERS = { src: '/crawl/flowercart.png', x: 1586, width: 59, height: 60, sink: 2 } as const;
 export const RAMP_BOARD = { src: '/crawl/rampboard.png', x: 1918, width: 50, height: 54, sink: 3 } as const;
