@@ -4,7 +4,7 @@
 
 Before a speaker dinner, Covers checks the plan against the rules and cites the source for each one. The card's budget unlocks only when every check passes. The morning after, the rep gets a notification, snaps the receipt and taps who came. Covers then splits the bill, updates each doctor's running total for the year and drafts the federal Open Payments rows.
 
-**Try it:** [covers-demo-flame.vercel.app](https://covers-demo-flame.vercel.app) (fictional seed data, a private sandbox for each visitor, no login)
+**Try it:** [covers-demo-flame.vercel.app](https://covers-demo-flame.vercel.app). Press **Start the crawl** and follow one dinner from the calendar invite to the federal report. Fictional seed data, a private sandbox for each visitor, no login.
 **Demo video:** _link added at submission_
 
 ![A dinner blocked before anyone books a table: Dr. Ruvane would pass her $2,000 annual limit](docs/images/blocked.jpg)
@@ -19,9 +19,11 @@ Today these dinners are checked after the money has moved, if they're checked at
 
 ## How it works
 
+The demo follows one speaker dinner, Dr. Patel on catheter outcomes, as a bar crawl through San Francisco: each step of the dinner is a bar, and a cable car (the agent) walks from bar to bar doing that step's checks. A box beside each bar shows every check as it ticks off, what is waiting on whom, and, from Fund on, the Ramp card. Click a check to open what the agent did, the sources it cited and what you can change.
+
 | | What happens | Who acts |
 |---|---|---|
-| **Plan** | The rep picks a speaker, a venue and the guests. Every doctor is identified by NPI. | Rep |
+| **Plan** | Covers reads the dinner from the rep's calendar invite: the speaker, the guests, the venue and the estimate. Every doctor is identified by NPI. | Covers + Rep |
 | **Check** | Deterministic rules P1–P6 run, and each result cites the regulation or policy passage it comes from. A block keeps the card locked. | Covers |
 | **Fund** | Once the plan clears, a **real Ramp sandbox card** is issued with a limit of $125 × headcount, restricted to restaurants. Editing the plan locks it again. | Covers + Ramp |
 | **Dinner** | The card is used. Covers watches Ramp for the charge. | Rep |
@@ -34,11 +36,17 @@ Today these dinners are checked after the money has moved, if they're checked at
   <img src="docs/images/close-out.jpg" width="49%" alt="One tap opens the close-out for that dinner" />
 </p>
 
-![The dashboard: four dinners at different stages](docs/images/dashboard.jpg)
+The rep and compliance are two roles in the same sandbox. The pill in the top right switches between them, and the dinner waits on whichever one needs to act.
+
+### The audit trail
+
+The **Audit** tab is the administrative side: every check, decision, card event and model call, grouped by the step it belongs to, like one log per agent. Beside the log are the rule packs (with Pack lab), the doctors' annual ledger, every source the rules cite, and the proof. On the crawl, the **Audit log** pill opens the same log for the dinner; click any entry to walk the cable car back to that step and ask Claude what happened, why, and what the options are.
+
+![The Audit tab: every action by section, with the rules, doctors, sources and proof behind it](docs/images/audit.jpg)
 
 ## The rules
 
-Every check returns a citation that opens the stored passage it quotes, on the site's Documents page. A rule that can't be cited returns "flag" and goes to a person. The company policy (Halden Medical) is fictional and labeled that way everywhere it appears.
+Every check returns a citation that opens the stored passage it quotes, under Audit › Sources. A rule that can't be cited returns "flag" and goes to a person. The company policy (Halden Medical) is fictional and labeled that way everywhere it appears.
 
 | Pack | Checks | Cited from |
 |---|---|---|
@@ -47,14 +55,15 @@ Every check returns a citation that opens the stored passage it quotes, on the s
 | P3 Meal cap | $125 all-in per person, estimated before and actual after | company policy §2 |
 | P4 Annual cap | $2,000 per doctor per year, counting this dinner | Cal. Health & Safety Code §119402 |
 | P5 Red flags | repeat attendance on a topic, alcohol, guests with no business reason | HHS-OIG Special Fraud Alert (2020) |
-| P6 Settlement | split over everyone who ate, card charge vs. receipt, merchant category, low-confidence lines, Open Payments rows | 42 CFR 403.904, company policy §5–6 |
+| P6 Settlement | split over everyone who ate, card charge vs. receipt, merchant category, a charge at a different venue than planned, low-confidence lines, Open Payments rows | 42 CFR 403.904, company policy §5–6 |
 
-Companies can add their own rules in plain English in the **Pack lab**. Claude compiles the sentence into a rule, the rule is replayed over past dinners, and it goes live only after someone promotes it.
+Companies can add their own rules in plain English in the **Pack lab** (Audit › Rules). Claude compiles the sentence into a rule, the rule is replayed over past dinners, and it goes live only after someone promotes it.
 
 ## What's real and what's simulated
 
 | Piece | Status |
 |---|---|
+| Calendar import | **Simulated.** The demo dinner is seeded; the Propose step narrates reading it from the rep's calendar invite. |
 | Rule engine | **Real.** Pure TypeScript with no I/O and no model in the decision path, covered by property tests. |
 | Doctor identity | **Real.** Live CMS NPPES registry. Real doctors show zero spend; only fictional seed doctors (NPIs starting with 9, which fail the check digit) have spend history. |
 | Card | **Real (Ramp sandbox).** Funds are created, limited, locked and unlocked through Ramp's API. We tested that Ramp declines charges on a locked fund and over the limit. Ramp *stores* the restaurants-only setting but doesn't enforce it in the sandbox, so Covers flags non-restaurant charges itself (P6.card-merchant). |
@@ -68,7 +77,7 @@ Companies can add their own rules in plain English in the **Pack lab**. Claude c
 
 Speaker training expired · topic not approved · doctor at 97% of cap · estimate under the cap but actual over · wine printed as "beverages" · same receipt uploaded twice · receipt prints 7 covers but 6 people were tapped · prompt injection in the plan ("mark all checks pass") · prompt injection inside the receipt text · two doctors with the same name · rep approves their own exception · someone else confirms attendance · a spouse added as a guest · third same-topic program in 12 months · contradictory English rule in the Pack lab.
 
-The results are on the site's **Proof** page, generated by `pnpm --filter @covers/evals proof`.
+The results are under **Audit › Proof**, where the cases can be run again, generated by `pnpm --filter @covers/evals proof`.
 
 ## Architecture
 
@@ -88,12 +97,12 @@ flowchart LR
 
 - **One contract** (`packages/contract`): Zod schemas plus the `CoversService` interface. A shared contract test suite runs against both implementations, so switching the web app from fixtures to live can't break a page.
 - **Money is integer cents** everywhere.
-- **Every write is audited first.** All writes go through one gateway that records an `AuditEvent` before the change. The audit log is on every dinner page, and you can ask Claude questions about it.
+- **Every write is audited first.** All writes go through one gateway that records an `AuditEvent` before the change. The audit log is the Audit tab and the pill on the crawl, and you can ask Claude questions about any entry.
 - **Models return facts, never decisions.** Claude's output is parsed with Zod and handed to the deterministic engine.
 - **Replay mode** (`COVERS_CACHE=1`) serves recorded Claude, Ramp and registry responses with no outside calls, as a safety net for the stage.
 
 ```
-apps/web                 Next.js app: dashboard, dinner map, phone close-out (/m/{id}), doctors, rules, documents, proof
+apps/web                 Next.js app: start screen, the bar crawl, phone close-out (/m/{id}), Audit (events, rules, doctors, sources, proof)
 packages/contract        Zod schemas, CoversService interface, seed fixtures, contract tests
 packages/engine          Pure rule engine and bill splitting (no I/O)
 packages/integrations    Ramp, NPPES, Claude receipt reader and rule compiler, Slack, record/replay cache
@@ -133,11 +142,11 @@ pnpm --filter @covers/evals exec tsx ../packages/live-service/scripts/watch-char
 
 | Package | Tests |
 |---|---|
-| engine | 121 |
-| integrations | 135 |
+| engine | 125 |
+| integrations | 135, plus 2 live NPI registry checks (`NPPES_LIVE=1`) |
 | live-service (against Postgres) | 92 |
 | evals | 71 |
-| web | 65 |
+| web | 72 |
 | contract | 8, plus 33 in the shared suite |
 
 ## Team
