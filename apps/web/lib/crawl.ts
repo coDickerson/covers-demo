@@ -88,6 +88,12 @@ export type Camera = { x: number; y: number; scale: number };
 const X0 = 40, X1 = CRAWL.width - 40;
 const pct = (x: number) => ((x - X0) / (X1 - X0)) * 100;
 
+// The room for the street between the view buttons (top) and the step strip (bottom), and the camera y that centres the
+// bars and the sidewalk (art rows y0..y1) in it, so the street sits in the middle of any window, not along the bottom.
+const ABOVE = 52, BELOW = 76;
+export const band = (h: number) => Math.max(160, h - ABOVE - BELOW);
+export const middle = (h: number, y0: number, y1: number, scale: number) => Math.round(ABOVE + (band(h) - (y1 - y0) * scale) / 2 - y0 * scale);
+
 /**
  * The camera for a step: that bar, at the largest whole-number zoom that fits beside the task panel (`panel` pixels on
  * the right). With `street`, it shows that whole stretch of street instead.
@@ -95,14 +101,14 @@ const pct = (x: number) => ((x - X0) / (X1 - X0)) * 100;
 export function camera(step: number, w: number, h: number, street: number | null = null, panel = 0): Camera {
   const s = STOPS[step] ?? STOPS[0];
   if (street !== null) {
-    const st = STREETS[street] ?? STREETS[0], rw = st.to - st.from, scale = Math.min(1, (w - 48) / rw, (h - 48) / (CRAWL.height - 40));
-    return { scale, x: Math.round((w - rw * scale) / 2 - st.from * scale), y: Math.round(h * 0.55 - (TOP - 100) * scale) };
+    const st = STREETS[street] ?? STREETS[0], rw = st.to - st.from, scale = Math.min(1, (w - 48) / rw, band(h) / (CRAWL.height - (TOP - 250)));
+    return { scale, x: Math.round((w - rw * scale) / 2 - st.from * scale), y: middle(h, TOP - 250, CRAWL.height, scale) };
   }
   const x0 = s.span[0] - 70, x1 = s.span[1] + 70;
   const y0 = TOP - 250, y1 = CRAWL.height, avail = Math.max(240, w - panel);
-  const fit = Math.min((avail * 0.94) / (x1 - x0), (h * 0.94) / (y1 - y0));
+  const fit = Math.min((avail * 0.94) / (x1 - x0), (band(h) * 0.94) / (y1 - y0));
   const scale = fit >= 1 ? Math.min(3, Math.floor(fit)) : fit;
-  return { scale, x: Math.round(avail / 2 - ((x0 + x1) / 2) * scale), y: Math.round(h - 16 - y1 * scale) };
+  return { scale, x: Math.round(avail / 2 - ((x0 + x1) / 2) * scale), y: middle(h, y0, y1, scale) };
 }
 
 /**
