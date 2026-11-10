@@ -1,6 +1,7 @@
 export { evaluate, statusOf } from './evaluate';
 export { settle } from './settle';
 export { splitEvenly, divideRounded, formatCents } from './money';
+export { capState } from './common';
 export { DEFAULT_SETTINGS, resolveSettings } from './settings';
 export { cite, RULE_SOURCES, type RuleId } from './citations';
 export { PACK_IDS } from './types';

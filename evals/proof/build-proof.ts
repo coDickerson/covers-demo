@@ -38,7 +38,7 @@ for (const c of BREAK_IT_CASES) {
 }
 await sql.end();
 
-const realVsSimulated = [
+const realVsSimulated: { piece: string; status: string; howWeKnow: string }[] = [
   { piece: 'Rule engine (P1–P6)', status: 'Real', howWeKnow: '118 tests incl. property tests; deterministic, no model in the decision path' },
   { piece: 'Citations', status: 'Real', howWeKnow: 'Every rule opens a stored passage quoted from the original (OIG alert, Cal. HSC §119402, 42 CFR 403.904, CMS); checked Nov 8. Company policy is fictional and labeled' },
   { piece: 'Doctor identity (NPI registry)', status: 'Real', howWeKnow: 'Live CMS NPPES API v2.1; real doctors shown with zero spend' },
@@ -53,6 +53,18 @@ const realVsSimulated = [
   { piece: 'Pack lab: rules applied', status: 'Real', howWeKnow: 'Compiled rules run in the deterministic engine; conflicts found by code; Break-It #15' },
   { piece: 'Pack lab: English → rule', status: 'Real', howWeKnow: 'claude-opus-5-5 compiled "Weekend dinners need manager approval" on Nov 7; its 4 test cases and the code checks all passed on the engine' },
 ];
+
+// ---- Real-data backtest and diligence crew (evals/backtest) ----
+const btDir = join(here, '..', 'backtest', 'results');
+const btFile = (() => { try { return readdirSync(btDir).filter((f) => f.startsWith('backtest-')).sort().at(-1); } catch { return undefined; } })();
+if (btFile) {
+  const bt = JSON.parse(readFileSync(join(btDir, btFile), 'utf8')) as { payments: number; doctors: number; companies: number; flaggedDoctors: number; flaggedShare: number; p3: { meals: number }; p4: { over: number; near: number }; p5: { pairs: number }; source: { dataset: string; filter: { state: string } } };
+  realVsSimulated.push(
+    { piece: 'Payment history for real doctors', status: 'Real', howWeKnow: 'CMS Open Payments API (program years 2023–2025): every company payment reported to a real NPI, in integer cents, with the query URL as the source' },
+    { piece: 'Backtest on real dinners', status: 'Real', howWeKnow: `${bt.source.dataset}: ${bt.payments.toLocaleString()} food and beverage payments to ${bt.doctors.toLocaleString()} ${bt.source.filter.state} cardiovascular clinicians from ${bt.companies} companies, run through the engine’s caps. ${bt.p3.meals.toLocaleString()} meals over $125 a person, ${bt.p4.over} company–clinician pairs over the $2,000 annual limit, ${bt.p5.pairs.toLocaleString()} repeat-program patterns; ${(bt.flaggedShare * 100).toFixed(1)}% of clinicians would have had a meal stopped or sent to compliance` },
+    { piece: 'Diligence agents (risk first, verified)', status: 'Real', howWeKnow: 'Claude agents with tools: history (CMS), identity (NPPES), venue (Apify Google Maps), then a verifier that re-queries each source; only verified facts reach the report. Agents report facts; the engine decides' },
+  );
+}
 
 const proof = ProofBundle.parse({ receiptEval, breakIt, realVsSimulated, generatedAt: new Date().toISOString() });
 mkdirSync(join(root, 'proof'), { recursive: true });
