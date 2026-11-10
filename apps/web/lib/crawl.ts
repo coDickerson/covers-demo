@@ -229,9 +229,8 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
 
 type Rect = (x: number, y: number, w: number, h: number, c: string) => void;
 /**
- * San Francisco itself, kept small: the Golden Gate far off past the Wharf, fog rolling in over the Wharf end, a sea
- * lion on a crate, parrots on the North Beach lights, the Painted Ladies far behind the flower stand, a mural wall past
- * Trick Dog, and now and then a Muni bus down the road and a dragon dance along the Chinatown sidewalk.
+ * San Francisco itself, kept small: the Golden Gate far off past the Wharf, fog drifting over the Wharf rooftops, and
+ * two of Telegraph Hill's parrots on the North Beach lights.
  */
 function drawCity(g: CanvasRenderingContext2D, R: Rect, frame: number, layer: 'behind' | 'front') {
   const tick = (frame / 3) | 0;
@@ -243,29 +242,6 @@ function drawCity(g: CanvasRenderingContext2D, R: Rect, frame: number, layer: 'b
     for (const y of [TOP - 106, TOP - 84, TOP - 62]) R(22, y, 16, 3, '#e0896c');
     for (let i = 0; i < 20; i++) { R(25 - i, TOP - 116 + i * 4, 1, 1, '#c96f54'); R(37 + i, TOP - 116 + i * 4, 1, 1, '#c96f54'); }
     g.globalAlpha = 1;
-    // The Painted Ladies, far behind the flower stand: three pale pastel Victorians on the hill.
-    g.globalAlpha = 0.5;
-    [['#a8cfe0', 1584], ['#f2c0cf', 1606], ['#f5e2a8', 1628]].forEach(([c, x0]) => {
-      const x = x0 as number;
-      for (let y = 0; y < 9; y++) R(x + 9 - y, TOP - 112 + y, 2 * y + 2, 1, '#8a7a96');
-      R(x, TOP - 103, 20, 103, c as string);
-      for (const wy of [TOP - 98, TOP - 84, TOP - 70, TOP - 56]) { R(x + 2, wy, 6, 8, '#fdfbf6'); R(x + 12, wy, 6, 8, '#fdfbf6'); }
-      R(x + 7, TOP - 18, 6, 18, '#fdfbf6'); R(x + 8, TOP - 16, 4, 16, '#8a7a96');
-      R(x - 1, TOP - 104, 22, 1, '#fdfbf6');
-    });
-    g.globalAlpha = 1;
-    // A mural wall in the Mission, past Trick Dog.
-    const mx = 2196, mw = 34, mh = 44;
-    R(mx, TOP - mh, mw, mh, '#2a2420'); R(mx + 1, TOP - mh + 1, mw - 2, mh - 1, '#f2c14e');
-    R(mx + 1, TOP - 20, mw - 2, 19, '#2bb5e0'); R(mx + 4, TOP - 34, 12, 12, '#ff4f8b'); R(mx + 6, TOP - 32, 8, 8, '#ff8a3a');
-    R(mx + 18, TOP - 38, 12, 6, '#7ad36a'); R(mx + 20, TOP - 30, 10, 10, '#b07ad8'); R(mx + 3, TOP - 14, 28, 3, '#ffffff'); R(mx + 9, TOP - 9, 16, 3, '#ff4f8b');
-    R(mx + 9, TOP - 30, 2, 2, '#2a2420'); R(mx + 22, TOP - 27, 2, 2, '#2a2420');
-    // A sea lion on a crate between the Wharf and North Beach, lifting its head now and then.
-    const sx = 428, up = tick % 9 < 2 ? 2 : 0;
-    R(sx, TOP - 12, 22, 12, '#2a221c'); R(sx + 1, TOP - 11, 20, 10, '#9a6a3c'); R(sx + 1, TOP - 7, 20, 1, '#7a5230');
-    R(sx + 3, TOP - 19, 14, 7, '#5c4636'); R(sx + 2, TOP - 17, 2, 4, '#5c4636'); R(sx + 14, TOP - 24 - up, 6, 7, '#5c4636'); R(sx + 18, TOP - 22 - up, 3, 2, '#5c4636');
-    R(sx + 17, TOP - 23 - up, 1, 1, '#141414'); R(sx + 5, TOP - 18, 8, 1, '#7a6250'); R(sx + 15, TOP - 12, 3, 2, '#5c4636');
-    if (up) { R(sx + 23, TOP - 29, 1, 1, '#7a7672'); R(sx + 25, TOP - 31, 1, 1, '#7a7672'); }
     // Two of Telegraph Hill's wild parrots on the North Beach lights, hopping now and then.
     [[962, 0], [984, 4]].forEach(([px0, off]) => {
       const t = (px0! - 940) / 67, py = Math.round(TOP - 153 + (TOP - 111 - (TOP - 153)) * t + Math.sin(t * Math.PI) * 16), hop = (tick + off!) % 11 === 0 ? 2 : 0;
@@ -282,22 +258,4 @@ function drawCity(g: CanvasRenderingContext2D, R: Rect, frame: number, layer: 'b
     R(x + w! - 2, y + 4, 10, h! - 8, '#e3e7ea'); R(x - 8, y + 5, 10, h! - 9, '#e3e7ea');
   });
   g.globalAlpha = 1;
-  // Now and then a Muni bus comes down the road (about once a minute, end to end).
-  const busX = ((frame * 6) % 4200) - 120;
-  if (busX > -80 && busX < CRAWL.width + 10) {
-    const by = TOP + 27;
-    R(busX, by, 70, 19, '#2a2a2e'); R(busX + 1, by + 1, 68, 17, '#e9e9e4'); R(busX + 1, by + 12, 68, 3, '#c8322b');
-    for (let i = 0; i < 6; i++) R(busX + 4 + i * 11, by + 3, 8, 6, '#3a4a5a');
-    R(busX + 60, by + 3, 8, 8, '#3a4a5a'); R(busX + 63, by + 10, 4, 7, '#3a4a5a');
-    R(busX + 8, by + 16, 8, 4, '#1a1a1a'); R(busX + 52, by + 16, 8, 4, '#1a1a1a'); R(busX + 3, by + 1, 14, 1, '#f2c14e');
-  }
-  // Now and then a dragon dance winds along the Chinatown sidewalk past Li Po (about every forty seconds).
-  const dx = ((frame * 2) % 520) + 1060;
-  if (dx < 1420) {
-    for (let k = 0; k < 7; k++) {
-      const x = dx - k * 7, y = TOP + 2 + Math.round(Math.sin((frame + k * 3) / 3) * 2);
-      R(x, y, 8, 6, k % 2 ? '#d0322b' : '#e8b030'); R(x, y, 8, 1, '#f2c14e'); R(x + 2, y + 6, 1, 4, '#2a2420'); R(x + 5, y + 6 + ((frame + k) % 2), 1, 4 - ((frame + k) % 2), '#2a2420');
-    }
-    R(dx + 7, TOP - 1, 7, 8, '#d0322b'); R(dx + 8, TOP - 3, 2, 2, '#f2c14e'); R(dx + 11, TOP - 3, 2, 2, '#f2c14e'); R(dx + 12, TOP + 1, 1, 1, '#141414'); R(dx + 13, TOP + 4, 2, 2, '#ffffff');
-  }
 }
