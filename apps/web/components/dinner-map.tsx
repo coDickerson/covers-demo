@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BELL_ART, camera as frameOf, FLASH, GATE, LIFE, LIVES, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
+import { BARS, CAR, CRAWL, camera as frameOf, crawlPath, drawDeco, drawGround, STOPS, STREETS, streetOf, type Camera } from '../lib/crawl';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
@@ -31,17 +31,19 @@ const CARD_EDGE: Record<Station['mark'], string> = { clear: 'border-ink-primary'
 const ZOOM = 1.7;
 const TONE_TEXT = { '': '', ok: 'text-status-ok', near: 'text-status-near', over: 'text-status-over' } as const;
 
-/** The bell on the path: legs follow distance at a walking pace, the body bobs, it leans with the slope and hops on arrival. */
-/** The town bell's frames (public/town/bell-N.png): 0 stand, 1–2 walk, 4 hop. Walk frames 1–4 alternate the two steps. */
-const TOWN_FRAME = [0, 1, 2, 1, 2] as const;
+/** The walker on the path: legs follow distance at a walking pace, it faces where it is going and hops on arrival. */
+/** The cable car's frames (public/crawl/cablecar-L-F.png): 0 stand, 1–2 the two steps. */
+const CAR_FRAME = [0, 1, 2, 1, 2] as const;
+/** The task panel's width plus its margin, so the camera frames each bar in the space beside it. */
+const PANEL_SPACE = 352;
+const CHEERS = ['Cheers!', 'Nice!', 'Woo!', 'Yes!'] as const;
 
-function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick, art = false, onMove }: {
+function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick, art = false, onMove, level = 0 }: {
   pathRef: React.RefObject<SVGPathElement | null>; trailRef: React.RefObject<SVGPathElement | null>; target: number; startAtZero: boolean; paced: boolean; alert: boolean; onClick: () => void;
-  /** Town mode: the path is in the town's art pixels and the bell is drawn on that same pixel grid, leaving footprints. */ art?: boolean;
-  /** Called with the bell's art position as it walks (moving) and when it stops, so the camera can follow it. */ onMove?: (x: number, y: number, moving: boolean) => void;
+  /** Crawl mode: the path is in the street's grid pixels and the cable car is drawn on that same pixel grid. */ art?: boolean;
+  /** Called with the walker's position as it walks (moving) and when it stops, so the camera can follow it. */ onMove?: (x: number, y: number, moving: boolean) => void;
+  /** Bars finished so far: the cable car comes out of each one a little looser. */ level?: number;
 }) {
-  const [prints, setPrints] = useState<{ id: number; x: number; y: number }[]>([]);
-  const printId = useRef(0), lastPrint = useRef<{ x: number; y: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const position = useRef<number | null>(null);
@@ -61,17 +63,8 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
     const place = (length: number) => {
       position.current = length;
       const p = path.getPointAtLength(length);
-      // In the town, snap to whole art pixels so the bell's pixels line up with the town's.
-      el.style.transform = art ? `translate(${Math.round(p.x - BELL_ART.width / 2)}px, ${Math.round(p.y - BELL_ART.height + 2)}px)` : `translate(${p.x}px, ${p.y - 9}px) translate(-50%, -100%)`;
-      if (art) {
-        const lp = lastPrint.current;
-        if (!lp) lastPrint.current = { x: p.x, y: p.y };
-        else if (Math.hypot(p.x - lp.x, p.y - lp.y) >= 5) {
-          lastPrint.current = { x: p.x, y: p.y };
-          const side = printId.current % 2 ? 2 : -2, id = ++printId.current;
-          setPrints((list) => [...list.slice(-30), { id, x: Math.round(p.x + side), y: Math.round(p.y + 1) }]);
-        }
-      }
+      // On the street, snap to whole grid pixels so the cable car's pixels line up with the bars'.
+      el.style.transform = art ? `translate(${Math.round(p.x - CAR.width / 2)}px, ${Math.round(p.y - CAR.height + 2)}px)` : `translate(${p.x}px, ${p.y - 9}px) translate(-50%, -100%)`;
       if (art) { const dx = p.x - (lastX.current ?? p.x); if (Math.abs(dx) > 0.2) facing = dx < 0 ? -1 : 1; lastX.current = p.x; }
       sprite.style.transform = `scaleX(${facing})`;
       if (trail) trail.style.strokeDashoffset = String(total - length);
@@ -99,22 +92,21 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
     return () => cancelAnimationFrame(raf);
   }, [target, pathRef, trailRef, startAtZero, paced, art]);
 
+  // Later in the night the cable car sways a little as it walks.
+  const step = CAR_FRAME[frame % CAR_FRAME.length]!, lean = art && level >= 2 && step ? (step === 1 ? -1 : 1) * (1 + level / 3) : 0;
   return (
-    <>
-    {art && prints.map((f) => <i key={f.id} className="covers-print pointer-events-none absolute bg-ink-muted" style={{ left: f.x, top: f.y, width: 2, height: 1 }} />)}
-    <div ref={box} data-testid="bell" className={`pointer-events-auto absolute top-0 left-0 z-10 ${art ? '' : 'w-9.5'}`} style={art ? { width: BELL_ART.width, height: BELL_ART.height } : undefined}>
+    <div ref={box} data-testid="bell" className={`pointer-events-auto absolute top-0 left-0 z-10 ${art ? '' : 'w-9.5'}`} style={art ? { width: CAR.width, height: CAR.height } : undefined}>
       <div className="relative">
         <button onClick={onClick} disabled={!alert} aria-label={alert ? 'Open the decision' : 'Covers guide'} className={`block w-full ${alert ? 'cursor-pointer' : 'cursor-default'}`}>
           <div ref={body} className="origin-bottom">
             {art
-              ? <img src={`/town/bell-${TOWN_FRAME[frame % TOWN_FRAME.length]}.png`} alt="" width={BELL_ART.width} height={BELL_ART.height} draggable={false} className="block [image-rendering:pixelated]" />
+              ? <img src={CAR.src(level, step)} alt="" width={CAR.width} height={CAR.height} draggable={false} className="block origin-bottom [image-rendering:pixelated]" style={{ transform: `rotate(${lean}deg)` }} />
               : <Bell frame={frame} className={`block w-full ${frame === 2 || frame === 4 ? '-translate-y-0.75' : ''}`} />}
           </div>
         </button>
         {alert && <i className="pointer-events-none absolute -top-1.5 -right-3 size-4.5 bg-status-over text-center text-small leading-4.5 font-bold text-bg-surface not-italic">!</i>}
       </div>
     </div>
-    </>
   );
 }
 
@@ -223,10 +215,12 @@ export function DinnerMap({ planId }: { planId: string }) {
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; y: number; cam: Camera } | null>(null);
   useEffect(() => setLook(null), [shown, overview]);
-  const geometry = useMemo(() => townPath(shown, stations.length || 1, size.w, size.h, overview, look), [shown, stations.length, size.w, size.h, overview, look]);
+  // The task panel slides in beside each bar; while it is open the camera frames the bar in the space left of it.
+  const panelRoom = picked === null && !overview ? PANEL_SPACE : 0;
+  const geometry = useMemo(() => crawlPath(shown, stations.length || 1, size.w, size.h, overview, look, panelRoom), [shown, stations.length, size.w, size.h, overview, look, panelRoom]);
   const camRef = useRef(geometry.camera);
   camRef.current = geometry.camera;
-  // Follow the bell on long walks: once it would leave the frame, the camera keeps it centred (plaques fade while it
+  // Follow the cable car on long walks: once it would leave the frame, the camera keeps it centred (the panel tucks away while it
   // travels); once it is back inside this step's frame, the camera eases back to the step.
   const artLayer = useRef<HTMLDivElement>(null);
   const chase = useRef(false);
@@ -234,13 +228,14 @@ export function DinnerMap({ planId }: { planId: string }) {
   const follow = useCallback((x: number, y: number, moving: boolean) => {
     const el = artLayer.current, box = world.current, cam = camRef.current;
     if (!el || !box) return;
-    const w = box.clientWidth, h = box.clientHeight, sx = cam.x + x * cam.scale, sy = cam.y + y * cam.scale, m = Math.min(w, h) * 0.1;
-    const outside = sx < m || sx > w - m || sy < m || sy > h - m;
-    const settled = sx > m * 2 && sx < w - m * 2 && sy > m * 2 && sy < h - m * 2;
+    // The street is one straight line, so the camera only ever pans sideways to keep up.
+    const w = box.clientWidth, sx = cam.x + x * cam.scale, m = w * 0.1;
+    const outside = sx < m || sx > w - m;
+    const settled = sx > m * 2 && sx < w - m * 2;
     if (moving && (outside || (chase.current && !settled))) {
       if (!chase.current) { chase.current = true; setChasing(true); }
       el.style.transition = 'none';
-      el.style.transform = `translate(${w / 2 - x * cam.scale}px, ${h / 2 - y * cam.scale}px) scale(${cam.scale})`;
+      el.style.transform = `translate(${Math.round(w / 2 - x * cam.scale)}px, ${cam.y}px) scale(${cam.scale})`;
       return;
     }
     if (chase.current) {
@@ -256,7 +251,7 @@ export function DinnerMap({ planId }: { planId: string }) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const cam = camRef.current, box = el.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
-      const least = frameOf(0, el.clientWidth, el.clientHeight, true).scale * 0.8;
+      const least = frameOf(0, el.clientWidth, el.clientHeight, true).scale * 0.5;
       const scale = Math.min(4, Math.max(least, cam.scale * Math.exp(-e.deltaY * 0.0015)));
       setLook({ scale, x: px - ((px - cam.x) / cam.scale) * scale, y: py - ((py - cam.y) / cam.scale) * scale });
     };
@@ -274,37 +269,32 @@ export function DinnerMap({ planId }: { planId: string }) {
     if (d) setLook({ ...d.cam, x: d.cam.x + e.clientX - d.x, y: d.cam.y + e.clientY - d.y });
   };
   const endDrag = () => { drag.current = null; setDragging(false); };
-  // Plaques never overlap: measure each one, then give it the nearest free spot around its station, inside the map.
-  const plaqueEls = useRef<(HTMLButtonElement | null)[]>([]);
-  const [plaques, setPlaques] = useState<{ x: number; y: number }[]>([]);
-  useLayoutEffect(() => {
-    const gap = 6, lift = geometry.camera.scale * 30, top = 44, placed: { l: number; t: number; r: number; b: number }[] = [];
-    const next = geometry.points.map((p, i) => {
-      const el = plaqueEls.current[i], w = el?.offsetWidth ?? 140, h = el?.offsetHeight ?? 60;
-      const base = { x: p.x, y: p.y - lift };
-      const candidates: { x: number; y: number; cost: number }[] = [];
-      for (const dy of [0, -1, -2, 1, -3, 2]) for (const dx of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]) {
-        const x = base.x + dx * (w + gap), y = dy === 1 || dy === 2 ? p.y + lift * 0.3 + h + (dy - 1) * (h + gap) : base.y + dy * (h + gap);
-        candidates.push({ x, y, cost: Math.hypot(x - base.x, (y - base.y) * 1.3) });
-      }
-      candidates.sort((a, b) => a.cost - b.cost);
-      const rect = (c: { x: number; y: number }) => ({ l: c.x - w / 2, t: c.y - h, r: c.x + w / 2, b: c.y });
-      const clear = (r: ReturnType<typeof rect>) => placed.every((q) => r.r + gap <= q.l || r.l >= q.r + gap || r.b + gap <= q.t || r.t >= q.b + gap);
-      const inside = (r: ReturnType<typeof rect>) => r.l >= gap && r.r <= size.w - gap && r.t >= top && r.b <= size.h - gap;
-      const pick = candidates.find((c) => clear(rect(c)) && inside(rect(c))) ?? candidates.find((c) => clear(rect(c))) ?? candidates[0]!;
-      placed.push(rect(pick));
-      return { x: pick.x, y: pick.y };
-    });
-    setPlaques((old) => (old.length === next.length && old.every((o, i) => o.x === next[i]!.x && o.y === next[i]!.y) ? old : next));
-  }, [geometry, stations, size.w, size.h]);
-  // The vault wheel turns once when Ramp issues the card while the page is open.
-  const fundRef = useRef<string | null | undefined>(undefined);
-  const [vaultTurn, setVaultTurn] = useState(0);
-  const fundId = core?.view.plan.fundId ?? null;
+  // The street's drawn details: the sidewalk once, and the lamps, strings of lights and chalkboard on a slow tick.
+  const groundRef = useRef<HTMLCanvasElement>(null);
+  const decoRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    if (fundRef.current === null && fundId) setVaultTurn((n) => n + 1);
-    if (core) fundRef.current = fundId;
-  }, [fundId, core]);
+    const ground = groundRef.current?.getContext('2d'), deco = decoRef.current?.getContext('2d');
+    if (!ground || !deco) return;
+    const walk = new Image();
+    walk.onload = () => drawGround(ground, walk);
+    walk.src = '/crawl/walk.png';
+    let tick = 0;
+    drawDeco(deco, tick);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setInterval(() => drawDeco(deco, ++tick), tokens['motion/duration/slow']);
+    return () => window.clearInterval(id);
+  }, [size.w > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A cheer from the bar each time one of its checks comes back clear.
+  const [cheers, setCheers] = useState<{ id: number; at: number }[]>([]);
+  const cheerId = useRef(0);
+  const seenNow = run && run.step === shown ? run.seen : 0;
+  useEffect(() => {
+    const at = seenNow - 1;
+    if (at < 0 || stations[at]?.mark !== 'clear') return;
+    const id = ++cheerId.current;
+    setCheers((c) => [...c.slice(-3), { id, at }]);
+    window.setTimeout(() => setCheers((c) => c.filter((x) => x.id !== id)), tokens['motion/duration/slow'] * 3);
+  }, [seenNow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!core || !state) return <main className="grid h-dvh place-items-center text-ink-muted">Loading…</main>;
   const { view, receipt, settlement, rounds } = core;
@@ -372,9 +362,10 @@ export function DinnerMap({ planId }: { planId: string }) {
   const resting = picked ?? (shown === step ? restingStation(stations) : stations.length - 1);
   const target = run?.exit ? geometry.stops.at(-1)! : geometry.stops[(run ? run.at : resting) + 1] ?? geometry.stops[0]!;
   const visible = (i: number) => !run || run.step !== shown || (run.recheck ? !run.recheck.includes(i) : i < run.seen);
-  // The gate: down until the red-flag check has been seen clear; held down (its light racing) while it is flagged.
-  const redFlags = shown === 1 ? stations.findIndex((s) => s.name === 'Red flags') : -1;
-  const gate: 'open' | 'closed' | 'held' = shown > 1 || step > 1 ? 'open' : redFlags >= 0 && visible(redFlags) ? (stations[redFlags]!.mark === 'clear' ? 'open' : 'held') : 'closed';
+  // The panel with this bar's checks: open while the cable car is at the bar, tucked away while it walks between bars.
+  const panelOpen = picked === null && !overview && !chasing && !run?.exit;
+  const doneCount = stations.filter((s, i) => visible(i) && s.mark !== 'waiting').length;
+  const stop = STOPS[shown] ?? STOPS[0];
   const docModel = doc && buildCard(doc, state, documents);
   const caps = settlement?.caps.length ? settlement.caps : evaluation?.caps ?? [];
   const pickedStation = picked !== null ? stations[picked] : undefined;
@@ -507,7 +498,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   const prev = shown > 0 ? shown - 1 : null;
   const next = shown < step ? shown + 1 : null;
   const arrow = (dir: 'l' | 'r', to: number | null) => (
-    <button disabled={to === null} onClick={() => { if (to !== null) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} title={to !== null ? STEPS[to] : undefined} className={`group absolute top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 ${dir === 'l' ? 'left-3' : 'right-3'} ${to === null ? 'cursor-default text-border' : 'cursor-pointer text-ink-primary'}`}>
+    <button disabled={to === null} onClick={() => { if (to !== null) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} title={to !== null ? `${STEPS[to]} · ${STOPS[to]!.name}` : undefined} className={`group absolute top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 transition-[right] duration-(--motion-duration-slow) ease-standard ${dir === 'l' ? 'left-3' : panelOpen ? 'right-[22.5rem]' : 'right-3'} ${to === null ? 'cursor-default text-border' : 'cursor-pointer text-ink-primary'}`}>
       <svg viewBox="0 0 20 44" className="h-14 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d={dir === 'l' ? 'M17 2 3 22l14 20' : 'M3 2l14 20L3 42'} /></svg>
       {to !== null && <span className="hidden text-small font-strong group-hover:block">{STEPS[to]}</span>}
       <span className="sr-only">{dir === 'l' ? 'Previous step' : 'Next step'}</span>
@@ -537,47 +528,51 @@ export function DinnerMap({ planId }: { planId: string }) {
           <div ref={world} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} className={`relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden select-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
             {size.w > 0 && (
               <>
-                {/* The town, framed on this step's place. The art scales with the camera; plaques and the bell sit on top in screen space. */}
-                <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: TOWN.width, height: TOWN.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
-                  <img src={TOWN.src} alt={`The town: ${PLACES.map((p) => p.name).join(', ')}`} width={TOWN.width} height={TOWN.height} draggable={false} className="block [image-rendering:pixelated]" />
-                  {/* The town is alive: trees rustle a pixel and the terrace's string lights twinkle. */}
-                  {/* Life inside: pieces of the picture itself shift a pixel now and then (diners, chefs, typists, screens). */}
-                  {LIVES.map((l, n) => <i key={`life-${n}`} className={`covers-${l.kind} absolute`} style={{ left: l.rect[0], top: l.rect[1], width: l.rect[2], height: l.rect[3], backgroundImage: `url(${TOWN.src})`, backgroundPosition: `${-l.rect[0]}px ${-l.rect[1]}px`, backgroundSize: `${TOWN.width}px ${TOWN.height}px`, imageRendering: 'pixelated', animationDuration: `calc(var(--motion-duration-slow) * ${l.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${-l.delay * 2})` }} />)}
-                  <i className="covers-flash absolute bg-bg-surface" style={{ left: FLASH.x, top: FLASH.y, width: 2, height: 2 }} />
-                  {TREE_LAYERS.map((t) => <img key={t.src} src={t.src} alt="" width={TOWN.width} height={TOWN.height} draggable={false} className="covers-rustle absolute inset-0 [image-rendering:pixelated]" style={{ animationDuration: `calc(var(--motion-duration-slow) * ${t.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${t.offset * 2})` }} />)}
-                  {LIFE.bulbs.map(([x, y], n) => <i key={n} className="covers-twinkle absolute bg-accent" style={{ left: x, top: y, width: 1, height: 1, animationDelay: `calc(var(--motion-stagger) * ${(n * 7) % 19})` }} />)}
-                  {/* The checkpoint's boom gate lifts once the red-flag check is clear, and stays down while something is flagged. */}
-                  <i className="absolute origin-left transition-transform duration-[calc(var(--motion-duration-slow)*2)] ease-standard" style={{ left: GATE.x, top: GATE.y - 1.5, width: GATE.length, height: 3, transform: `rotate(${gate === 'open' ? GATE.open : GATE.closed}deg)`, backgroundImage: 'repeating-linear-gradient(90deg, var(--color-status-over) 0 4px, var(--color-bg-surface) 4px 8px)' }} />
-                  <i className={`absolute ${gate === 'open' ? 'bg-status-ok' : 'bg-status-over'} ${gate === 'held' ? 'covers-blink-fast' : ''}`} style={{ left: GATE.light.x, top: GATE.light.y, width: 2, height: 2 }} />
-                  {/* The bank's vault wheel turns when the card is issued. */}
-                  <img key={`wheel-${vaultTurn}`} src="/town/wheel.png" alt="" width={WHEEL.size} height={WHEEL.size} draggable={false} className={`absolute [image-rendering:pixelated] ${vaultTurn ? 'covers-vault' : ''}`} style={{ left: WHEEL.x, top: WHEEL.y }} />
-                  <img src="/town/mullion.png" alt="" width={WHEEL.bar.width} height={WHEEL.bar.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: WHEEL.bar.x, top: WHEEL.bar.y }} />
-                  <svg className="pointer-events-none absolute inset-0 overflow-visible" width={TOWN.width} height={TOWN.height} aria-hidden="true">
+                {/* The street, framed on this step's bar. The art scales with the camera at whole-number zoom; the panel and cheers sit on top in screen space. */}
+                <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: CRAWL.width, height: CRAWL.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
+                  <canvas ref={groundRef} width={CRAWL.width} height={CRAWL.height - CRAWL.top} className="absolute left-0 [image-rendering:pixelated]" style={{ top: CRAWL.top }} />
+                  {BARS.map((b, n) => <img key={b.src} src={b.src} alt={STOPS.filter((s) => s.bar === n).map((s) => s.name).join(' and ')} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: b.x, top: CRAWL.top - b.rise }} />)}
+                  <canvas ref={decoRef} width={CRAWL.width} height={CRAWL.top + 10} aria-hidden="true" className="absolute top-0 left-0 [image-rendering:pixelated]" />
+                  <svg className="pointer-events-none absolute inset-0 overflow-visible" width={CRAWL.width} height={CRAWL.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
                     <path key={`trail-${shown}`} ref={trailRef} d={geometry.artD} fill="none" stroke="none" />
                   </svg>
-                  <Walker key={`bell-${size.w}-${size.h}`} art onMove={follow} pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={run?.at === -1} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
+                  <Walker key={`car-${size.w}-${size.h}`} art level={run ? run.step : shown} onMove={follow} pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={run?.at === -1} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
                 </div>
-                {stations.map((s, i) => {
-                  const p = geometry.points[i]!, seen = visible(i), mark = seen ? s.mark : 'waiting';
-                  const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0 && !seen;
-                  const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0;
-                  const at = plaques[i] ?? p;
-                  return (
-                    <button key={s.name} ref={(el) => { plaqueEls.current[i] = el; }} aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)}
-                      style={{ left: at.x, top: at.y }}
-                      className={`absolute z-5 flex -translate-x-1/2 -translate-y-full cursor-pointer flex-col gap-1 border bg-bg-surface px-2 py-1.5 text-left transition-[left,top,opacity,border-color] duration-[calc(var(--motion-duration-slow)*2)] ease-standard hover:border-ink-primary disabled:cursor-default ${here || (run?.at === i && run.step === shown) ? 'border-ink-primary' : CARD_EDGE[mark]} ${zoomed || chasing ? 'pointer-events-none opacity-0' : ''}`}>
-                      <span className="flex items-center gap-1.5 text-small font-strong whitespace-nowrap"><i className={`size-2.5 shrink-0 border ${MARK_BOX[mark]}`} />{s.name}</span>
-                      {lines.length > 2 && <span className="flex gap-0.5">{lines.map((_, n) => <i key={n} className={`size-2 transition-colors duration-(--motion-duration-fast) ease-standard ${n < filled ? (s.checks?.[n]?.outcome === 'block' ? 'bg-status-over' : s.checks?.[n]?.outcome === 'flag' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>}
-                      <small className={`text-micro whitespace-nowrap ${MARK_TEXT[mark]}`}>{seen ? s.word ?? MARK_WORD[s.mark] : here ? 'Checking' : run?.recheck?.includes(i) ? 'Rechecking' : 'Waiting'}</small>
-                    </button>
-                  );
-                })}
+                {cheers.map((c) => { const p = geometry.points[c.at]; return p ? <span key={c.id} className="covers-cheer pointer-events-none absolute z-5 text-small font-bold whitespace-nowrap text-status-ok" style={{ left: p.x, top: p.y - 74 * geometry.camera.scale }}>{CHEERS[c.id % CHEERS.length]}</span> : null; })}
+                {/* This bar's checks, sliding in from the side while the cable car is here, one ticking off at a time. */}
+                <aside aria-label={`${STEPS[shown]} at ${stop.name}`} aria-hidden={!panelOpen} className={`absolute top-4 right-4 z-10 flex max-h-[calc(100%-var(--space-8))] w-80 flex-col border border-ink-primary bg-bg-surface transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none ${panelOpen ? '' : 'pointer-events-none translate-x-[calc(100%+var(--space-8))]'}`}>
+                  <header className="border-b border-border px-4 pt-3.5 pb-3">
+                    <span className="font-mono text-micro text-ink-muted">STEP {shown + 1} · {STEPS[shown]!.toUpperCase()} · <span className={doneCount === stations.length ? 'text-status-ok' : ''}>{doneCount === stations.length ? 'DONE' : run && run.step === shown ? 'WORKING' : 'WAITING'}</span></span>
+                    <h2 className="mt-0.5 text-heading leading-tight font-bold tracking-tight">{stop.name}</h2>
+                    <span className="text-small text-ink-secondary">{stop.hood} · {doneCount} of {stations.length} done</span>
+                    <span className="mt-2.5 flex gap-1">{stations.map((s, i) => <i key={s.name} className={`h-1.5 flex-1 transition-colors duration-(--motion-duration-base) ease-standard ${visible(i) && s.mark !== 'waiting' ? (s.mark === 'blocked' ? 'bg-status-over' : s.mark === 'flagged' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>
+                  </header>
+                  <ol className="min-h-0 overflow-auto px-4 py-1">
+                    {stations.map((s, i) => {
+                      const seen = visible(i), mark = seen ? s.mark : 'waiting';
+                      const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0 && !seen;
+                      const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0;
+                      return (
+                        <li key={s.name} className="border-b border-dashed border-border last:border-b-0">
+                          <button aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)} className="flex w-full cursor-pointer items-center gap-3 py-2.5 text-left hover:bg-bg-canvas disabled:cursor-default disabled:hover:bg-transparent">
+                            <i className={`size-2.5 shrink-0 border ${MARK_BOX[mark]}`} />
+                            <span className="min-w-0 flex-1">
+                              <b className="block truncate text-small font-strong">{s.name}</b>
+                              {lines.length > 2 && <span className="mt-1 flex gap-0.5">{lines.map((_, n) => <i key={n} className={`size-1.5 transition-colors duration-(--motion-duration-fast) ease-standard ${n < filled ? (s.checks?.[n]?.outcome === 'block' ? 'bg-status-over' : s.checks?.[n]?.outcome === 'flag' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>}
+                            </span>
+                            <small className={`shrink-0 border px-1.5 py-0.5 font-mono text-micro ${here ? 'border-ink-primary bg-accent-tint text-ink-primary' : `${CARD_EDGE[mark]} ${MARK_TEXT[mark]}`}`}>{seen ? (s.word ?? MARK_WORD[s.mark]).toUpperCase() : here ? 'CHECKING' : run?.recheck?.includes(i) ? 'RECHECKING' : 'WAITING'}</small>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </aside>
               </>
             )}
             {stamp && <Stamp key={stamp.text} text={stamp.text} tone={stamp.tone} />}
-            {!zoomed && <button onClick={() => { if (look && !overview) setLook(null); else setOverview((o) => !o); }} className="absolute top-3 left-6 z-10 cursor-pointer border border-ink-primary bg-bg-surface px-2.5 py-1 text-small font-strong hover:bg-accent-tint">{overview || look ? 'Follow the dinner' : 'See the whole town'}</button>}
-            {!zoomed && <span className="pointer-events-none absolute top-4 left-48 z-10 text-micro text-ink-muted">Drag to look around · scroll to zoom</span>}
+            {!zoomed && <button onClick={() => { if (look && !overview) setLook(null); else setOverview((o) => !o); }} className="absolute top-3 left-6 z-10 cursor-pointer border border-ink-primary bg-bg-surface px-2.5 py-1 text-small font-strong hover:bg-accent-tint">{overview || look ? 'Follow the dinner' : 'See this street'}</button>}
+            {!zoomed && <span className="pointer-events-none absolute top-4 left-40 z-10 text-micro text-ink-muted">{overview ? STREETS[streetOf(shown)]!.name : `${stop.hood} · drag to look around`}</span>}
             {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
             {size.w > 0 && Detail()}
           </div>
