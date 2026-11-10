@@ -27,6 +27,53 @@ export const STOPS = [
   { name: 'Trick Dog', hood: 'The Mission', bar: 5, span: [1995, 2110] },
 ] as const satisfies readonly { name: string; hood: string; bar: number; span: readonly [number, number] }[];
 
+/**
+ * Life inside the bars, cut from the bar art itself so it stays in the same style: each is a small piece of one bar's
+ * picture ([x, y, w, h], in that picture's pixels). bob: a guest shifting in their seat or leaning in to talk; sway: a
+ * bartender working or someone standing; flicker: a neon sign or lantern catching; warm: the room's light rising and
+ * falling (a tint over the window, not a cut-out). every/delay are in slow-motion units, so no two move together.
+ */
+export const LIVES: { kind: 'bob' | 'sway' | 'flicker' | 'warm'; bar: number; rect: [number, number, number, number]; every: number; delay: number }[] = [
+  // The Buena Vista: three regulars at the window tables, the bartender behind the counter, the room's warm light.
+  { kind: 'warm', bar: 0, rect: [168, 150, 170, 84], every: 9, delay: 0 },
+  { kind: 'bob', bar: 0, rect: [180, 195, 16, 16], every: 6, delay: 1 },
+  { kind: 'bob', bar: 0, rect: [226, 197, 16, 15], every: 7.5, delay: 3.5 },
+  { kind: 'bob', bar: 0, rect: [302, 196, 18, 16], every: 5.5, delay: 2 },
+  { kind: 'sway', bar: 0, rect: [266, 170, 17, 22], every: 7, delay: 0.5 },
+  // Vesuvio's windows glow; at Tosca the red neon catches, two booths talk and the bartender works.
+  { kind: 'warm', bar: 1, rect: [2, 130, 46, 62], every: 11, delay: 2 },
+  { kind: 'flicker', bar: 1, rect: [205, 68, 170, 34], every: 13, delay: 4 },
+  { kind: 'warm', bar: 1, rect: [160, 120, 260, 92], every: 10, delay: 5 },
+  { kind: 'bob', bar: 1, rect: [183, 159, 17, 16], every: 6.5, delay: 0 },
+  { kind: 'bob', bar: 1, rect: [218, 159, 20, 16], every: 5, delay: 2.5 },
+  { kind: 'sway', bar: 1, rect: [277, 148, 16, 22], every: 8, delay: 1.5 },
+  { kind: 'bob', bar: 1, rect: [338, 159, 17, 16], every: 7, delay: 4.5 },
+  { kind: 'bob', bar: 1, rect: [373, 159, 18, 16], every: 6, delay: 1 },
+  // Li Po: the vertical neon, the lantern in the grotto, guests at the counter and the bartender.
+  { kind: 'flicker', bar: 2, rect: [196, 40, 16, 70], every: 9, delay: 1 },
+  { kind: 'sway', bar: 2, rect: [112, 128, 22, 36], every: 6, delay: 0 },
+  { kind: 'bob', bar: 2, rect: [98, 172, 12, 16], every: 5.5, delay: 2 },
+  { kind: 'bob', bar: 2, rect: [111, 169, 10, 14], every: 7, delay: 4 },
+  { kind: 'sway', bar: 2, rect: [135, 166, 16, 18], every: 6.5, delay: 1.5 },
+  // Pacific Cocktail Haven: the teal neon and two guests among the plants.
+  { kind: 'flicker', bar: 3, rect: [46, 97, 50, 22], every: 12, delay: 6 },
+  { kind: 'bob', bar: 3, rect: [68, 162, 14, 16], every: 6, delay: 0.5 },
+  { kind: 'bob', bar: 3, rect: [94, 161, 14, 16], every: 7.5, delay: 3 },
+  // Smuggler's Cove: the lanterns and portholes flicker, the bartender shakes, two guests at the bar.
+  { kind: 'flicker', bar: 4, rect: [4, 62, 8, 14], every: 5, delay: 0 },
+  { kind: 'flicker', bar: 4, rect: [63, 30, 12, 18], every: 6, delay: 2 },
+  { kind: 'flicker', bar: 4, rect: [122, 62, 8, 14], every: 5.5, delay: 3.5 },
+  { kind: 'warm', bar: 4, rect: [22, 20, 94, 30], every: 9, delay: 1 },
+  { kind: 'sway', bar: 4, rect: [90, 102, 14, 17], every: 3, delay: 0 },
+  { kind: 'bob', bar: 4, rect: [68, 113, 14, 18], every: 6, delay: 1.5 },
+  { kind: 'bob', bar: 4, rect: [104, 113, 14, 18], every: 7, delay: 4 },
+  // Trick Dog: the regular in the Ramp tee and the two at the table, under the warm light.
+  { kind: 'warm', bar: 5, rect: [88, 140, 72, 46], every: 10, delay: 3 },
+  { kind: 'sway', bar: 5, rect: [95, 152, 14, 26], every: 6, delay: 0 },
+  { kind: 'bob', bar: 5, rect: [112, 163, 14, 16], every: 5.5, delay: 2 },
+  { kind: 'bob', bar: 5, rect: [134, 160, 14, 16], every: 7, delay: 4.5 },
+];
+
 /** The two stretches of the street. The second opens at Dinner. */
 export const STREETS = [
   { name: 'Fisherman’s Wharf to North Beach', from: 0, to: 1080 },

@@ -34,8 +34,18 @@
   15% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, calc(var(--space-6) * -1)); }
 }
+/* Life inside the bars, cut from the art: a pixel of movement now and then, never all together (timing set per element). */
+@keyframes covers-bob { 0%, 64%, 100% { transform: translateY(0); } 68%, 80% { transform: translateY(-1px); } 84%, 90% { transform: translateX(1px); } }
+@keyframes covers-sway { 0%, 36%, 100% { transform: translateX(0); } 42%, 62% { transform: translateX(1px); } 68%, 84% { transform: translateX(-1px); } }
+@keyframes covers-flicker { 0%, 70%, 100% { filter: brightness(1); } 74% { filter: brightness(1.35); } 78% { filter: brightness(0.8); } 82% { filter: brightness(1.25); } }
+@keyframes covers-warm { 0%, 100% { opacity: 0; } 50% { opacity: 0.55; } }
+.covers-bob { animation-name: covers-bob; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-sway { animation-name: covers-sway; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-flicker { animation-name: covers-flicker; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-warm { opacity: 0; animation-name: covers-warm; animation-timing-function: steps(6, end); animation-iteration-count: infinite; }
 .covers-cheer { transform: translate(-50%, 0); animation: covers-cheer calc(var(--motion-duration-slow) * 3) steps(8, end) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .covers-cheer { animation: none; opacity: 0; }
+  .covers-bob, .covers-sway, .covers-flicker, .covers-warm { animation: none; }
   .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
 }
