@@ -168,12 +168,34 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
   const tick = (frame / 3) | 0;
   const R = (a: number, b: number, w: number, h: number, c: string) => { g.fillStyle = c; g.fillRect(a, b, w, h); };
   const text = (s: string, x: number, y: number, c: string) => [...s].forEach((ch, i) => { const gl = GLYPH[ch]; if (gl) for (let k = 0; k < 15; k++) if (gl[k] === '1') R(x + i * 4 + (k % 3), y + ((k / 3) | 0), 1, 1, c); });
-  const lamp = (x: number, bands: boolean) => {
-    R(x - 4, TOP - 4, 9, 4, '#1f2a24'); R(x - 2, TOP - 112, 5, 108, '#1f2a24');
-    if (bands) { R(x - 2, TOP - 100, 5, 22, '#2e7d4f'); R(x - 2, TOP - 78, 5, 22, '#f4f1e8'); R(x - 2, TOP - 56, 5, 22, '#c8322b'); }
-    R(x - 7, TOP - 118, 15, 3, '#1f2a24'); R(x - 5, TOP - 130, 11, 12, '#1f2a24'); R(x - 4, TOP - 129, 9, 10, '#f6d27a'); R(x - 6, TOP - 133, 13, 3, '#1f2a24'); R(x - 1, TOP - 136, 3, 3, '#1f2a24');
+  // A shade of a colour: f < 1 darker, f > 1 lighter. Lamps and posts are lit from the left.
+  const tone = (c: string, f: number) => { const n = parseInt(c.slice(1), 16), ch = (v: number) => Math.max(0, Math.min(255, Math.round(f > 1 ? v + (255 - v) * (f - 1) : v * f))); return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`; };
+  const column = (x: number, top: number, bottom: number, w: number, c: string) => { R(x, top, w, bottom - top, c); R(x, top, 1, bottom - top, tone(c, 1.35)); R(x + w - 1, top, 1, bottom - top, tone(c, 0.65)); };
+  const halo = (cx: number, cy: number, r0: number, r1: number, c: string) => {
+    g.globalAlpha = 0.45;
+    for (let dy = -r1; dy <= r1; dy++) for (let dx = -r1; dx <= r1; dx++) { const d = Math.hypot(dx, dy); if (d >= r0 && d <= r1 && BAYER[(cy + dy) & 3]![(cx + dx) & 3]! / 16 < (r1 - d) / (r1 - r0) * 0.6) R(cx + dx, cy + dy, 1, 1, c); }
+    g.globalAlpha = 1;
   };
-  const post = (x: number, h: number, c: string) => { R(x - 2, TOP - h, 5, h, c); R(x - 4, TOP - 4, 9, 4, c); R(x - 3, TOP - h - 2, 7, 2, c); R(x - 1, TOP - h - 4, 3, 2, c); };
+  const lamp = (x: number, bands: boolean) => {
+    const POLE = '#1f2a24';
+    R(x - 5, TOP - 3, 11, 3, tone(POLE, 0.8)); column(x - 4, TOP - 7, TOP - 3, 9, POLE);           // plinth and base
+    column(x - 2, TOP - 112, TOP - 7, 5, POLE);
+    if (bands) { column(x - 2, TOP - 100, TOP - 78, 5, '#2e7d4f'); column(x - 2, TOP - 78, TOP - 56, 5, '#ece7da'); column(x - 2, TOP - 56, TOP - 34, 5, '#c8322b'); }
+    for (const y of [TOP - 34, TOP - 102]) column(x - 3, y - 1, y + 1, 7, POLE);                       // collar rings
+    column(x - 3, TOP - 116, TOP - 112, 7, POLE);                                                      // neck
+    R(x - 6, TOP - 118, 13, 2, POLE); R(x - 2, TOP - 116, 5, 1, tone(POLE, 1.3));
+    R(x - 5, TOP - 131, 11, 13, POLE); R(x - 4, TOP - 130, 9, 11, '#f2c25e'); R(x - 3, TOP - 129, 3, 9, '#fff0b8'); R(x + 1, TOP - 129, 2, 9, '#f8dc8a');
+    R(x, TOP - 130, 1, 11, POLE);                                                                      // glass panes and mullion
+    R(x - 6, TOP - 133, 13, 2, POLE); R(x - 6, TOP - 133, 13, 1, tone(POLE, 1.4)); R(x - 4, TOP - 135, 9, 2, POLE);
+    R(x - 1, TOP - 138, 3, 3, POLE); R(x, TOP - 140, 1, 2, POLE); R(x - 1, TOP - 138, 1, 1, tone(POLE, 1.5)); // finial
+    halo(x, TOP - 124, 7, 12, '#fbe7a0');
+  };
+  const post = (x: number, h: number, c: string) => {
+    R(x - 4, TOP - 3, 9, 3, tone(c, 0.8)); column(x - 3, TOP - 6, TOP - 3, 7, c);
+    column(x - 2, TOP - h, TOP - 6, 5, c);
+    for (const y of [TOP - 40, TOP - h + 18]) column(x - 3, y, y + 2, 7, c);
+    column(x - 3, TOP - h - 2, TOP - h, 7, c); R(x - 1, TOP - h - 5, 3, 3, c); R(x - 1, TOP - h - 5, 1, 1, tone(c, 1.5));
+  };
   const strand = (ax: number, ay: number, bx: number, by: number, sag: number, every: number, draw: (x: number, y: number, k: number) => void) => {
     for (let i = 0; i <= 80; i++) {
       const t = i / 80, x = Math.round(ax + (bx - ax) * t), y = Math.round(ay + (by - ay) * t + Math.sin(t * Math.PI) * sag);
@@ -192,20 +214,43 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
 
   // North Beach: Italian lights from Tosca's cornice to a hook on a green, white and red lamp post.
   lamp(1010, true); R(1006, TOP - 112, 3, 2, '#1f2a24');
-  strand(940, TOP - 153, 1007, TOP - 111, 16, 8, (x, y, k) => { g.globalAlpha = (k + tick) % 4 ? 1 : 0.45; R(x - 1, y + 1, 3, 3, ['#2e9d5a', '#f4f1e8', '#e0413a'][k % 3]!); g.globalAlpha = 1; });
+  strand(940, TOP - 153, 1007, TOP - 111, 16, 8, (x, y, k) => {
+    const c = ['#2e9d5a', '#f4f1e8', '#e0413a'][k % 3]!, lit = (k + tick) % 4 !== 0;
+    R(x, y + 1, 1, 1, '#2a2420');                                                                     // socket
+    g.globalAlpha = lit ? 1 : 0.5; R(x - 1, y + 2, 3, 3, c); R(x, y + 5, 1, 1, tone(c, 0.75)); R(x - 1, y + 2, 1, 1, tone(c, 1.6)); g.globalAlpha = 1;
+    if (lit) halo(x, y + 3, 2, 4, c);
+  });
 
   // Chinatown: red lanterns from the tip of Li Po's eave to a pole, swaying a pixel.
   post(1404, 186, '#7a2a20');
-  strand(1339, TOP - 203, 1404, TOP - 186, 12, 16, (x, y, k) => { const s = (k + tick) % 2; R(x, y + 1, 1, 2, '#3a3330'); R(x - 2 + s, y + 3, 5, 6, '#d0322b'); R(x - 2 + s, y + 3, 5, 1, '#f2c14e'); R(x - 2 + s, y + 8, 5, 1, '#f2c14e'); R(x + s, y + 9, 1, 2, '#f2c14e'); });
+  strand(1339, TOP - 203, 1404, TOP - 186, 12, 16, (x, y, k) => {
+    const s = (k + tick) % 2, lx = x - 3 + s;
+    R(x, y + 1, 1, 2, '#3a3330');
+    R(lx + 1, y + 3, 5, 1, '#c99a2e'); R(lx, y + 4, 7, 6, '#d0322b'); R(lx + 1, y + 10, 5, 1, '#c99a2e');  // gold caps, round body
+    R(lx, y + 4, 1, 6, '#a8241f'); R(lx + 6, y + 4, 1, 6, '#8a1c18'); R(lx + 3, y + 4, 1, 6, '#b82a24');   // ribs
+    R(lx + 1, y + 5, 2, 2, '#ff7a5a'); R(lx + 3, y + 11, 1, 2, '#f2c14e'); R(lx + 2, y + 13, 3, 1, '#f2c14e'); // glow and tassel
+    halo(lx + 3, y + 7, 4, 7, '#ff9a6a');
+  });
 
   // Hayes Valley: rope and ship lanterns from Smuggler's Cove's roof to a wooden piling.
   post(1840, 150, '#5a3a22');
-  strand(1786, TOP - 152, 1840, TOP - 150, 16, 20, (x, y, k) => { R(x, y + 1, 1, 3, '#333333'); R(x - 2, y + 4, 5, 6, (k + tick) % 3 ? '#ffb84a' : '#e09a30'); R(x - 2, y + 4, 5, 1, '#333333'); });
+  strand(1786, TOP - 152, 1840, TOP - 150, 16, 20, (x, y, k) => {
+    const on = (k + tick) % 3 !== 0;
+    R(x, y + 1, 1, 2, '#333333'); R(x - 1, y + 3, 3, 1, '#2a2420');                                      // hook and cap
+    R(x - 2, y + 4, 5, 7, '#2a2420'); R(x - 1, y + 5, 3, 5, on ? '#ffb84a' : '#e09a30'); R(x - 1, y + 5, 1, 2, '#ffe0a0'); // frame, glass
+    R(x - 2, y + 11, 5, 1, '#3a2c22');
+    if (on) halo(x, y + 7, 3, 7, '#ffcf80');
+  });
 
   // The Mission: papel picado from a pole to Trick Dog's wall, fluttering.
   post(1885, 180, '#4a4a4a');
   const pc = ['#ff4f8b', '#2bb5e0', '#f2c14e', '#7ad36a', '#b07ad8', '#ff8a3a'];
-  strand(1885, TOP - 180, 1981, TOP - 188, 10, 10, (x, y, k) => { const f = (k + tick) % 2; R(x - 3, y + 1, 7, 7 - f, pc[k % pc.length]!); R(x - 1, y + 3, 1, 1, '#ffffff'); R(x + 1, y + 4, 1, 1, '#ffffff'); });
+  strand(1885, TOP - 180, 1981, TOP - 188, 10, 10, (x, y, k) => {
+    const f = (k + tick) % 2, c = pc[k % pc.length]!;
+    R(x - 3, y + 1, 7, 6 - f, c); R(x - 3, y + 1, 7, 1, tone(c, 0.8));                                 // paper, folded over the string
+    for (let i = 0; i < 7; i += 2) R(x - 3 + i, y + 7 - f, 1, 1, c);                                  // scalloped edge
+    R(x - 2, y + 3, 1, 1, '#fbfaf8'); R(x, y + 3, 1, 2, '#fbfaf8'); R(x + 2, y + 3, 1, 1, '#fbfaf8'); R(x - 1, y + 5 - f, 3, 1, '#fbfaf8'); // cut-outs
+  });
   R(1979, TOP - 190, 3, 3, '#3a3330');
 
   drawCity(g, R, frame, 'front');
