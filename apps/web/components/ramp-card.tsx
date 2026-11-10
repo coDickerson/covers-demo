@@ -2,7 +2,7 @@
 // a simulated card says so and goes nowhere.
 import type { AuditEvent, PlanView, Receipt, Settlement } from '@covers/contract';
 import { usd, type Role } from '../lib/dinner';
-import { isSimulatedFund, nameOf, rampFundUrl, standing, type Tone } from '../lib/map';
+import { isSimulatedFund, nameOf, rampCardHref, rampFundUrl, standing, type Tone } from '../lib/map';
 
 /** The steps whose box shows the card: Fund, Dinner, Close out and Settle. */
 export const CARD_STEPS = [2, 3, 4, 5];
@@ -41,7 +41,9 @@ export function RampCard({ view, settlement, audit, limitCents }: { view: PlanVi
   const { plan } = view;
   const [chip, chipTone] = CHIP[cardState(view, settlement).state];
   const simulated = !!plan.fundId && isSimulatedFund(plan.fundId);
-  const url = plan.fundId ? rampFundUrl(plan.fundId) : null;
+  const real = plan.fundId ? rampFundUrl(plan.fundId) : null;
+  const url = rampCardHref(plan.fundId);
+  const title = real ? 'Open this card in Ramp' : 'Open our Ramp sandbox, where this demo’s real cards were issued (team login needed)';
   const four = !simulated ? lastFour(audit) : null;
 
   const face = (
@@ -60,9 +62,7 @@ export function RampCard({ view, settlement, audit, limitCents }: { view: PlanVi
   );
   const shape = 'relative block aspect-[500/315] w-60';
 
-  return url
-    ? <a href={url} target="_blank" rel="noreferrer" aria-label="Open this card in Ramp" title="Open this card in Ramp" className={`${shape} cursor-pointer outline-offset-2 hover:outline-2 hover:outline-ink-primary`}>{face}</a>
-    : <div aria-label={simulated ? 'Simulated company card' : 'Company card, not issued yet'} className={shape}>{face}</div>;
+  return <a href={url} target="_blank" rel="noreferrer" aria-label={title} title={title} className={`${shape} cursor-pointer outline-offset-2 hover:outline-2 hover:outline-ink-primary`}>{face}</a>;
 }
 
 /** The card inside a step's box (Fund, Dinner, Close out, Settle), with two or three lines on what is happening now. */

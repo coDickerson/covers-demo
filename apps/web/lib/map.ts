@@ -15,7 +15,11 @@ export type Station = { name: string; kind: string; mark: Mark; word?: string; c
 export const isSimulatedFund = (fundId: string) => fundId.startsWith('fund-sim') || fundId.startsWith('sim-fund');
 /** The fund's page in Ramp's sandbox web app (same path LiveService links from Slack). Null for a simulated fund. */
 export const rampFundUrl = (fundId: string) => (isSimulatedFund(fundId) ? null : `https://demo.ramp.com/funds/issued#/d/funds/${encodeURIComponent(fundId)}`);
-const rampLink = (fundId: string | undefined) => { const url = fundId ? rampFundUrl(fundId) : null; return url ? { link: { label: 'View in Ramp', url } } : {}; };
+/** Our Ramp sandbox, where the demo's real funds were issued and tested. Opening it needs the team's sandbox login. */
+export const RAMP_SANDBOX_URL = 'https://demo.ramp.com/funds/issued';
+/** Where the card opens: the fund's own page when it's a real Ramp fund, otherwise our Ramp sandbox. */
+export const rampCardHref = (fundId: string | undefined) => (fundId ? rampFundUrl(fundId) : null) ?? RAMP_SANDBOX_URL;
+const rampLink = (fundId: string | undefined) => ({ link: { label: 'View in Ramp', url: rampCardHref(fundId) } });
 
 const CONFIDENCE_GATE = 0.8; // same as the engine's default
 /** The Check stations whose results differ between two evaluation rounds: the only ones the bell needs to revisit. */
