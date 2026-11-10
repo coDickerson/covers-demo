@@ -2,19 +2,19 @@
 
 All clips are 1920×1080, 60 fps, on the site background (`#FBFAF8`) unless noted, so they cut straight into screen recordings of the app.
 They were made in Figma Motion: Covers-Design → page "06 Motion"
-(https://www.figma.com/design/amtGh7fESBeXnQx49BDXDj/Covers-Design?node-id=31-2). Edit the layers there and export the frame as MP4 again.
+(https://www.figma.com/design/amtGh7fESBeXnQx49BDXDj/Covers-Design?node-id=31-2). Edit the layers there and export the frame as MP4 again. The walker in each card is the app's cable car (public/crawl/cablecar-0-*.png, one frame per walking step), in the step layers of each `Bell` group.
 
 ## Clips
 
 | File | Length | What happens |
 |---|---|---|
-| `01-title.mp4` | 4.5 s | The bell drops in and squashes on landing, "Covers" rises in, then the tagline and an accent bar. The bell hops twice. |
-| `02-problem.mp4` | 6 s | "$678 million", the Novartis line, then "Today these dinners are checked after the money is spent." The bell walks in at the bottom right. Source credit included. |
-| `03-chapter-before-the-dinner.mp4` | 3 s | Chapter card: the bell walks in and "01 Before the dinner · Plan · Check · Fund" rises. |
+| `01-title.mp4` | 4.5 s | The cable car drops in and squashes on landing, "Covers" rises in, then the tagline and an accent bar. The cable car hops twice. |
+| `02-problem.mp4` | 6 s | "$678 million", the Novartis line, then "Today these dinners are checked after the money is spent." The cable car walks in at the bottom right. Source credit included. |
+| `03-chapter-before-the-dinner.mp4` | 3 s | Chapter card: the cable car walks in and "01 Before the dinner · Plan · Check · Fund" rises. |
 | `04-chapter-the-morning-after.mp4` | 3 s | Chapter 02: "The morning after · Charge · Notify · Close out". |
 | `05-chapter-oversight.mp4` | 3 s | Chapter 03: "Oversight · Settle · Compliance · Report". |
-| `06-end.mp4` | 5 s | "Covers", the tagline and the repo link. A green SETTLED stamp slams down and the bell hops. |
-| `phone-notification-16x9.mp4` | 7.4 s | Full-frame phone beat with captions. It ends zooming in and fading to the site background. |
+| `06-end.mp4` | 5 s | "Covers", the tagline and the repo link. A green SETTLED stamp slams down and the cable car hops. |
+| `phone-notification-16x9.mp4` | 7.4 s | Full-frame phone beat with captions, for Dr. Patel's dinner: $612.00 at Alder & Vine, the morning after (Friday, November 13). It ends zooming in and fading to the site background. |
 | `phone-overlay-greenscreen.mp4` | 7.4 s | The same phone motion with no captions, on chroma green (`#00B140`). The phone slides in from the right, then out. Key it over the laptop recording. |
 | `phone-notification.mp4` | 6 s | Portrait v1, phone only. |
 | `phone-frame.png` | 1242×2604 | Phone bezel with a transparent screen (3× of 414×868; the screen opening is 390×844 at an offset of 12, 12). Drop a screen recording of `/m/{id}` behind it. |
@@ -32,4 +32,4 @@ Phone clip timeline: notification drops 1.4–2.1 s · tap 3.0 s · close-out sc
 7. **Chapter 03:** the phone slides out and the laptop grows back to full frame. Show the compliance decision, the audit log and Proof.
 8. **End card.**
 
-Recording tips: use local live mode (`COVERS_MODE=live`). For a clean run, plan the dinner at a restaurant that Ramp's sandbox categorizes as Restaurants (La Pecora Bianca, Eataly, The Wilson) and charge it there. Charge somewhere else if you want to show the venue flag.
+Recording tips: use local live mode (`COVERS_MODE=live`). The demo is Dr. Patel's dinner (`/plans/plan-demo`), and the phone clips match it. For a clean run, plan the dinner at a restaurant that Ramp's sandbox categorizes as Restaurants (La Pecora Bianca, Eataly, The Wilson) and charge it there. Charge somewhere else if you want to show the venue flag.
