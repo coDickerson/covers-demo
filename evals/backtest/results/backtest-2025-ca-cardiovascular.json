@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-11-10T18:10:49.265Z",
+  "seconds": 1394,
+  "source": {
+    "dataset": "CMS Open Payments, General Payments, program year 2025",
+    "filter": {
+      "state": "CA",
+      "nature": "Food and Beverage",
+      "specialty": "%Cardiovascular%"
+    },
+    "reported": 41941,
+    "url": "https://openpaymentsdata.cms.gov"
+  },
+  "settings": {
+    "perPersonCapCents": 12500,
+    "annualCapCents": 200000,
+    "repeatTopicThreshold": 2
+  },
+  "payments": 41941,
+  "doctors": 2116,
+  "companies": 272,
+  "totalCents": 147264817,
+  "p3": {
+    "rule": "Meal over $125 per person",
+    "meals": 2277,
+    "share": 0.0542905510121361,
+    "largest": [
+      {
+        "npi": "1447716725",
+        "company": "Shockwave Medical, Inc",
+        "perPersonCents": 455845,
+        "date": "08/06/2025"
+      },
+      {
+        "npi": "1487660833",
+        "company": "Shockwave Medical, Inc",
+        "perPersonCents": 220000,
+        "date": "03/06/2025"
+      },
+      {
+        "npi": "1487660833",
+        "company": "Shockwave Medical, Inc",
+        "perPersonCents": 220000,
+        "date": "03/06/2025"
+      },
+      {
+        "npi": "1487660833",
+        "company": "Shockwave Medical, Inc",
+        "perPersonCents": 110000,
+        "date": "03/12/2025"
+      },
+      {
+        "npi": "1487660833",
+        "company": "Shockwave Medical, Inc",
+        "perPersonCents": 110000,
+        "date": "03/12/2025"
+      },
+      {
+        "npi": "1134375272",
+        "company": "AOP Health US, LLC",
+        "perPersonCents": 81206,
+        "date": "11/11/2025"
+      },
+      {
+        "npi": "1295717411",
+        "company": "AOP Health US, LLC",
+        "perPersonCents": 81206,
+        "date": "11/11/2025"
+      },
+      {
+        "npi": "1770511040",
+        "company": "AOP Health US, LLC",
+        "perPersonCents": 81206,
+        "date": "11/11/2025"
+      },
+      {
+        "npi": "1003811746",
+        "company": "AOP Health US, LLC",
+        "perPersonCents": 81206,
+        "date": "11/11/2025"
+      },
+      {
+        "npi": "1255335659",
+        "company": "AOP Health US, LLC",
+        "perPersonCents": 79314,
+        "date": "10/02/2025"
+      }
+    ]
+  },
+  "p4": {
+    "rule": "One company over $2,000 to one clinician in a year",
+    "over": 33,
+    "near": 11,
+    "largest": [
+      {
+        "npi": "1194097303",
+        "company": "Edwards Lifesciences Corporation",
+        "cents": 798837,
+        "meals": 119
+      },
+      {
+        "npi": "1487660833",
+        "company": "Shockwave Medical, Inc",
+        "cents": 789914,
+        "meals": 17
+      },
+      {
+        "npi": "1477998995",
+        "company": "Edwards Lifesciences Corporation",
+        "cents": 713876,
+        "meals": 129
+      },
+      {
+        "npi": "1427585496",
+        "company": "Edwards Lifesciences Corporation",
+        "cents": 569094,
+        "meals": 112
+      },
+      {
+        "npi": "1497341747",
+        "company": "Edwards Lifesciences Corporation",
+        "cents": 534568,
+        "meals": 83
+      },
+      {
+        "npi": "1932356771",
+        "company": "Abbott Laboratories",
+        "cents": 485276,
+        "meals": 62
+      },
+      {
+        "npi": "1447716725",
+        "company": "Shockwave Medical, Inc",
+        "cents": 476791,
+        "meals": 3
+      },
+      {
+        "npi": "1083686372",
+        "company": "Abbott Laboratories",
+        "cents": 450148,
+        "meals": 104
+      },
+      {
+        "npi": "1689618084",
+        "company": "Boston Scientific Corporation",
+        "cents": 440069,
+        "meals": 43
+      },
+      {
+        "npi": "1588041875",
+        "company": "Medtronic, Inc.",
+        "cents": 413516,
+        "meals": 92
+      }
+    ]
+  },
+  "p5": {
+    "rule": "A third meal or more from one company about one product in a year (threshold 2)",
+    "pairs": 4360,
+    "doctors": 1110
+  },
+  "flaggedDoctors": 1360,
+  "flaggedShare": 0.6427221172022685
+}

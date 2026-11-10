@@ -73,12 +73,61 @@ Every check returns a citation that opens the stored passage it quotes, on the s
 
 Companies can add their own rules in plain English in the **Pack lab**. Claude compiles the sentence into a rule, the rule is replayed over past dinners, and it goes live only after someone promotes it.
 
+## Real data, real scale
+
+The demo runs on six fictional doctors so it can show every rule firing. Underneath, Covers runs on real federal data.
+
+**Every real doctor's history, from CMS Open Payments.** `packages/integrations/src/open-payments.ts` reads the federal record of what drug and device companies paid each clinician, for program years 2023 to 2025. For any real NPI it returns the totals, the food and beverage, and the top paying companies, in integer cents, with the CMS query URL so anyone can check the numbers. California clinicians alone received 1.3 million food and beverage payments in 2025.
+
+**A backtest on real dinners.** `pnpm --filter @covers/evals backtest` pulls every 2025 food and beverage payment that companies reported to California cardiovascular clinicians and runs them through the engine's own limits (`DEFAULT_SETTINGS`, `capState`):
+
+| | Result |
+|---|---|
+| Meals reported | 41,941, to 2,116 clinicians from 272 companies ($1,472,648.17) |
+| P3 per-person limit ($125) | 2,277 meals over (5.4%) |
+| P4 annual meal limit ($2,000 per company and clinician) | 33 pairs over, 11 near |
+| P5 repeat meals on the same product | 4,360 patterns across 1,110 clinicians |
+| Clinicians Covers would have flagged | 1,360 of 2,116 (64.3%) |
+
+The full results are in `evals/backtest/results/backtest-2025-ca-cardiovascular.json`.
+
+**A diligence crew of agents, risk first and verified.** Before the rules run, `packages/integrations/src/diligence.ts` sends a small team of Claude agents to research the dinner, in a fixed order:
+
+```mermaid
+flowchart LR
+  h["1 · History agent<br/>CMS Open Payments"] --> r{"Risk tier<br/>(code, no model)"}
+  r --> i["2 · Identity agent<br/>NPI registry"]
+  r --> v["3 · Venue agent<br/>Google Maps via Apify"]
+  i --> ver["4 · Verifier agent<br/>re-queries every source"]
+  v --> ver
+  h --> ver
+  ver -->|verified facts| l["5 · Lead agent<br/>reviewer summary"]
+  ver -->|unconfirmed| p["A person"]
+  l --> e["Rule engine decides<br/>people approve"]
+```
+
+- **Risk first.** The history agent pulls each guest's real payments, and code (not a model) ranks them high, medium, low or none, so the review starts with the guests most likely to matter.
+- **Verified.** A separate verifier agent re-runs every fact the other agents claimed against its source, with its own tool calls. Only facts it confirms reach the summary; anything it can't confirm goes to a person.
+- **Facts, never decisions.** Each agent ends by submitting a Zod-validated result with a source and a confidence for every fact. The deterministic engine still decides, and people still approve.
+- **Real venues.** The venue agent researches the restaurant on Google Maps through an Apify integration (`venue.ts`): category, price level, whether it's a bar first. It refuses Google's nearest guess when the name or city doesn't match. On the demo's fictional Alder & Vine it correctly reports "not found"; on Tosca Cafe it finds 242 Columbus Ave.
+
+A live run on three real California cardiologists (`pnpm --filter @covers/evals diligence`) took 81 seconds and about $0.19:
+- It ranked one clinician high risk: $3,468.64 in food and beverage across 95 meals in 2025, above a $2,000 annual meal limit.
+- It ranked the other two medium. One received 51% of their meals from a single company.
+- The verifier confirmed 6 concerns and sent 1 fact it couldn't confirm to a person.
+
+**See it in the app.** In local live mode, open **Audit › Agents**, pick real doctors (or the three sample cardiologists) and a venue, and send the agents. Each agent's card shows it working, its tool calls and tokens as they stream in, then the verified report with a source link on every concern. The demo's fictional doctors are excluded, since they have no public record.
+
 ## What's real and what's simulated
 
 | Piece | Status |
 |---|---|
 | Rule engine | **Real.** Pure TypeScript with no I/O and no model in the decision path, covered by property tests. |
-| Doctor identity | **Real.** Live CMS NPPES registry. Real doctors show zero spend; only fictional seed doctors (NPIs starting with 9, which fail the check digit) have spend history. |
+| Doctor identity | **Real.** Live CMS NPPES registry. In the app, real doctors show zero spend; only fictional seed doctors (NPIs starting with 9, which fail the check digit) have spend history. |
+| Real doctors' payment history | **Real.** CMS Open Payments API, program years 2023–2025, used by the diligence agents and the backtest. |
+| Backtest | **Real data.** 2025 Open Payments food and beverage payments to California cardiovascular clinicians, through the engine's limits. |
+| Diligence agents | **Real.** Claude agents with tools (CMS, NPPES, Apify), risk first, with a verifier; run live on real clinicians. Shown in the app at **Audit › Agents** (local live mode, needs `ANTHROPIC_API_KEY`; the venue agent also needs `APIFY_TOKEN`). They report facts only and don't change a dinner. |
+| Venue research | **Real.** Google Maps through Apify, with a check that the result is the venue asked about. |
 | Card | **Real (Ramp sandbox).** Funds are created, limited, locked and unlocked through Ramp's API. We tested that Ramp declines charges on a locked fund and over the limit. Ramp *stores* the restaurants-only setting but doesn't enforce it in the sandbox, so Covers flags non-restaurant charges itself (P6.card-merchant). |
 | The dinner charge | **Simulated** with Ramp's sandbox demo tool, since there's no real card swipe. |
 | Receipt reading | **Real.** Claude (`claude-sonnet-5-5`) returns Zod-validated lines with a confidence for each. On 25 synthetic receipts it got every total right and missed no alcohol lines. |
@@ -104,8 +153,10 @@ flowchart LR
   live --> int["packages/integrations"]
   int --> ramp["Ramp sandbox"]
   int --> nppes["NPPES registry"]
-  int --> claude["Claude<br/>receipts, Pack lab"]
+  int --> claude["Claude<br/>receipts, Pack lab,<br/>diligence agents"]
   int --> slack["Slack"]
+  int --> cms["CMS Open Payments"]
+  int --> apify["Apify<br/>Google Maps"]
 ```
 
 - **One contract** (`packages/contract`): Zod schemas plus the `CoversService` interface. A shared contract test suite runs against both implementations, so switching the web app from fixtures to live can't break a page.
@@ -115,12 +166,12 @@ flowchart LR
 - **Replay mode** (`COVERS_CACHE=1`) serves recorded Claude, Ramp and registry responses with no outside calls, as a safety net for the stage.
 
 ```
-apps/web                 Next.js app: start screen, the dinner as a bar crawl, audit, phone close-out (/m/{id}), doctors, rules, documents, proof
+apps/web                 Next.js app: start screen, the dinner as a bar crawl, audit (including the Agents view), phone close-out (/m/{id}), doctors, rules, documents, proof
 packages/contract        Zod schemas, CoversService interface, seed fixtures, contract tests
 packages/engine          Pure rule engine and bill splitting (no I/O)
-packages/integrations    Ramp, NPPES, Claude receipt reader and rule compiler, Slack, record/replay cache
+packages/integrations    Ramp, NPPES, CMS Open Payments, Apify venue research, Claude receipt reader, rule compiler and diligence agents, Slack, record/replay cache
 packages/live-service    LiveService on Postgres: audit gateway, migrations, charge watcher
-evals                    Receipt eval set, Break-It runner, proof bundle
+evals                    Receipt eval set, Break-It runner, real-data backtest, diligence runs, proof bundle
 docs                     Decisions, live-mode setup, Ramp findings, checked pitch facts
 video                    Title, chapter and end cards with the cable car, and the phone notification clips (Figma Motion)
 ```
