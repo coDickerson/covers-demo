@@ -7,7 +7,7 @@ Before a speaker dinner, Covers checks the plan against the rules and cites the 
 **Try it:** [covers-demo-flame.vercel.app](https://covers-demo-flame.vercel.app). Press **Start the crawl** and follow one dinner from the calendar invite to the federal report. Fictional seed data, a private sandbox for each visitor, no login.
 **Demo video:** _link added at submission_
 
-![A dinner blocked before anyone books a table: Dr. Ruvane would pass her $2,000 annual limit](docs/images/blocked.jpg)
+![Dr. Patel's dinner as a bar crawl: the cable car at The Buena Vista, the Propose step's four checks done, and Start checks waiting](docs/images/crawl.jpg)
 
 ## Why
 
@@ -32,11 +32,37 @@ The demo follows one speaker dinner, Dr. Patel on catheter outcomes, as a bar cr
 | **Report** | Covers updates each doctor's running total and drafts the Open Payments rows with the 2026 CMS thresholds. A person files them. | Compliance |
 
 <p>
-  <img src="docs/images/notification.jpg" width="49%" alt="The morning after: the card was charged and Covers pings the rep" />
-  <img src="docs/images/close-out.jpg" width="49%" alt="One tap opens the close-out for that dinner" />
+  <img src="docs/images/notification.jpg" width="49%" alt="The morning after: Covers sees the $612.00 charge at Alder &amp; Vine and pings the rep" />
+  <img src="docs/images/close-out.jpg" width="49%" alt="One tap opens the close-out for Dr. Patel's dinner" />
 </p>
 
 The rep and compliance are two roles in the same sandbox. The pill in the top right switches between them, and the dinner waits on whichever one needs to act.
+
+### The crawl
+
+One street from Fisherman's Wharf to the Mission, one real bar per step, in walking order:
+
+| Step | Bar | Neighborhood |
+|---|---|---|
+| 1 Propose | The Buena Vista | Fisherman's Wharf |
+| 2 Check | Vesuvio | North Beach |
+| 3 Fund | Tosca Cafe | North Beach |
+| 4 Dinner | Li Po | Chinatown |
+| 5 Close out | Pacific Cocktail Haven | Union Square |
+| 6 Settle | Smuggler's Cove | Hayes Valley |
+| 7 Report | Trick Dog | The Mission |
+
+At Vesuvio the checks find that Dr. Ruvane would pass her annual limit. The action to fix it opens right under the check, and the card stays locked until it's done:
+
+![The Check step at Vesuvio: Dr. Ruvane's $1,940 + $110 would pass her $2,000 annual limit, so the card stays locked until she is removed](docs/images/blocked.jpg)
+
+- **The street** is pixel art on one grid, shown at whole-number zoom so the bars, sidewalk and cable car share the same square pixels. Each neighborhood has a few touches drawn in code: the Golden Gate past the Wharf, Telegraph Hill's parrots and Italian lights in North Beach, lanterns and a passing dragon dance in Chinatown, a flower stand by Union Square, ship lanterns in Hayes Valley and papel picado in the Mission.
+- **Inside the bars**, guests talk, bartenders work, and the neon and room light flicker and rise.
+- **The cable car** walks the whole street and comes out of each bar a little looser.
+- **The panel** slides in beside each bar with that step's checks. You can open only the steps the dinner has reached; the Chinatown to the Mission stretch opens at Dinner.
+- **For the judges:** a Ramp Happy Hour chalkboard points into Trick Dog, where a regular wears a Ramp tee under a Ramp neon.
+
+The bars are real San Francisco bars, drawn as a tribute. Covers isn't affiliated with any of them.
 
 ### The audit trail
 
@@ -71,7 +97,7 @@ Companies can add their own rules in plain English in the **Pack lab** (Audit â€
 | Receipt reading | **Real.** Claude (`claude-sonnet-5-5`) returns Zod-validated lines with a confidence for each. On 25 synthetic receipts it got every total right and missed no alcohol lines. |
 | Pack lab | **Real.** Claude (`claude-opus-5-5`) compiles the English. The compiled rule runs in the same deterministic engine, and conflicts are found by code. |
 | Open Payments | **Drafted, not filed.** |
-| Notifications | **Real** Slack pings, through an incoming webhook. The phone lock-screen animation in the video was made in Figma Motion, and the page it opens is the real `/m/{id}`. |
+| Notifications | **Real** Slack pings, through an incoming webhook. The phone lock-screen animation in the video was made in Figma Motion with Dr. Patel's dinner, and the page it opens is the real `/m/{id}`. |
 
 ### Break-It: 15 attacks, 15 stopped
 
@@ -109,7 +135,7 @@ packages/integrations    Ramp, NPPES, Claude receipt reader and rule compiler, S
 packages/live-service    LiveService on Postgres: audit gateway, migrations, charge watcher
 evals                    Receipt eval set, Break-It runner, proof bundle
 docs                     Decisions, live-mode setup, Ramp findings, checked pitch facts
-video                    Phone notification clips (Figma Motion)
+video                    Title, chapter and end cards with the cable car, and the phone notification clips (Figma Motion)
 ```
 
 ## Run it
