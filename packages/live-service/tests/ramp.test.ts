@@ -100,6 +100,9 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect(f.memos[0]).toContain('6 ate');
     expect(f.memos[0]).toContain('$102.00 per person');
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.memo_written')).toBe(true);
+    // The dinner is over, so the card is locked after the memo is written: what's left on the fund can't be spent.
+    expect(f.log.at(-1)).toBe('lock fund-1');
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'fund.locked' && e.detail.startsWith('Dinner closed out'))).toBe(true);
   });
 
   it('records when there is no charge yet instead of failing the settlement', async () => {

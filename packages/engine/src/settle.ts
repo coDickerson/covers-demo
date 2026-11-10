@@ -1,7 +1,7 @@
 // After the dinner: split the bill, update caps, run after-dinner rules, draft Open Payments rows.
 import { CoversError, type CapStatus, type OpenPaymentsRow, type Settlement } from '@covers/contract';
 import { cite } from './citations';
-import { Checks, capFor, capState, displayName, indexBy, sameTopicHistory, unique } from './common';
+import { Checks, capFor, capState, displayName, indexBy, sameTopicHistory, sameVenue, unique } from './common';
 import { localDate } from './dates';
 import { divideRounded, formatCents, splitEvenly } from './money';
 import { resolveSettings } from './settings';
@@ -55,6 +55,17 @@ export function settle(input: SettleInput): Settlement {
     checks.add('P6.card-merchant', { kind: 'plan' }, ok ? 'pass' : 'flag',
       ok ? `The card was charged at ${where}, a restaurant.` : `The card was charged at ${where}, which is not a restaurant.`,
       input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : []);
+  }
+  // The charge should be at the venue the plan was approved for, not just any restaurant.
+  if (input.charge?.source === 'ramp' && input.charge.merchantName) {
+    const same = sameVenue(plan.venue, input.charge.merchantName);
+    const planned = plan.venue.split(',')[0]!.trim();
+    if (same !== null) {
+      checks.add('P6.card-venue', { kind: 'plan' }, same ? 'pass' : 'flag',
+        same ? `The card was charged at ${input.charge.merchantName}, the planned venue.`
+          : `The card was charged at ${input.charge.merchantName}, but the approved plan is for ${planned}.`,
+        input.charge.transactionId ? [`ramp:${input.charge.transactionId}`] : []);
+    }
   }
   if (receipt.printedCovers !== undefined) {
     const ok = receipt.printedCovers === headcount;

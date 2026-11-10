@@ -508,6 +508,9 @@ export class LiveService implements CoversService {
       { kind: 'plan', id: plan.id, data: { ...plan, status: st.exceptions.length > 0 ? 'reconciling' : 'closed' } },
     ]));
     if (link && st.charge?.source === 'ramp' && st.charge.transactionId) await this.writeBackToRamp(ctx, sid, plan, a, st, link, st.charge.transactionId);
+    // The dinner is over: lock the card so whatever is left on the fund can't be spent. After the write-back above,
+    // so the memo and receipt land on the charge first.
+    if (link) await this.lockFund(ctx, sid, plan.id, 'Dinner closed out');
     if (this.deps.notifier) await this.ping(ctx, plan.id, settledMessage(plan, receipt.totalCents, st, this.links()));
     return st;
   }

@@ -4,7 +4,7 @@ import type { PackId } from './types';
 // Every rule result carries one of these (CLAUDE.md rule 3). Sources follow the rule-pack table in
 // docs/implementation.md. Each rule points to a stored document and passage (packages/contract/fixtures/documents.json),
 // whose government texts were checked against the originals on Nov 8 2026.
-const VERSION = '2026-11-08.2';
+const VERSION = '2026-11-09.1';
 
 // HHS-OIG Special Fraud Alert: Speaker Programs, Nov 16 2020 (covers pharmaceutical and medical device companies).
 const OIG_SPEAKER_ALERT = 'https://oig.hhs.gov/documents/special-fraud-alerts/865/SpecialFraudAlertSpeakerPrograms.pdf';
@@ -35,6 +35,7 @@ const RULES = {
   'P6.reconcile': { pack: 'P6', label: '42 CFR 403.904(g)(1): per-person value is calculated from the entire cost of the meal', url: CFR_403_904, doc: 'cfr-403-904', passage: 'g1' },
   'P6.card-charge': { pack: 'P6', label: 'Halden Medical policy §5: the card charge must match the itemized receipt (fictional company policy)', url: undefined, doc: 'halden-policy', passage: 's5-card' },
   'P6.card-merchant': { pack: 'P6', label: 'Halden Medical policy §5: the dinner card is used only at a restaurant (fictional company policy)', url: undefined, doc: 'halden-policy', passage: 's5-card' },
+  'P6.card-venue': { pack: 'P6', label: 'Halden Medical policy §5: the dinner card is used at the venue named in the approved plan (fictional company policy)', url: undefined, doc: 'halden-policy', passage: 's5-card' },
   'P6.covers': { pack: 'P6', label: '42 CFR 403.904(g)(1): divide the entire cost by everyone who ate, covered recipients or not', url: CFR_403_904, doc: 'cfr-403-904', passage: 'g1' },
   'P6.line-confidence': { pack: 'P6', label: 'Halden Medical policy §6: receipt lines read below the confidence gate are confirmed by a person (fictional company policy)', url: undefined, doc: 'halden-policy', passage: 's6-receipts' },
   'P6.open-payments': { pack: 'P6', label: 'CMS Open Payments: food and beverage, in kind; program year 2026 thresholds $13.82 per payment / $138.13 a year', url: CMS_OPEN_PAYMENTS, doc: 'cms-thresholds', passage: 'py2026' },
