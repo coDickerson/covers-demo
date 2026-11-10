@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BELL_ART, LIFE, PEOPLE, PLACES, TOWN, TREE_LAYERS, townPath } from '../lib/town';
+import { BELL_ART, camera as frameOf, GATE, LAMPS, LIFE, PEOPLE, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
@@ -210,18 +210,69 @@ export function DinnerMap({ planId }: { planId: string }) {
   const shown = run?.step ?? viewing ?? step;
   const stations = useMemo(() => (state ? stationsFor(shown, state, shown === 1 && round !== null ? round : undefined) : []), [state, shown, round]);
   const [overview, setOverview] = useState(false);
-  const geometry = useMemo(() => townPath(shown, stations.length || 1, size.w, size.h, overview), [shown, stations.length, size.w, size.h, overview]);
-  // Plaques never overlap: each tries its spot, then above, then to either side, until it is clear of the ones placed so far.
-  const plaques = useMemo(() => {
-    const W = 136, H = 58, gap = 6, placed: { x: number; y: number }[] = [];
-    const tries = [[0, 0], [0, -(H + gap)], [W + gap, 0], [-(W + gap), 0], [0, -2 * (H + gap)], [W + gap, -(H + gap)], [-(W + gap), -(H + gap)]];
-    return geometry.points.map((p) => {
-      const base = { x: p.x, y: p.y - geometry.camera.scale * 30 };
-      const spot = tries.map(([dx, dy]) => ({ x: base.x + dx!, y: base.y + dy! })).find((c) => placed.every((q) => Math.abs(q.x - c.x) >= W + gap || Math.abs(q.y - c.y) >= H + gap)) ?? base;
-      placed.push(spot);
-      return spot;
+  // The viewer can drag the town and zoom with the wheel; following the dinner (or a new step) puts the camera back.
+  const [look, setLook] = useState<Camera | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ x: number; y: number; cam: Camera } | null>(null);
+  useEffect(() => setLook(null), [shown, overview]);
+  const geometry = useMemo(() => townPath(shown, stations.length || 1, size.w, size.h, overview, look), [shown, stations.length, size.w, size.h, overview, look]);
+  const camRef = useRef(geometry.camera);
+  camRef.current = geometry.camera;
+  useEffect(() => {
+    const el = world.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const cam = camRef.current, box = el.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
+      const least = frameOf(0, el.clientWidth, el.clientHeight, true).scale * 0.8;
+      const scale = Math.min(4, Math.max(least, cam.scale * Math.exp(-e.deltaY * 0.0015)));
+      setLook({ scale, x: px - ((px - cam.x) / cam.scale) * scale, y: py - ((py - cam.y) / cam.scale) * scale });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [core === null]); // eslint-disable-line react-hooks/exhaustive-deps
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button, a, [role=dialog], input, textarea')) return;
+    drag.current = { x: e.clientX, y: e.clientY, cam: camRef.current };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+  };
+  const moveDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d) setLook({ ...d.cam, x: d.cam.x + e.clientX - d.x, y: d.cam.y + e.clientY - d.y });
+  };
+  const endDrag = () => { drag.current = null; setDragging(false); };
+  // Plaques never overlap: measure each one, then give it the nearest free spot around its station, inside the map.
+  const plaqueEls = useRef<(HTMLButtonElement | null)[]>([]);
+  const [plaques, setPlaques] = useState<{ x: number; y: number }[]>([]);
+  useLayoutEffect(() => {
+    const gap = 6, lift = geometry.camera.scale * 30, top = 44, placed: { l: number; t: number; r: number; b: number }[] = [];
+    const next = geometry.points.map((p, i) => {
+      const el = plaqueEls.current[i], w = el?.offsetWidth ?? 140, h = el?.offsetHeight ?? 60;
+      const base = { x: p.x, y: p.y - lift };
+      const candidates: { x: number; y: number; cost: number }[] = [];
+      for (const dy of [0, -1, -2, 1, -3, 2]) for (const dx of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]) {
+        const x = base.x + dx * (w + gap), y = dy === 1 || dy === 2 ? p.y + lift * 0.3 + h + (dy - 1) * (h + gap) : base.y + dy * (h + gap);
+        candidates.push({ x, y, cost: Math.hypot(x - base.x, (y - base.y) * 1.3) });
+      }
+      candidates.sort((a, b) => a.cost - b.cost);
+      const rect = (c: { x: number; y: number }) => ({ l: c.x - w / 2, t: c.y - h, r: c.x + w / 2, b: c.y });
+      const clear = (r: ReturnType<typeof rect>) => placed.every((q) => r.r + gap <= q.l || r.l >= q.r + gap || r.b + gap <= q.t || r.t >= q.b + gap);
+      const inside = (r: ReturnType<typeof rect>) => r.l >= gap && r.r <= size.w - gap && r.t >= top && r.b <= size.h - gap;
+      const pick = candidates.find((c) => clear(rect(c)) && inside(rect(c))) ?? candidates.find((c) => clear(rect(c))) ?? candidates[0]!;
+      placed.push(rect(pick));
+      return { x: pick.x, y: pick.y };
     });
-  }, [geometry]);
+    setPlaques((old) => (old.length === next.length && old.every((o, i) => o.x === next[i]!.x && o.y === next[i]!.y) ? old : next));
+  }, [geometry, stations, size.w, size.h]);
+  // The vault wheel turns once when Ramp issues the card while the page is open.
+  const fundRef = useRef<string | null | undefined>(undefined);
+  const [vaultTurn, setVaultTurn] = useState(0);
+  const fundId = core?.view.plan.fundId ?? null;
+  useEffect(() => {
+    if (fundRef.current === null && fundId) setVaultTurn((n) => n + 1);
+    if (core) fundRef.current = fundId;
+  }, [fundId, core]);
 
   if (!core || !state) return <main className="grid h-dvh place-items-center text-ink-muted">Loading…</main>;
   const { view, receipt, settlement, rounds } = core;
@@ -289,6 +340,9 @@ export function DinnerMap({ planId }: { planId: string }) {
   const resting = picked ?? (shown === step ? restingStation(stations) : stations.length - 1);
   const target = run?.exit ? 100 : geometry.stops[(run ? run.at : resting) + 1] ?? 0;
   const visible = (i: number) => !run || run.step !== shown || (run.recheck ? !run.recheck.includes(i) : i < run.seen);
+  // The gate: down until the red-flag check has been seen clear; held down (beacon racing) while it is flagged.
+  const redFlags = shown === 1 ? stations.findIndex((s) => s.name === 'Red flags') : -1;
+  const gate: 'open' | 'closed' | 'held' = shown > 1 || step > 1 ? 'open' : redFlags >= 0 && visible(redFlags) ? (stations[redFlags]!.mark === 'clear' ? 'open' : 'held') : 'closed';
   const docModel = doc && buildCard(doc, state, documents);
   const caps = settlement?.caps.length ? settlement.caps : evaluation?.caps ?? [];
   const pickedStation = picked !== null ? stations[picked] : undefined;
@@ -448,18 +502,28 @@ export function DinnerMap({ planId }: { planId: string }) {
             })}
           </ol>
           <div className="flex min-h-0 flex-1">
-          <div ref={world} className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+          <div ref={world} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} className={`relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden select-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
             {size.w > 0 && (
               <>
                 {/* The town, framed on this step's place. The art scales with the camera; plaques and the bell sit on top in screen space. */}
-                <div className="pointer-events-none absolute top-0 left-0 transition-transform duration-[calc(var(--motion-duration-slow)*2)] ease-standard motion-reduce:transition-none" style={{ width: TOWN.width, height: TOWN.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
+                <div className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: TOWN.width, height: TOWN.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
                   <img src={TOWN.src} alt={`The town: ${PLACES.map((p) => p.name).join(', ')}`} width={TOWN.width} height={TOWN.height} draggable={false} className="block [image-rendering:pixelated]" />
                   {/* The town is alive: trees rustle a pixel, the checkpoint beacon blinks, string lights twinkle, the kitchen steams. */}
                   {TREE_LAYERS.map((t) => <img key={t.src} src={t.src} alt="" width={TOWN.width} height={TOWN.height} draggable={false} className="covers-rustle absolute inset-0 [image-rendering:pixelated]" style={{ animationDuration: `calc(var(--motion-duration-slow) * ${t.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${t.offset * 2})` }} />)}
                   <i className="covers-blink absolute bg-status-over" style={{ left: LIFE.beacon.x, top: LIFE.beacon.y, width: LIFE.beacon.size, height: LIFE.beacon.size }} />
                   {LIFE.bulbs.map(([x, y], n) => <i key={n} className="covers-twinkle absolute bg-accent" style={{ left: x, top: y, width: 1, height: 1, animationDelay: `calc(var(--motion-stagger) * ${(n * 7) % 19})` }} />)}
                   {LIFE.vents.flatMap((v, n) => [0, 1, 2].map((k) => <i key={`${n}-${k}`} className="covers-steam absolute bg-bg-surface" style={{ left: v.x + k, top: v.y, width: 2, height: 2, animationDelay: `calc(var(--motion-duration-slow) * ${k * 2 + n})` }} />))}
-                  {PEOPLE.diners.map(([x, y, look], n) => <img key={`diner-${n}`} src={`/town/diner-${look}.png`} alt="" width={5} height={6} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x, top: y - 6 }} />)}
+                  {/* Evening: lamps along the sidewalks, each with a warm pool of light that breathes. */}
+                  {LAMPS.map(([x, y], n) => <img key={`pool-${n}`} src="/town/pool.png" alt="" width={30} height={13} draggable={false} className="covers-glow absolute [image-rendering:pixelated]" style={{ left: x - 15, top: y - 6, animationDelay: `calc(var(--motion-stagger) * ${(n * 5) % 13})` }} />)}
+                  {LAMPS.map(([x, y], n) => <img key={`lamp-${n}`} src="/town/lamp.png" alt="" width={5} height={16} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x - 2, top: y - 16 }} />)}
+                  {/* The checkpoint's boom gate lifts once the red-flag check is clear, and stays down while something is flagged. */}
+                  <i className="absolute origin-left transition-transform duration-[calc(var(--motion-duration-slow)*2)] ease-standard" style={{ left: GATE.x, top: GATE.y - 1, width: GATE.length, height: 2, transform: `rotate(${gate === 'open' ? GATE.open : GATE.closed}deg)`, backgroundImage: 'repeating-linear-gradient(90deg, var(--color-status-over) 0 4px, var(--color-bg-surface) 4px 8px)' }} />
+                  <i className={`absolute bg-ink-primary ${gate === 'held' ? 'covers-blink-fast' : ''}`} style={{ left: GATE.x - 1, top: GATE.y - 2, width: 3, height: 4 }} />
+                  {/* The bank's vault wheel turns when the card is issued. */}
+                  <img key={`wheel-${vaultTurn}`} src="/town/wheel.png" alt="" width={WHEEL.size} height={WHEEL.size} draggable={false} className={`absolute [image-rendering:pixelated] ${vaultTurn ? 'covers-vault' : ''}`} style={{ left: WHEEL.x, top: WHEEL.y }} />
+                  <img src="/town/mullion.png" alt="" width={WHEEL.bar.width} height={WHEEL.bar.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: WHEEL.bar.x, top: WHEEL.bar.y }} />
+                  {PEOPLE.far.map(([x, y, look], n) => <img key={`far-${n}`} src={`/town/diner-${look}.png`} alt="" width={5} height={6} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x - 2, top: y - 6 }} />)}
+                  {PEOPLE.near.map(([x, y, look], n) => <img key={`near-${n}`} src={`/town/diner-back-${look}.png`} alt="" width={5} height={5} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x - 2, top: y - 5 }} />)}
                   <i className="covers-waiter absolute" style={{ left: PEOPLE.waiter.x, top: PEOPLE.waiter.y - PEOPLE.waiter.height, width: PEOPLE.waiter.width, height: PEOPLE.waiter.height, backgroundImage: 'url(/town/waiter.png)', backgroundSize: `${PEOPLE.waiter.width * 2}px ${PEOPLE.waiter.height}px`, imageRendering: 'pixelated' }} />
                   <svg className="pointer-events-none absolute inset-0 overflow-visible" width={TOWN.width} height={TOWN.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
@@ -473,7 +537,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                   const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0;
                   const at = plaques[i] ?? p;
                   return (
-                    <button key={s.name} aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)}
+                    <button key={s.name} ref={(el) => { plaqueEls.current[i] = el; }} aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)}
                       style={{ left: at.x, top: at.y }}
                       className={`absolute z-5 flex -translate-x-1/2 -translate-y-full cursor-pointer flex-col gap-1 border bg-bg-surface px-2 py-1.5 text-left transition-[left,top,opacity,border-color] duration-[calc(var(--motion-duration-slow)*2)] ease-standard hover:border-ink-primary disabled:cursor-default ${here || (run?.at === i && run.step === shown) ? 'border-ink-primary' : CARD_EDGE[mark]} ${zoomed ? 'pointer-events-none opacity-0' : ''}`}>
                       <span className="flex items-center gap-1.5 text-small font-strong whitespace-nowrap"><i className={`size-2.5 shrink-0 border ${MARK_BOX[mark]}`} />{s.name}</span>
@@ -485,7 +549,8 @@ export function DinnerMap({ planId }: { planId: string }) {
               </>
             )}
             {stamp && <Stamp key={stamp.text} text={stamp.text} tone={stamp.tone} />}
-            {!zoomed && <button onClick={() => setOverview((o) => !o)} className="absolute top-3 left-6 z-10 cursor-pointer border border-ink-primary bg-bg-surface px-2.5 py-1 text-small font-strong hover:bg-accent-tint">{overview ? 'Follow the dinner' : 'See the whole town'}</button>}
+            {!zoomed && <button onClick={() => { if (look && !overview) setLook(null); else setOverview((o) => !o); }} className="absolute top-3 left-6 z-10 cursor-pointer border border-ink-primary bg-bg-surface px-2.5 py-1 text-small font-strong hover:bg-accent-tint">{overview || look ? 'Follow the dinner' : 'See the whole town'}</button>}
+            {!zoomed && <span className="pointer-events-none absolute top-4 left-48 z-10 text-micro text-ink-muted">Drag to look around · scroll to zoom</span>}
             {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
             {size.w > 0 && Detail()}
           </div>

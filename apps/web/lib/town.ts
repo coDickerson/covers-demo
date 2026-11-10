@@ -14,68 +14,85 @@ export const LIFE = {
   vents: [{ x: 390, y: 252 }, { x: 412, y: 242 }],
 };
 
-/** People at the restaurant, in art pixels (bottom-left of each sprite). One seat at the long table stays empty: the no-show. */
+/**
+ * People at the restaurant's long table, in art pixels (bottom-centre of each sprite, sitting on a chair). The far row
+ * faces us across the table; the near row has its back to us. One far chair stays empty: the no-show.
+ */
 export const PEOPLE = {
-  diners: [[496, 338, 0], [506, 334, 1], [516, 331, 2], [526, 328, 3], [535, 326, 4], [497, 350, 5], [509, 347, 1], [519, 344, 3], [530, 341, 0], [572, 327, 2], [588, 330, 4]] as [number, number, number][],
+  far: [[495, 347, 0], [507, 343, 1], [518, 340, 2], [528, 337, 3]] as [number, number, number][],
+  near: [[497, 353, 0], [526, 350, 1], [546, 346, 2]] as [number, number, number][],
   waiter: { x: 500, y: 372, width: 7, height: 9 },
 };
 
+/** Evening light: street lamps (bottom-centre of the post) at the back edge of the sidewalks. */
+export const LAMPS: [number, number][] = [[548, 156], [452, 128], [232, 90], [276, 164], [232, 236], [150, 318], [306, 340], [420, 374], [482, 388], [108, 450], [240, 458], [380, 462], [540, 472]];
+/** The checkpoint's boom gate: pivot, arm length, and its closed and lifted angles (degrees). */
+export const GATE = { x: 181, y: 224, length: 46, closed: -13.5, open: -75 } as const;
+/** The bank's vault wheel (public/town/wheel.png) and the window bar drawn in front of it. */
+export const WHEEL = { x: 160, y: 289, size: 34, bar: { x: 175, y: 288, width: 3, height: 36 } } as const;
+
 type Pt = { x: number; y: number };
-type Place = { name: string; region: [number, number, number, number]; slots: Pt[] };
+type Place = { name: string; region: [number, number, number, number] };
 
 /** Step index → where it happens, the part of town the camera frames, and the station spots in walking order. */
 export const PLACES: Place[] = [
-  { name: 'Halden HQ', region: [410, 10, 650, 200], slots: [{ x: 468, y: 160 }, { x: 498, y: 168 }, { x: 532, y: 168 }, { x: 566, y: 158 }] },
-  {
-    name: 'Compliance row', region: [140, 40, 410, 290],
-    slots: [{ x: 205, y: 104 }, { x: 352, y: 98 }, { x: 208, y: 170 }, { x: 348, y: 172 }, { x: 196, y: 242 }, { x: 338, y: 248 }],
-  },
-  { name: 'The bank (Ramp)', region: [60, 240, 290, 350], slots: [{ x: 104, y: 320 }, { x: 140, y: 328 }, { x: 178, y: 332 }, { x: 216, y: 328 }] },
-  { name: 'The restaurant', region: [320, 270, 650, 420], slots: [{ x: 362, y: 372 }, { x: 430, y: 380 }, { x: 538, y: 360 }, { x: 590, y: 374 }] },
-  { name: 'The phone kiosk', region: [50, 395, 220, 505], slots: [{ x: 92, y: 470 }, { x: 118, y: 480 }, { x: 146, y: 478 }, { x: 170, y: 468 }] },
-  {
-    name: 'The accounting office', region: [170, 395, 350, 505],
-    slots: [{ x: 200, y: 470 }, { x: 220, y: 480 }, { x: 244, y: 484 }, { x: 268, y: 480 }, { x: 290, y: 472 }, { x: 310, y: 462 }],
-  },
-  { name: 'Parcel depot to the federal building', region: [330, 385, 720, 505], slots: [{ x: 362, y: 470 }, { x: 410, y: 480 }, { x: 460, y: 478 }, { x: 600, y: 470 }] },
+  { name: 'Halden HQ', region: [390, 70, 650, 200] },
+  { name: 'Compliance row', region: [140, 40, 410, 290] },
+  { name: 'The bank (Ramp)', region: [60, 230, 360, 350] },
+  { name: 'The restaurant', region: [180, 290, 560, 420] },
+  { name: 'The phone kiosk', region: [50, 320, 470, 505] },
+  { name: 'The accounting office', region: [60, 395, 350, 505] },
+  { name: 'Parcel depot to the federal building', region: [300, 385, 720, 505] },
+];
+
+/**
+ * The walk for each step, along the town's sidewalks: [x, y, station]. A station point is where a check happens; the
+ * others are corners. Each step's walk starts where the previous one ended.
+ */
+export const ROUTES: [number, number, 0 | 1][][] = [
+  [[560, 165, 0], [530, 156, 1], [500, 147, 1], [470, 138, 1], [440, 129, 1], [400, 118, 0]],
+  [[300, 97, 0], [212, 98, 1], [342, 100, 1], [262, 100, 0], [262, 168, 0], [212, 170, 1], [342, 172, 1], [256, 172, 0], [256, 244, 0], [212, 244, 1], [340, 246, 1]],
+  [[288, 248, 0], [288, 328, 0], [232, 330, 1], [200, 329, 1], [168, 328, 1], [138, 327, 1]],
+  [[200, 330, 0], [252, 336, 0], [300, 352, 0], [340, 368, 1], [400, 380, 1], [455, 392, 1], [505, 400, 1]],
+  [[455, 392, 0], [300, 352, 0], [252, 336, 0], [148, 336, 0], [154, 390, 0], [160, 452, 0], [140, 458, 1], [118, 462, 1], [98, 462, 1], [84, 458, 1]],
+  [[120, 462, 0], [165, 462, 0], [188, 464, 1], [210, 467, 1], [232, 469, 1], [254, 469, 1], [276, 467, 1], [298, 464, 1]],
+  [[330, 464, 0], [352, 467, 1], [400, 474, 1], [450, 478, 1], [505, 478, 0], [600, 482, 1]],
 ];
 
 
+
+export type Camera = { x: number; y: number; scale: number };
+
 /** The camera for a step: scale and offset that frame its place in a w×h viewport. */
-export function camera(step: number, w: number, h: number, overview = false) {
+export function camera(step: number, w: number, h: number, overview = false): Camera {
   const [x0, y0, x1, y1] = overview ? [0, 0, TOWN.width, TOWN.height] : (PLACES[step] ?? PLACES[0]!).region;
   const scale = Math.min(3.2, (w * 0.9) / (x1 - x0), (h * 0.86) / (y1 - y0));
   return { scale, x: w / 2 - ((x0 + x1) / 2) * scale, y: h / 2 - ((y0 + y1) / 2) * scale };
 }
 
 /**
- * Screen geometry for one step, in the same shape as layoutPath: the station points, a path through them that starts
- * where the previous step ended, and each point's position along the path (0–100) for the walker.
+ * Screen geometry for one step: the station points, the walk through them along the sidewalks (starting where the
+ * previous step ended), and each station's position along the walk (0–100). stops[0] is the start, stops[i + 1] is
+ * station i, and the walk's end is 100. `view` overrides the camera when the viewer has dragged or zoomed the town.
  */
-export function townPath(step: number, count: number, w: number, h: number, overview = false) {
-  const cam = camera(step, w, h, overview), place = PLACES[step] ?? PLACES[0]!;
-  const toScreen = (p: Pt) => ({ x: cam.x + p.x * cam.scale, y: cam.y + p.y * cam.scale });
-  const slot = (i: number) => place.slots[Math.min(i, place.slots.length - 1)]!;
-  const prev = PLACES[step - 1]?.slots.at(-1);
-  const startArt = prev ?? { x: slot(0).x - 30, y: slot(0).y + 6 };
-  const pts = Array.from({ length: Math.max(1, count) }, (_, i) => {
-    const s = slot(i), extra = i >= place.slots.length ? i - place.slots.length + 1 : 0; // more stations than spots: step along
-    return toScreen({ x: s.x + extra * 14, y: s.y + extra * 4 });
+export function townPath(step: number, count: number, w: number, h: number, overview = false, view?: Camera | null) {
+  const cam = view ?? camera(step, w, h, overview), route = ROUTES[step] ?? ROUTES[0]!;
+  const art: Pt[] = [...(step > 0 ? [ROUTES[step - 1]!.at(-1)!] : []), ...route].map(([x, y]) => ({ x, y }));
+  const at = [0];
+  for (let i = 1; i < art.length; i++) at.push(at[i - 1]! + Math.hypot(art[i]!.x - art[i - 1]!.x, art[i]!.y - art[i - 1]!.y));
+  const total = at.at(-1) || 1, offset = step > 0 ? 1 : 0;
+  const spots = route.flatMap(([x, y, s], i) => (s ? [{ x, y, along: at[i + offset]! }] : []));
+  // More stations than spots: the extras line up a few steps past the last spot, along the sidewalk.
+  const stations = Array.from({ length: Math.max(1, count) }, (_, i) => {
+    const s = spots[Math.min(i, spots.length - 1)]!, extra = Math.max(0, i - spots.length + 1);
+    return { x: s.x + extra * 14, y: s.y + extra * 2, along: Math.min(total, s.along + extra * 14) };
   });
-  const start = toScreen(startArt), last = pts.at(-1)!, end = { x: last.x + 18 * cam.scale, y: last.y };
-  const all = [start, ...pts, end];
-  // Walk like the town's sidewalks run: along the two isometric directions (2:1 right-down and 2:1 right-up), turning
-  // one corner between stops instead of cutting straight across buildings.
-  const corner = (a: Pt, b: Pt): Pt => { const dx = b.x - a.x, dy = b.y - a.y, s1 = (dx + 2 * dy) / 4; return { x: a.x + 2 * s1, y: a.y + s1 }; };
-  let d = `M${all[0]!.x} ${all[0]!.y}`, length = 0;
-  const lengths = [0];
-  for (let i = 1; i < all.length; i++) {
-    const a = all[i - 1]!, b = all[i]!, c = corner(a, b);
-    d += ` L${c.x} ${c.y} L${b.x} ${b.y}`;
-    length += Math.hypot(c.x - a.x, c.y - a.y) + Math.hypot(b.x - c.x, b.y - c.y); lengths.push(length);
-  }
-  const toArt = (q: { x: number; y: number }) => ({ x: (q.x - cam.x) / cam.scale, y: (q.y - cam.y) / cam.scale });
-  const art = all.map(toArt);
-  const artD = art.map((q, i) => (i ? `L${corner(art[i - 1]!, q).x} ${corner(art[i - 1]!, q).y} L${q.x} ${q.y}` : `M${q.x} ${q.y}`)).join(' ');
-  return { d, points: pts, stops: lengths.map((l) => (length ? (l / length) * 100 : 0)), camera: cam, artD };
+  const toScreen = (p: Pt) => ({ x: cam.x + p.x * cam.scale, y: cam.y + p.y * cam.scale });
+  const artD = art.map((q, i) => `${i ? 'L' : 'M'}${q.x} ${q.y}`).join(' ');
+  return {
+    points: stations.map(toScreen),
+    stops: [0, ...stations.map((s) => (s.along / total) * 100), 100],
+    camera: cam,
+    artD,
+  };
 }
