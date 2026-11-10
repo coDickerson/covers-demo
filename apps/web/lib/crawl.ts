@@ -84,6 +84,20 @@ export const FLOWERS = { src: '/crawl/flowercart.png', x: 1586, width: 59, heigh
 export const RAMP_BOARD = { src: '/crawl/rampboard.png', x: 1918, width: 50, height: 54, sink: 3 } as const;
 export const DRAGON = { src: '/crawl/dragon.png', x: 1400, width: 83, height: 54, sink: 12, travel: -330, every: 100 } as const;
 
+/**
+ * A square crop of a step's bar for the panel's thumbnail, in that bar picture's pixels: centred on the stretch of
+ * sidewalk where the step's checks stand, from just under the roofline.
+ */
+/** Hand-picked crops ([x, y, size] in the bar picture) where the automatic one would miss the bar's sign. */
+const THUMB: Partial<Record<number, [number, number, number]>> = { 0: [10, 44, 176], 3: [77, 60, 150], 6: [0, 62, 150] };
+export function thumbOf(step: number) {
+  const s = STOPS[step] ?? STOPS[0], b = BARS[s.bar]!, pick = THUMB[step];
+  if (pick) return { src: b.src, width: b.width, x: pick[0], y: pick[1], size: pick[2] };
+  const size = Math.min(140, b.rise - 10);
+  const cx = (s.span[0] + s.span[1]) / 2 - b.x, x = Math.round(Math.max(0, Math.min(b.width - size, cx - size / 2)));
+  return { src: b.src, width: b.width, x, y: Math.round(Math.max(0, b.rise - size - 8)), size };
+}
+
 /** The two stretches of the street. The second opens at Dinner. */
 export const STREETS = [
   { name: 'Fisherman’s Wharf to North Beach', from: 0, to: 1080 },

@@ -7,7 +7,9 @@ Before a speaker dinner, Covers checks the plan against the rules and cites the 
 **Try it:** [covers-demo-flame.vercel.app](https://covers-demo-flame.vercel.app) (fictional seed data, a private sandbox for each visitor, no login)
 **Demo video:** _link added at submission_
 
-![A dinner blocked before anyone books a table: Dr. Ruvane would pass her $2,000 annual limit](docs/images/blocked.jpg)
+![Dr. Patel's dinner as a bar crawl: the cable car at The Buena Vista, the Propose step's checks done in the panel, and the next action waiting](docs/images/crawl.jpg)
+
+The demo follows one dinner, Dr. Patel on catheter outcomes, as a **San Francisco bar crawl**. Each of the seven steps is a real bar, a cable car on little legs walks from one to the next, and each bar's checks tick off in a panel beside it. When a check is blocked or needs a decision, the action opens right under it. See [The crawl](#the-crawl).
 
 ## Why
 
@@ -30,11 +32,31 @@ Today these dinners are checked after the money has moved, if they're checked at
 | **Report** | Covers updates each doctor's running total and drafts the Open Payments rows with the 2026 CMS thresholds. A person files them. | Compliance |
 
 <p>
-  <img src="docs/images/notification.jpg" width="49%" alt="The morning after: the card was charged and Covers pings the rep" />
-  <img src="docs/images/close-out.jpg" width="49%" alt="One tap opens the close-out for that dinner" />
+  <img src="docs/images/notification.jpg" width="49%" alt="The morning after: Covers sees the $612.00 charge at Alder &amp; Vine and pings the rep" />
+  <img src="docs/images/close-out.jpg" width="49%" alt="One tap opens the close-out for Dr. Patel's dinner" />
 </p>
 
-![The dashboard: four dinners at different stages](docs/images/dashboard.jpg)
+## The crawl
+
+One straight street from Fisherman's Wharf to the Mission, in walking order, one bar per step:
+
+| Step | Bar | Neighborhood |
+|---|---|---|
+| 1 Propose | The Buena Vista | Fisherman's Wharf |
+| 2 Check | Vesuvio | North Beach |
+| 3 Fund | Tosca Cafe | North Beach |
+| 4 Dinner | Li Po | Chinatown |
+| 5 Close out | Pacific Cocktail Haven | Union Square |
+| 6 Settle | Smuggler's Cove | Hayes Valley |
+| 7 Report | Trick Dog | The Mission |
+
+- **The street:** the bars were generated as pixel art, then cut onto one pixel grid and shown at whole-number zoom, so the bars, the sidewalk and the cable car share the same square pixels. Each neighborhood gets a few touches drawn in code: Italian lights and the Telegraph Hill parrots in North Beach, lanterns and a passing dragon dance in Chinatown, a flower stand by Union Square, ship lanterns in Hayes Valley, papel picado in the Mission, and the Golden Gate in the fog past the Wharf.
+- **Life inside:** guests lean in, bartenders work, neon flickers and each room's light rises and falls. Each moving piece is cut from the bar's own art and moves a pixel at a time.
+- **The cable car** walks the whole street without jumping and comes out of each bar a little looser: rosy cheeks, then a sway, then a party hat, then confetti. Nothing on screen shows a drink.
+- **The panel** slides in beside each bar with that step's checks, one ticking off at a time, and tucks away while the cable car walks on. You can only open steps the dinner has reached; the Chinatown to the Mission stretch opens at Dinner.
+- **For the judges:** a Ramp Happy Hour chalkboard points into Trick Dog, where a regular wears a Ramp tee under a Ramp neon.
+
+The bars are real San Francisco bars, drawn as a tribute. Covers isn't affiliated with any of them.
 
 ## The rules
 
@@ -62,7 +84,7 @@ Companies can add their own rules in plain English in the **Pack lab**. Claude c
 | Receipt reading | **Real.** Claude (`claude-sonnet-5-5`) returns Zod-validated lines with a confidence for each. On 25 synthetic receipts it got every total right and missed no alcohol lines. |
 | Pack lab | **Real.** Claude (`claude-opus-5-5`) compiles the English. The compiled rule runs in the same deterministic engine, and conflicts are found by code. |
 | Open Payments | **Drafted, not filed.** |
-| Notifications | **Real** Slack pings, through an incoming webhook. The phone lock-screen animation in the video was made in Figma Motion, and the page it opens is the real `/m/{id}`. |
+| Notifications | **Real** Slack pings, through an incoming webhook. The phone lock-screen animation in the video was made in Figma Motion with Dr. Patel's dinner, and the page it opens is the real `/m/{id}`. |
 
 ### Break-It: 15 attacks, 15 stopped
 
@@ -93,14 +115,14 @@ flowchart LR
 - **Replay mode** (`COVERS_CACHE=1`) serves recorded Claude, Ramp and registry responses with no outside calls, as a safety net for the stage.
 
 ```
-apps/web                 Next.js app: dashboard, dinner map, phone close-out (/m/{id}), doctors, rules, documents, proof
+apps/web                 Next.js app: start screen, the dinner as a bar crawl, audit, phone close-out (/m/{id}), doctors, rules, documents, proof
 packages/contract        Zod schemas, CoversService interface, seed fixtures, contract tests
 packages/engine          Pure rule engine and bill splitting (no I/O)
 packages/integrations    Ramp, NPPES, Claude receipt reader and rule compiler, Slack, record/replay cache
 packages/live-service    LiveService on Postgres: audit gateway, migrations, charge watcher
 evals                    Receipt eval set, Break-It runner, proof bundle
 docs                     Decisions, live-mode setup, Ramp findings, checked pitch facts
-video                    Phone notification clips (Figma Motion)
+video                    Title, chapter and end cards with the cable car, and the phone notification clips (Figma Motion)
 ```
 
 ## Run it
@@ -133,11 +155,11 @@ pnpm --filter @covers/evals exec tsx ../packages/live-service/scripts/watch-char
 
 | Package | Tests |
 |---|---|
-| engine | 121 |
+| engine | 125 |
 | integrations | 135 |
 | live-service (against Postgres) | 92 |
 | evals | 71 |
-| web | 65 |
+| web | 72 |
 | contract | 8, plus 33 in the shared suite |
 
 ## Team

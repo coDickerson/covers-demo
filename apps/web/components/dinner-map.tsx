@@ -11,7 +11,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera, DRAGON, FLOWERS, RAMP_BOARD } from '../lib/crawl';
+import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera, DRAGON, FLOWERS, RAMP_BOARD, thumbOf } from '../lib/crawl';
 import { DocCard } from './doc-card';
 import { AuditLog } from './audit-log';
 import { CARD_STEPS, CardSlip } from './ramp-card';
@@ -560,9 +560,15 @@ export function DinnerMap({ planId, intro = false }: { planId: string; intro?: b
                 {/* This bar's checks, sliding in from the side while the cable car is here, one ticking off at a time. */}
                 <aside aria-label={`${STEPS[shown]} at ${stop.name}`} aria-hidden={!panelOpen} className={`absolute top-4 right-4 z-10 flex max-h-[calc(100%-var(--space-8))] w-96 flex-col overflow-y-auto border border-ink-primary bg-bg-surface transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none ${panelOpen ? '' : 'pointer-events-none translate-x-[calc(100%+var(--space-8))]'}`}>
                   <header className="border-b border-border px-4 pt-3.5 pb-3">
-                    <span className="font-mono text-micro text-ink-muted">STEP {shown + 1} OF {STEPS.length} · <span className={doneCount === stations.length ? 'text-status-ok' : ''}>{doneCount === stations.length ? 'DONE' : run && run.step === shown ? 'WORKING' : 'WAITING'}</span></span>
-                    <h2 className="mt-0.5 text-heading leading-tight font-bold tracking-tight">{STEPS[shown]}</h2>
-                    <span className="text-small text-ink-muted">{stop.name} · {stop.hood} · {doneCount} of {stations.length} done</span>
+                    <div className="flex items-center gap-3.5">
+                      {/* A small picture of this step's bar, cut from the street art. */}
+                      {(() => { const t = thumbOf(shown), k = 64 / t.size; return <i aria-hidden="true" className="size-16 shrink-0 border border-border bg-bg-canvas bg-no-repeat [image-rendering:pixelated]" style={{ backgroundImage: `url(${t.src})`, backgroundSize: `${t.width * k}px auto`, backgroundPosition: `${-t.x * k}px ${-t.y * k}px` }} />; })()}
+                      <div className="min-w-0">
+                        <span className="font-mono text-micro text-ink-muted">STEP {shown + 1} OF {STEPS.length} · <span className={doneCount === stations.length ? 'text-status-ok' : ''}>{doneCount === stations.length ? 'DONE' : run && run.step === shown ? 'WORKING' : 'WAITING'}</span></span>
+                        <h2 className="mt-0.5 text-heading leading-tight font-bold tracking-tight">{STEPS[shown]}</h2>
+                        <span className="block text-small text-ink-muted">{stop.name} · {stop.hood} · {doneCount} of {stations.length} done</span>
+                      </div>
+                    </div>
                     {run && run.step === shown && <span className="mt-1 block text-small text-ink-secondary"><b className="font-strong text-ink-primary">Checking {run.label.toLowerCase()}</b> · you can leave this page, it stops when it needs you</span>}
                     <span className="mt-2.5 flex gap-1">{stations.map((s, i) => <i key={s.name} className={`h-1.5 flex-1 transition-colors duration-(--motion-duration-base) ease-standard ${visible(i) && s.mark !== 'waiting' ? (s.mark === 'blocked' ? 'bg-status-over' : s.mark === 'flagged' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>
                     {stamp && <p className={`covers-line mt-2.5 border px-2.5 py-1.5 text-small font-strong ${stamp.tone === 'ok' ? 'border-status-ok text-status-ok' : 'border-status-near text-status-near'}`}>{STAMP_LINE[stamp.text] ?? stamp.text}</p>}
