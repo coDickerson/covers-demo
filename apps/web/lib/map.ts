@@ -27,7 +27,7 @@ export function changedStations(before: Evaluation, after: Evaluation): number[]
 /** What the agent looks at, line by line, while it is at a station. */
 export const thinkingLines = (s: Station) => s.think?.length ? s.think : s.card.map(([a, b]) => (b ? `${a}: ${b}` : a));
 /** The step of the map an audit action belongs to. */
-export const AUDIT_STEP: Record<string, number> = { 'plan.created': 0, 'plan.updated': 1, 'plan.evaluated': 1, 'fund.issued': 2, 'receipt.read': 4, 'receipt.line_fixed': 4, 'attendance.confirmed': 5, 'exception.approved': 6, 'exception.denied': 6 };
+export const AUDIT_STEP: Record<string, number> = { 'plan.created': 0, 'plan.updated': 1, 'plan.evaluated': 1, 'fund.issued': 2, 'charge.seen': 3, 'receipt.read': 4, 'receipt.line_fixed': 4, 'attendance.confirmed': 5, 'ramp.memo_written': 5, 'fund.locked': 5, 'exception.approved': 6, 'exception.denied': 6 };
 
 export const STEP_KEYS: DinnerStep[] = ['propose', 'check', 'fund', 'dinner', 'close_out', 'settle', 'report'];
 

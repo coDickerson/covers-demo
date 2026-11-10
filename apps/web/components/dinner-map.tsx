@@ -10,12 +10,12 @@ import { covers, CoversClientError } from '../lib/client';
 import { buildCard } from '../lib/doc-cards';
 import { AUDIT_LABEL } from '../lib/documents';
 import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
-import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
+import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, standing, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
 import { BELL_ART, camera as frameOf, FLASH, GATE, LIFE, LIVES, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
 import { DocCard } from './doc-card';
-import { RampCard } from './ramp-card';
+import { cardState, RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
 import { tokens } from '../lib/tokens';
 import { useRuns, WALK_MS, type Stage } from './run-provider';
@@ -136,6 +136,9 @@ export function DinnerMap({ planId }: { planId: string }) {
   const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [asking, setAsking] = useState(false);
   const [auditRow, setAuditRow] = useState<string | null>(null);
+  const [about, setAbout] = useState<{ id: string; label: string } | null>(null); // the audit entry the chat is about
+  const chatEnd = useRef<HTMLDivElement>(null);
+  useEffect(() => { chatEnd.current?.scrollIntoView({ block: 'nearest' }); }, [chat.length, asking]);
   const [absent, setAbsent] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
   const [stationNote, setStationNote] = useState('');
@@ -490,24 +493,42 @@ export function DinnerMap({ planId }: { planId: string }) {
     );
   }
 
-  const ask = async () => {
-    const q = question.trim();
+  const ask = async (text?: string) => {
+    const q = (text ?? question).trim();
     if (!q || asking) return;
     const history = chat.slice(-HISTORY_LIMITS.turns).map((m) => ({ ...m, content: m.content.slice(0, HISTORY_LIMITS.chars) }));
     setChat((c) => [...c, { role: 'user', content: q }]); setQuestion(''); setAsking(true);
     try {
-      const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ planId, question: q, history }) });
+      const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ planId, question: q, history, ...(about ? { about: about.id } : {}) }) });
       const body = (await res.json()) as { ok: true; answer: string } | { ok: false; error: string };
       setChat((c) => [...c, { role: 'assistant', content: body.ok ? body.answer : body.error }]);
     } catch { setChat((c) => [...c, { role: 'assistant', content: 'The agent could not be reached. Try again.' }]); }
     finally { setAsking(false); }
   };
   const allChecks = [...(evaluation?.checks ?? []), ...(settlement?.checks ?? [])];
+  // Clicking an audit entry walks the bell to its step and points the chat at that entry.
+  const openEntry = (e: AuditEvent) => {
+    if (auditRow === e.id) { setAuditRow(null); return; }
+    setAuditRow(e.id);
+    setAbout({ id: e.id, label: AUDIT_LABEL[e.action] ?? e.action });
+    const to = AUDIT_STEP[e.action];
+    if (to !== undefined && to <= step && !run) { setViewing(to === step ? null : to); setPicked(null); setRound(null); }
+  };
+  // Under the card: what is happening now, in four short lines.
+  const now = standing(view, receipt, settlement);
+  const waitingOn = run ? 'The agent' : !now.who ? 'No one' : now.who === role ? 'You' : now.who === 'rep' ? nameOf(plan.repId) : 'Compliance';
+  const TONE = { '': '', ok: 'text-status-ok', near: 'font-strong text-status-near', over: 'font-strong text-status-over' } as const;
+  const summary: [string, string, string][] = [
+    ['Step', `${STEPS[run?.step ?? step]} · ${(run?.step ?? step) + 1} of ${STEPS.length}`, ''],
+    ['Now', run ? `Checking ${run.label.toLowerCase()}` : now.say, run ? 'font-strong' : TONE[now.tone]],
+    ['Waiting on', waitingOn, waitingOn === 'You' ? 'font-strong' : ''],
+    ['Card', cardState(view, settlement).say, ''],
+  ];
 
   const prev = shown > 0 ? shown - 1 : null;
   const next = shown < step ? shown + 1 : null;
   const arrow = (dir: 'l' | 'r', to: number | null) => (
-    <button disabled={to === null} onClick={() => { if (to !== null) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} title={to !== null ? STEPS[to] : undefined} className={`group absolute top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 ${dir === 'l' ? 'left-3' : 'right-3'} ${to === null ? 'cursor-default text-border' : 'cursor-pointer text-ink-primary'}`}>
+    <button disabled={to === null} onClick={() => { if (to !== null) { setViewing(to === step ? null : to); setPicked(null); setRound(null); } }} title={to !== null ? STEPS[to] : undefined} className={`group absolute top-[38%] z-20 flex -translate-y-1/2 flex-col items-center gap-1 ${dir === 'l' ? 'left-3' : 'right-3'} ${to === null ? 'cursor-default text-border' : 'cursor-pointer text-ink-primary'}`}>
       <svg viewBox="0 0 20 44" className="h-14 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d={dir === 'l' ? 'M17 2 3 22l14 20' : 'M3 2l14 20L3 42'} /></svg>
       {to !== null && <span className="hidden text-small font-strong group-hover:block">{STEPS[to]}</span>}
       <span className="sr-only">{dir === 'l' ? 'Previous step' : 'Next step'}</span>
@@ -517,7 +538,7 @@ export function DinnerMap({ planId }: { planId: string }) {
   return (
     <div className="flex h-dvh flex-col">
       <div className="px-5 pt-3"><AppBar role={role} onRole={switchRole} /></div>
-      <div className="relative flex min-h-0 flex-1 flex-col pt-2.5">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-2.5">
         <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex items-baseline gap-3 px-6"><b className="text-amount tracking-tight">{plan.title.replace(/^Speaker dinner: /, '')}</b><span className="text-small text-ink-muted">{dayOf(plan)} · {plan.venue.split(',')[0]} · {usd(limit)} limit</span><button onClick={reset} className="ml-auto cursor-pointer text-small text-ink-muted underline">Start this demo over</button></div>
           <ol className="flex px-[8%] pt-5 pb-1.5">
@@ -581,8 +602,6 @@ export function DinnerMap({ planId }: { planId: string }) {
             {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
             {size.w > 0 && Detail()}
           </div>
-          {/* The dinner's card, beside the map so it never covers a station. */}
-          <aside className="hidden shrink-0 flex-col items-center justify-start pt-6 pr-6 pl-2 lg:flex"><RampCard view={view} settlement={settlement} audit={audit} limitCents={limit} /></aside>
           </div>
           {run && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-ink-secondary"><b>Checking {run.label.toLowerCase()}</b> · You can leave this page, and it stops when it needs you.</div>}
           {!run && canDecide && mine && !decisionOpen && !zoomed && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-ink-secondary">A decision is waiting. Click the bell to reopen it.</div>}
@@ -597,28 +616,36 @@ export function DinnerMap({ planId }: { planId: string }) {
           {docModel && <DocCard model={docModel} onDoc={openDoc} onBack={() => setDoc(null)} onClose={() => setDoc(null)} />}
         </section>
 
-        <button onClick={() => { setAuditOpen(true); void loadAudit(); }} className="absolute right-5 bottom-3 z-20 flex cursor-pointer gap-3 border border-border bg-bg-surface px-3 py-2 font-strong"><span>Audit log · {audit.length}</span><span>◂</span></button>
-        {auditOpen && <aside className="absolute inset-y-0 right-0 z-40 flex w-105 max-w-full flex-col border-l border-ink-primary bg-bg-canvas">
-          <div className="flex items-baseline justify-between border-b border-ink-primary px-5 py-3"><h2 className="text-heading font-bold tracking-tight">Audit log<small className="block text-small font-regular tracking-normal text-ink-muted">{audit.length} actions, oldest first. Ask it anything below.</small></h2><button aria-label="Close audit log" onClick={() => setAuditOpen(false)} className="cursor-pointer text-heading leading-none">×</button></div>
+        {/* Bottom right: the dinner's card, what is happening now, and the audit log pill. */}
+        <div className="absolute right-5 bottom-3 z-20 flex w-72 flex-col items-stretch gap-2.5">
+          {!zoomed && (
+            <div className="hidden flex-col items-end gap-2.5 lg:flex">
+              <RampCard view={view} settlement={settlement} audit={audit} limitCents={limit} />
+              <dl className="self-stretch border border-border bg-bg-surface px-3 py-2 text-small">
+                {summary.map(([k, v, tone]) => <div key={k} className="flex justify-between gap-3 py-0.5"><dt className="shrink-0 text-ink-muted">{k}</dt><dd className={`text-right ${tone}`}>{v}</dd></div>)}
+              </dl>
+            </div>
+          )}
+          <button onClick={() => { setAuditOpen(true); void loadAudit(); }} aria-expanded={auditOpen} className="flex h-13 cursor-pointer items-center justify-between rounded-pill border border-border bg-bg-surface px-6 font-strong hover:border-ink-primary"><span>Audit log · {audit.length}</span><span aria-hidden="true">◂</span></button>
+        </div>
+        {/* The audit log slides in from the right as a floating panel, and back out when closed. */}
+        <aside inert={!auditOpen} aria-hidden={!auditOpen} aria-label="Audit log" className={`absolute inset-y-0 right-0 z-40 flex w-105 max-w-full flex-col overflow-hidden rounded-l-[var(--space-6)] border-y border-l border-border bg-bg-surface transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none ${auditOpen ? '' : 'pointer-events-none translate-x-full'}`}>
+          <div className="flex items-baseline justify-between border-b border-ink-primary px-5 py-3"><h2 className="text-heading font-bold tracking-tight">Audit log<small className="block text-small font-regular tracking-normal text-ink-muted">{audit.length} actions, oldest first. Click one to go there and ask about it.</small></h2><button aria-label="Close audit log" onClick={() => setAuditOpen(false)} className="cursor-pointer text-heading leading-none">×</button></div>
           <div className="min-h-0 flex-1 overflow-auto px-5 pb-3">
             {audit.length === 0 && <p className="py-2 text-ink-muted">Actions on this dinner appear here.</p>}
             {audit.map((e) => {
-              const open = auditRow === e.id, target = AUDIT_STEP[e.action], check = allChecks.find((c) => c.ruleId === e.ruleId);
+              const open = auditRow === e.id, check = allChecks.find((c) => c.ruleId === e.ruleId);
               return (
                 <div key={e.id}>
-                  <button onClick={() => setAuditRow(open ? null : e.id)} aria-expanded={open} className={`block w-full cursor-pointer border-b border-border px-1.5 py-2 text-left ${open ? 'bg-accent-tint' : 'hover:bg-bg-surface'}`}>
+                  <button onClick={() => openEntry(e)} aria-expanded={open} className={`block w-full cursor-pointer border-b border-border px-1.5 py-2 text-left ${open ? 'bg-accent-tint' : 'hover:bg-bg-canvas'}`}>
                     <span className="flex justify-between text-small text-ink-muted"><b className="font-strong text-ink-primary">{nameOf(e.actorId)}</b><span className="font-mono text-micro">{new Date(e.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span></span>
                     <span className="mt-0.5 block">{AUDIT_LABEL[e.action] ?? e.action}</span>
                     {e.detail && e.action !== 'plan.updated' && <span className="mt-0.5 block text-small text-ink-secondary">{e.detail.replace(/(\d+) cents/g, (_, c: string) => usd(Number(c)))}</span>}
                   </button>
                   {open && (
-                    <div className="border-b border-border bg-bg-surface px-1.5 py-2 text-small">
+                    <div className="border-b border-border bg-bg-canvas px-1.5 py-2 text-small">
                       {([['Date', new Date(e.at).toLocaleString('en-US')], ['Input hash', e.inputHash], ['Rule', e.ruleId ?? 'None']] as const).map(([k, v]) => <div key={k} className="flex justify-between gap-3 py-0.5"><span className="text-ink-muted">{k}</span><span className="font-mono text-micro">{v}</span></div>)}
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {target !== undefined && target <= step && <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => { setViewing(target === step ? null : target); setPicked(null); setAuditOpen(false); }}>Show on the map</button>}
-                        {check && <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => openDoc(sourceOf(check))}>See the rule</button>}
-                        <button className="cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => setQuestion(`About "${AUDIT_LABEL[e.action] ?? e.action}": `)}>Ask about this</button>
-                      </div>
+                      {check && <button className="mt-1.5 cursor-pointer border border-border px-1.5 py-0.5 hover:border-ink-primary" onClick={() => openDoc(sourceOf(check))}>See the rule</button>}
                     </div>
                   )}
                 </div>
@@ -626,12 +653,19 @@ export function DinnerMap({ planId }: { planId: string }) {
             })}
             {chat.map((m, i) => <div key={i} className={`mt-2.5 ${m.role === 'user' ? 'bg-accent-tint px-2.5 py-1.5' : 'text-ink-secondary'}`}>{m.content}</div>)}
             {asking && <div className="mt-2.5 text-ink-muted">Reading the record…</div>}
+            <div ref={chatEnd} />
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="flex gap-1.5 border-t border-border px-5 py-3">
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1000} aria-label="Ask the audit log" placeholder="Ask the audit log why something happened" className="min-w-0 flex-1 border border-border bg-bg-surface px-2.5 py-2" />
+          {about && (
+            <div className="border-t border-border px-5 pt-2.5">
+              <div className="flex items-baseline justify-between gap-2 text-small"><span className="text-ink-muted">About: <b className="font-strong text-ink-primary">{about.label}</b></span><button aria-label="Stop asking about this entry" onClick={() => setAbout(null)} className="cursor-pointer text-ink-muted hover:text-ink-primary">×</button></div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">{['What happened here?', 'Why did it happen?', 'What are my options?'].map((q) => <button key={q} disabled={asking} onClick={() => void ask(q)} className="cursor-pointer rounded-pill border border-border px-2.5 py-1 text-small hover:border-ink-primary disabled:cursor-default disabled:opacity-50">{q}</button>)}</div>
+            </div>
+          )}
+          <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className={`flex gap-1.5 px-5 py-3 ${about ? '' : 'border-t border-border'}`}>
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1000} aria-label="Ask the audit log" placeholder={about ? `Ask about "${about.label}"` : 'Ask the audit log why something happened'} className="min-w-0 flex-1 border border-border bg-bg-canvas px-2.5 py-2" />
             <button disabled={asking || !question.trim()} className="cursor-pointer border border-ink-primary px-3 font-strong disabled:cursor-default disabled:opacity-50">Ask</button>
           </form>
-        </aside>}
+        </aside>
       </div>
     </div>
   );
