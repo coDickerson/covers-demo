@@ -11,6 +11,52 @@ export const LIFE = {
   bulbs: [[366, 223], [370, 223], [376, 224], [383, 225], [394, 226], [404, 226], [413, 225], [417, 226], [335, 228]] as [number, number][],
 };
 
+/**
+ * Life inside the buildings, cut from the town art itself so it stays in the same style: each is a small rectangle of
+ * the picture ([x, y, w, h]) that moves a pixel now and then. bob: a diner or guard shifting in their seat; sway: a
+ * chef or waiter working; type: someone at a keyboard; screen: a monitor's light changing. every/delay are in slow
+ * motion units, so no two move together.
+ */
+export const LIVES: { kind: 'bob' | 'sway' | 'type' | 'screen'; rect: [number, number, number, number]; every: number; delay: number }[] = [
+  // The restaurant: chefs at the pass, diners at their tables, the waiter on the terrace.
+  { kind: 'sway', rect: [217, 230, 10, 14], every: 5, delay: 0 },
+  { kind: 'sway', rect: [238, 230, 10, 14], every: 6.5, delay: 2 },
+  { kind: 'sway', rect: [262, 233, 10, 13], every: 5.5, delay: 4 },
+  { kind: 'bob', rect: [132, 239, 7, 8], every: 7, delay: 1 },
+  { kind: 'bob', rect: [168, 245, 7, 8], every: 6, delay: 3.5 },
+  { kind: 'bob', rect: [203, 250, 6, 7], every: 8, delay: 0.5 },
+  { kind: 'bob', rect: [209, 249, 6, 7], every: 6.5, delay: 5 },
+  { kind: 'bob', rect: [230, 251, 6, 7], every: 7.5, delay: 2.5 },
+  { kind: 'bob', rect: [261, 253, 6, 7], every: 6, delay: 6 },
+  { kind: 'bob', rect: [268, 252, 6, 7], every: 9, delay: 1.5 },
+  { kind: 'sway', rect: [323, 246, 10, 20], every: 8, delay: 3 },
+  { kind: 'bob', rect: [343, 258, 6, 7], every: 6.5, delay: 4.5 },
+  { kind: 'bob', rect: [358, 251, 6, 7], every: 8, delay: 0 },
+  { kind: 'bob', rect: [367, 248, 6, 7], every: 7, delay: 5.5 },
+  { kind: 'bob', rect: [374, 241, 6, 7], every: 9, delay: 2 },
+  { kind: 'bob', rect: [383, 241, 6, 7], every: 6, delay: 7 },
+  { kind: 'bob', rect: [392, 244, 6, 7], every: 7.5, delay: 3 },
+  { kind: 'bob', rect: [403, 248, 6, 7], every: 8.5, delay: 1 },
+  { kind: 'bob', rect: [377, 259, 6, 7], every: 6.5, delay: 6.5 },
+  { kind: 'bob', rect: [385, 260, 6, 7], every: 7, delay: 2.5 },
+  { kind: 'bob', rect: [395, 263, 6, 7], every: 8, delay: 4 },
+  { kind: 'bob', rect: [405, 266, 6, 7], every: 6, delay: 0.5 },
+  // The accounting office: two people typing, their monitors' light changing.
+  { kind: 'type', rect: [174, 386, 12, 14], every: 1.2, delay: 0 },
+  { kind: 'type', rect: [230, 391, 12, 13], every: 1.5, delay: 0.7 },
+  { kind: 'screen', rect: [190, 390, 12, 9], every: 4, delay: 1 },
+  { kind: 'screen', rect: [213, 393, 13, 9], every: 5, delay: 3 },
+  // The compliance reviewer, the bank teller, the courier, the guards and the rep at HQ.
+  { kind: 'type', rect: [291, 104, 13, 12], every: 1.4, delay: 0.3 },
+  { kind: 'bob', rect: [577, 275, 11, 10], every: 6, delay: 2 },
+  { kind: 'bob', rect: [381, 420, 14, 16], every: 3, delay: 0 },
+  { kind: 'bob', rect: [519, 114, 12, 12], every: 9, delay: 4 },
+  { kind: 'bob', rect: [615, 424, 10, 11], every: 10, delay: 6 },
+  { kind: 'bob', rect: [120, 101, 12, 12], every: 8, delay: 1 },
+];
+/** The phone at the kiosk: its camera flashes now and then as the receipt is photographed. */
+export const FLASH = { x: 78, y: 383 } as const;
+
 /** The checkpoint's boom gate: pivot on the yellow post, arm length, and its closed and lifted angles (degrees). */
 export const GATE = { x: 439, y: 130.5, length: 63, closed: 7.3, open: -80, light: { x: 433, y: 125 } } as const;
 /** The bank's vault wheel (public/town/wheel.png) and the window bar drawn in front of it. */
@@ -30,11 +76,13 @@ export const ROUTES: [number, number, 0 | 1][][] = [
   // Top street, left to right: HQ, then the compliance office and the checkpoint.
   [[60, 127, 0], [95, 131, 1], [130, 137, 1], [165, 141, 1], [200, 145, 1], [228, 147, 0]],
   [[260, 151, 1], [295, 155, 1], [330, 159, 1], [370, 164, 1], [455, 168, 1], [530, 177, 1], [612, 183, 0]],
-  // Round the corner and back along the middle street, right to left: the bank, then the restaurant.
-  [[640, 193, 0], [660, 212, 0], [660, 298, 0], [652, 318, 0], [630, 332, 0], [622, 333, 1], [588, 330, 1], [555, 325, 1], [505, 320, 1]],
+  // Round the outside of the right-hand loop, over the zebra crossing, and back along the middle street: the bank, then the restaurant.
+  [[640, 188, 0], [668, 192, 0], [695, 197, 0], [718, 205, 0], [737, 218, 0], [750, 238, 0], [753, 262, 0], [748, 286, 0], [737, 305, 0], [720, 320, 0],
+    [703, 331, 0], [678, 332, 0], [652, 331, 0], [622, 333, 1], [588, 330, 1], [555, 325, 1], [505, 320, 1]],
   [[415, 313, 1], [350, 305, 1], [280, 298, 1], [200, 288, 1], [150, 284, 0]],
-  // Across at the zebra crossing and down to the bottom street: the phone kiosk.
-  [[95, 281, 0], [74, 284, 0], [62, 298, 0], [45, 316, 0], [40, 350, 0], [40, 394, 0], [52, 410, 0], [70, 417, 1], [92, 419, 1], [114, 421, 1], [136, 423, 1]],
+  // Round the outside of the left-hand loop and over its zebra crossing to the bottom street: the phone kiosk.
+  [[95, 281, 0], [60, 281, 0], [35, 288, 0], [20, 300, 0], [13, 320, 0], [9, 350, 0], [10, 380, 0], [12, 394, 0], [28, 397, 0], [42, 402, 0], [55, 410, 0],
+    [70, 417, 1], [92, 419, 1], [114, 421, 1], [136, 423, 1]],
   // Along the bottom street, left to right: the accounting office, the parcel depot, the federal building.
   [[165, 427, 1], [190, 431, 1], [215, 434, 1], [240, 436, 1], [262, 439, 1], [286, 442, 1]],
   [[325, 446, 1], [358, 451, 1], [374, 459, 0], [395, 464, 0], [462, 468, 0], [486, 461, 0], [560, 467, 1], [612, 473, 1], [690, 481, 0]],

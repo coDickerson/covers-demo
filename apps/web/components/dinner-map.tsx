@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BELL_ART, camera as frameOf, GATE, LIFE, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
+import { BELL_ART, camera as frameOf, FLASH, GATE, LIFE, LIVES, PLACES, TOWN, TREE_LAYERS, WHEEL, townPath, type Camera } from '../lib/town';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
@@ -541,6 +541,9 @@ export function DinnerMap({ planId }: { planId: string }) {
                 <div ref={artLayer} className={`pointer-events-none absolute top-0 left-0 ease-standard motion-reduce:transition-none ${dragging || look ? '' : 'transition-transform duration-[calc(var(--motion-duration-slow)*2)]'}`} style={{ width: TOWN.width, height: TOWN.height, transformOrigin: '0 0', transform: `translate(${geometry.camera.x}px, ${geometry.camera.y}px) scale(${geometry.camera.scale})` }}>
                   <img src={TOWN.src} alt={`The town: ${PLACES.map((p) => p.name).join(', ')}`} width={TOWN.width} height={TOWN.height} draggable={false} className="block [image-rendering:pixelated]" />
                   {/* The town is alive: trees rustle a pixel and the terrace's string lights twinkle. */}
+                  {/* Life inside: pieces of the picture itself shift a pixel now and then (diners, chefs, typists, screens). */}
+                  {LIVES.map((l, n) => <i key={`life-${n}`} className={`covers-${l.kind} absolute`} style={{ left: l.rect[0], top: l.rect[1], width: l.rect[2], height: l.rect[3], backgroundImage: `url(${TOWN.src})`, backgroundPosition: `${-l.rect[0]}px ${-l.rect[1]}px`, backgroundSize: `${TOWN.width}px ${TOWN.height}px`, imageRendering: 'pixelated', animationDuration: `calc(var(--motion-duration-slow) * ${l.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${-l.delay * 2})` }} />)}
+                  <i className="covers-flash absolute bg-bg-surface" style={{ left: FLASH.x, top: FLASH.y, width: 2, height: 2 }} />
                   {TREE_LAYERS.map((t) => <img key={t.src} src={t.src} alt="" width={TOWN.width} height={TOWN.height} draggable={false} className="covers-rustle absolute inset-0 [image-rendering:pixelated]" style={{ animationDuration: `calc(var(--motion-duration-slow) * ${t.every * 2})`, animationDelay: `calc(var(--motion-duration-slow) * ${t.offset * 2})` }} />)}
                   {LIFE.bulbs.map(([x, y], n) => <i key={n} className="covers-twinkle absolute bg-accent" style={{ left: x, top: y, width: 1, height: 1, animationDelay: `calc(var(--motion-stagger) * ${(n * 7) % 19})` }} />)}
                   {/* The checkpoint's boom gate lifts once the red-flag check is clear, and stays down while something is flagged. */}

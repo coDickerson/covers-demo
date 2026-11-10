@@ -33,6 +33,12 @@
 @keyframes covers-rustle { 0%, 86%, 100% { transform: translateX(0); } 89% { transform: translateX(1px); } 92% { transform: translateX(0); } 95% { transform: translateX(-1px); } }
 @keyframes covers-vault { 0% { transform: rotate(0deg); filter: none; } 15% { filter: drop-shadow(0 0 3px var(--color-accent)); } 85% { transform: rotate(360deg); filter: drop-shadow(0 0 3px var(--color-accent)); } 100% { transform: rotate(360deg); filter: none; } }
 @keyframes covers-glow { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.6; } }
+/* Life cut from the town art: a pixel of movement now and then, never all together (timing set per element). */
+@keyframes covers-bob { 0%, 68%, 100% { transform: translateY(0); } 72%, 84% { transform: translateY(-1px); } }
+@keyframes covers-sway { 0%, 40%, 100% { transform: translateX(0); } 45%, 70% { transform: translateX(1px); } 75%, 85% { transform: translateX(-1px); } }
+@keyframes covers-type { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+@keyframes covers-screen { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+@keyframes covers-flash { 0%, 90%, 100% { opacity: 0; } 92%, 94% { opacity: 1; } }
 @keyframes covers-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 @keyframes covers-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 @keyframes covers-steam { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(calc(var(--space-3) * -1)); } }
@@ -41,6 +47,11 @@
 .covers-vault { animation: covers-vault calc(var(--motion-duration-slow) * 6) steps(24, end) 1 both; }
 .covers-glow { animation: covers-glow calc(var(--motion-duration-slow) * 9) steps(4, end) infinite; }
 .covers-blink-fast { animation: covers-blink calc(var(--motion-duration-slow) / 2) steps(1, end) infinite; }
+.covers-bob { animation-name: covers-bob; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-sway { animation-name: covers-sway; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-type { animation-name: covers-type; animation-timing-function: steps(1, end); animation-iteration-count: infinite; }
+.covers-screen { animation-name: covers-screen; animation-timing-function: steps(3, end); animation-iteration-count: infinite; }
+.covers-flash { opacity: 0; animation: covers-flash calc(var(--motion-duration-slow) * 14) steps(1, end) infinite; }
 .covers-blink { animation: covers-blink calc(var(--motion-duration-slow) * 2) steps(1, end) infinite; }
 .covers-twinkle { animation: covers-twinkle calc(var(--motion-duration-slow) * 3) steps(2, end) infinite; }
 .covers-steam { animation: covers-steam calc(var(--motion-duration-slow) * 6) steps(6, end) infinite; }
@@ -60,6 +71,6 @@
 .covers-waiter { animation: covers-waiter-walk calc(var(--motion-duration-slow) * 20) steps(80, end) infinite, covers-waiter-legs calc(var(--motion-duration-slow)) steps(2, end) infinite; }
 @media (prefers-reduced-motion: reduce) {
   .covers-waiter,
-  .covers-rustle, .covers-blink, .covers-twinkle, .covers-steam, .covers-vault, .covers-glow, .covers-blink-fast, .covers-stroll { animation: none; }
+  .covers-rustle, .covers-blink, .covers-twinkle, .covers-steam, .covers-vault, .covers-glow, .covers-blink-fast, .covers-stroll, .covers-bob, .covers-sway, .covers-type, .covers-screen, .covers-flash { animation: none; }
   .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
 }
