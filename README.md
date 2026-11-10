@@ -9,7 +9,7 @@ Before a speaker dinner, Covers checks the plan against the rules and cites the 
 
 **Built on:** Next.js 16 · React 19 · TypeScript · Zod 4 · Claude Opus 5.5 and Sonnet 5.5 (multi-agent, tool use) · Ramp API · CMS Open Payments · NPPES · Apify · Postgres · Slack. [Full stack ↓](#tech-stack)
 
-![Dr. Patel's dinner as a bar crawl: the cable car at The Buena Vista, the Propose step's four checks done in the panel, and the next action, Start checks, waiting](docs/images/crawl.jpg)
+![Dr. Patel's dinner as a bar crawl: the cable car at The Buena Vista, the Propose step's four checks done in the panel, and the next action, Start checks, waiting](docs/images/crawl-2026-11.jpg)
 
 The demo follows one dinner, Dr. Patel on catheter outcomes, as a **San Francisco bar crawl**. Each of the seven steps is a real bar, a cable car on little legs walks from one to the next, and each bar's checks tick off in a panel beside it. When a check is blocked or needs a decision, the action opens right under it. See [The crawl](#the-crawl).
 
