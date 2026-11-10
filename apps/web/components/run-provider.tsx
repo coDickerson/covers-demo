@@ -12,7 +12,7 @@ type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[])
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-export const WALK_MS = tokens['motion/duration/slow'] * 2.5; // the bell's walking pace between stations
+export const WALK_MS = tokens['motion/duration/slow'] * 3.5; // the bell's walking pace between stations (the town map walks it along the sidewalks)
 const DWELL = tokens['motion/duration/slow'];
 const THINK = tokens['motion/duration/fast'];
 

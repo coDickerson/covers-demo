@@ -13,7 +13,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { BELL_ART, LIFE, PLACES, TOWN, TREE_LAYERS, townPath } from '../lib/town';
+import { BELL_ART, LIFE, PEOPLE, PLACES, TOWN, TREE_LAYERS, townPath } from '../lib/town';
 import { DocCard } from './doc-card';
 import { RampCard } from './ramp-card';
 import { Stamp, type StampTone } from './stamp';
@@ -78,12 +78,12 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
     const from = position.current!;
     facing = to < from ? -1 : 1;
     if (Math.abs(to - from) < 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { place(to); setFrame(0); return; }
-    const duration = paced ? WALK_MS - tokens['motion/duration/fast'] / 2 : Math.min(1500, Math.max(420, Math.abs(to - from) * 3)), start = performance.now();
+    const duration = paced ? WALK_MS - tokens['motion/duration/fast'] / 2 : art ? Math.min(4000, Math.max(600, Math.abs(to - from) * 18)) : Math.min(1500, Math.max(420, Math.abs(to - from) * 3)), start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration), eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2, length = from + (to - from) * eased;
       place(length);
-      if (t < 1) { setFrame((Math.floor(Math.abs(length - from) / 16) % (BELL_FRAMES - 1)) + 1); raf = requestAnimationFrame(tick); return; }
+      if (t < 1) { setFrame((Math.floor(Math.abs(length - from) / (art ? 4 : 16)) % (BELL_FRAMES - 1)) + 1); raf = requestAnimationFrame(tick); return; }
       setFrame(0);
       sprite.animate([{ translate: '0 0' }, { translate: art ? '0 -4px' : '0 -12px' }, { translate: '0 0' }], { duration: tokens['motion/duration/slow'] / 1.6, easing: EASE_STANDARD });
     };
@@ -209,7 +209,19 @@ export function DinnerMap({ planId }: { planId: string }) {
   const step = core ? stepOf(core.view, core.receipt, core.settlement, role) : 0;
   const shown = run?.step ?? viewing ?? step;
   const stations = useMemo(() => (state ? stationsFor(shown, state, shown === 1 && round !== null ? round : undefined) : []), [state, shown, round]);
-  const geometry = useMemo(() => townPath(shown, stations.length || 1, size.w, size.h), [shown, stations.length, size.w, size.h]);
+  const [overview, setOverview] = useState(false);
+  const geometry = useMemo(() => townPath(shown, stations.length || 1, size.w, size.h, overview), [shown, stations.length, size.w, size.h, overview]);
+  // Plaques never overlap: each tries its spot, then above, then to either side, until it is clear of the ones placed so far.
+  const plaques = useMemo(() => {
+    const W = 136, H = 58, gap = 6, placed: { x: number; y: number }[] = [];
+    const tries = [[0, 0], [0, -(H + gap)], [W + gap, 0], [-(W + gap), 0], [0, -2 * (H + gap)], [W + gap, -(H + gap)], [-(W + gap), -(H + gap)]];
+    return geometry.points.map((p) => {
+      const base = { x: p.x, y: p.y - geometry.camera.scale * 30 };
+      const spot = tries.map(([dx, dy]) => ({ x: base.x + dx!, y: base.y + dy! })).find((c) => placed.every((q) => Math.abs(q.x - c.x) >= W + gap || Math.abs(q.y - c.y) >= H + gap)) ?? base;
+      placed.push(spot);
+      return spot;
+    });
+  }, [geometry]);
 
   if (!core || !state) return <main className="grid h-dvh place-items-center text-ink-muted">Loading…</main>;
   const { view, receipt, settlement, rounds } = core;
@@ -447,6 +459,8 @@ export function DinnerMap({ planId }: { planId: string }) {
                   <i className="covers-blink absolute bg-status-over" style={{ left: LIFE.beacon.x, top: LIFE.beacon.y, width: LIFE.beacon.size, height: LIFE.beacon.size }} />
                   {LIFE.bulbs.map(([x, y], n) => <i key={n} className="covers-twinkle absolute bg-accent" style={{ left: x, top: y, width: 1, height: 1, animationDelay: `calc(var(--motion-stagger) * ${(n * 7) % 19})` }} />)}
                   {LIFE.vents.flatMap((v, n) => [0, 1, 2].map((k) => <i key={`${n}-${k}`} className="covers-steam absolute bg-bg-surface" style={{ left: v.x + k, top: v.y, width: 2, height: 2, animationDelay: `calc(var(--motion-duration-slow) * ${k * 2 + n})` }} />))}
+                  {PEOPLE.diners.map(([x, y, look], n) => <img key={`diner-${n}`} src={`/town/diner-${look}.png`} alt="" width={5} height={6} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: x, top: y - 6 }} />)}
+                  <i className="covers-waiter absolute" style={{ left: PEOPLE.waiter.x, top: PEOPLE.waiter.y - PEOPLE.waiter.height, width: PEOPLE.waiter.width, height: PEOPLE.waiter.height, backgroundImage: 'url(/town/waiter.png)', backgroundSize: `${PEOPLE.waiter.width * 2}px ${PEOPLE.waiter.height}px`, imageRendering: 'pixelated' }} />
                   <svg className="pointer-events-none absolute inset-0 overflow-visible" width={TOWN.width} height={TOWN.height} aria-hidden="true">
                     <path ref={pathRef} d={geometry.artD} fill="none" stroke="none" />
                     <path key={`trail-${shown}`} ref={trailRef} d={geometry.artD} fill="none" stroke="none" />
@@ -457,10 +471,10 @@ export function DinnerMap({ planId }: { planId: string }) {
                   const p = geometry.points[i]!, seen = visible(i), mark = seen ? s.mark : 'waiting';
                   const here = !!run && run.step === shown && run.at === i && run.seen === i && run.line > 0 && !seen;
                   const lines = thinkingLines(s), filled = seen ? lines.length : here ? run!.line : 0;
-                  const lift = geometry.camera.scale * 30; // plaque floats above the bell's head
+                  const at = plaques[i] ?? p;
                   return (
                     <button key={s.name} aria-label={`Open ${s.name}`} disabled={!(seen || here) || zoomed} onClick={() => pickStation(i)}
-                      style={{ left: p.x, top: p.y - lift }}
+                      style={{ left: at.x, top: at.y }}
                       className={`absolute z-5 flex -translate-x-1/2 -translate-y-full cursor-pointer flex-col gap-1 border bg-bg-surface px-2 py-1.5 text-left transition-[left,top,opacity,border-color] duration-[calc(var(--motion-duration-slow)*2)] ease-standard hover:border-ink-primary disabled:cursor-default ${here || (run?.at === i && run.step === shown) ? 'border-ink-primary' : CARD_EDGE[mark]} ${zoomed ? 'pointer-events-none opacity-0' : ''}`}>
                       <span className="flex items-center gap-1.5 text-small font-strong whitespace-nowrap"><i className={`size-2.5 shrink-0 border ${MARK_BOX[mark]}`} />{s.name}</span>
                       {lines.length > 2 && <span className="flex gap-0.5">{lines.map((_, n) => <i key={n} className={`size-2 transition-colors duration-(--motion-duration-fast) ease-standard ${n < filled ? (s.checks?.[n]?.outcome === 'block' ? 'bg-status-over' : s.checks?.[n]?.outcome === 'flag' ? 'bg-status-near' : 'bg-status-ok') : 'bg-border'}`} />)}</span>}
@@ -471,6 +485,7 @@ export function DinnerMap({ planId }: { planId: string }) {
               </>
             )}
             {stamp && <Stamp key={stamp.text} text={stamp.text} tone={stamp.tone} />}
+            {!zoomed && <button onClick={() => setOverview((o) => !o)} className="absolute top-3 left-6 z-10 cursor-pointer border border-ink-primary bg-bg-surface px-2.5 py-1 text-small font-strong hover:bg-accent-tint">{overview ? 'Follow the dinner' : 'See the whole town'}</button>}
             {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
             {size.w > 0 && Detail()}
           </div>

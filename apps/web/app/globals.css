@@ -40,7 +40,15 @@
 .covers-twinkle { animation: covers-twinkle calc(var(--motion-duration-slow) * 3) steps(2, end) infinite; }
 .covers-steam { animation: covers-steam calc(var(--motion-duration-slow) * 6) steps(6, end) infinite; }
 .covers-print { animation: covers-print calc(var(--motion-duration-slow) * 4) steps(4, end) forwards; }
+/* The waiter walks the terrace and back (a 2:1 isometric line), stepping a pixel at a time, legs in two frames. */
+@keyframes covers-waiter-walk {
+  0% { transform: translate(0, 0) scaleX(1); } 45% { transform: translate(44px, -22px) scaleX(1); }
+  50% { transform: translate(44px, -22px) scaleX(-1); } 95% { transform: translate(0, 0) scaleX(-1); } 100% { transform: translate(0, 0) scaleX(1); }
+}
+@keyframes covers-waiter-legs { from { background-position: 0 0; } to { background-position: -14px 0; } }
+.covers-waiter { animation: covers-waiter-walk calc(var(--motion-duration-slow) * 20) steps(80, end) infinite, covers-waiter-legs calc(var(--motion-duration-slow)) steps(2, end) infinite; }
 @media (prefers-reduced-motion: reduce) {
+  .covers-waiter,
   .covers-rustle, .covers-blink, .covers-twinkle, .covers-steam { animation: none; }
   .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
 }
