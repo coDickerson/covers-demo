@@ -166,15 +166,23 @@ export function CloseOutPhone({ planId }: { planId: string }) {
 function Lines({ lines }: { lines: ReceiptLine[] }) {
   return (
     <ul className="mt-3">
-      {lines.map((l) => (
-        <li key={l.id} className="flex items-baseline justify-between gap-3 border-b border-border py-2">
-          <span className="min-w-0">
-            <span className="block truncate">{l.text}</span>
-            <span className={`text-micro font-strong ${l.category === 'alcohol' ? 'text-status-near' : 'text-ink-muted'}`}>{l.category.toUpperCase()}{l.confidence < LOW_CONFIDENCE && <span className="text-status-near"> · CHECK THIS LINE</span>}</span>
-          </span>
-          <span className="font-mono tabular">{usd(l.amountCents)}</span>
-        </li>
-      ))}
+      {lines.map((l, n) => {
+        // Lines stream in one by one (the storyboard's "lines stream in with confidence dots; the wine tags itself").
+        const delay = { animationDelay: `calc(var(--motion-stagger) * ${n * 4})` };
+        const sure = l.confidence >= LOW_CONFIDENCE;
+        return (
+          <li key={l.id} style={delay} className="covers-line flex items-baseline justify-between gap-3 border-b border-border py-2">
+            <span className="flex min-w-0 items-baseline gap-2">
+              <i title={sure ? 'Read confidently' : 'Needs a check'} className={`size-2 shrink-0 ${sure ? 'bg-status-ok' : 'bg-status-near'}`} />
+              <span className="min-w-0">
+                <span className="block truncate">{l.text}</span>
+                <span style={l.category === 'alcohol' ? delay : undefined} className={`text-micro font-strong ${l.category === 'alcohol' ? 'covers-flash px-1 -mx-1 text-status-near' : 'text-ink-muted'}`}>{l.category.toUpperCase()}{!sure && <span className="text-status-near"> · CHECK THIS LINE</span>}</span>
+              </span>
+            </span>
+            <span className="font-mono tabular">{usd(l.amountCents)}</span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

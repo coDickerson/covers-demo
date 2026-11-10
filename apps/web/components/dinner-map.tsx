@@ -14,9 +14,12 @@ import { AUDIT_STEP, cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcou
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
 import { DocCard } from './doc-card';
+import { RampCard } from './ramp-card';
+import { Stamp, type StampTone } from './stamp';
 import { tokens } from '../lib/tokens';
 import { useRuns, WALK_MS, type Stage } from './run-provider';
 
+const STAMP_HOLD = 1800; // how long a CLEARED / SETTLED stamp stays on screen
 const CHARGE_POLL_MS = 5000; // how often an open dinner map checks for the charge and for a phone close-out
 const primary = 'cursor-pointer border border-ink-primary bg-accent px-4 py-2.5 font-strong text-on-accent disabled:cursor-default disabled:opacity-60';
 const secondary = 'cursor-pointer border border-ink-primary px-4 py-2.5 font-strong hover:bg-bg-surface';
@@ -142,6 +145,32 @@ export function DinnerMap({ planId }: { planId: string }) {
     void tick();
     return () => { stopped = true; window.clearInterval(id); };
   }, [watching, planId, load, loadAudit]);
+  // The storyboard's closure moments: stamp the map when the plan clears and when the dinner closes out, whether that
+  // happened here or on the rep's phone. Nothing on first load: only on a change while the page is open.
+  const [stamp, setStamp] = useState<{ text: string; tone: StampTone } | null>(null);
+  const [pendingStamp, setPendingStamp] = useState<{ text: string; tone: StampTone; after: number } | null>(null);
+  const lastStatus = useRef<{ status: string; settled: boolean } | null>(null);
+  const status = core?.view.plan.status, settledNow = !!core?.settlement, toCompliance = !!core?.settlement?.exceptions.length;
+  useEffect(() => {
+    if (!status) return;
+    const was = lastStatus.current;
+    lastStatus.current = { status, settled: settledNow };
+    if (!was) return;
+    // `after`: the stamp lands once the bell has walked past this step (Check = 1, Close out = 4), or right away if it isn't walking.
+    const next = !was.settled && settledNow ? { ...(toCompliance ? { text: 'TO COMPLIANCE', tone: 'near' as const } : { text: 'SETTLED', tone: 'ok' as const }), after: 4 }
+      : was.status !== 'cleared' && status === 'cleared' && !settledNow ? { text: 'CLEARED', tone: 'ok' as const, after: 1 } : null;
+    if (next) setPendingStamp(next);
+  }, [status, settledNow, toCompliance]);
+  // Land the stamp once the bell has finished that step's checks, not while it is still walking them.
+  useEffect(() => {
+    if (!pendingStamp || (run && run.step <= pendingStamp.after)) return;
+    setStamp({ text: pendingStamp.text, tone: pendingStamp.tone }); setPendingStamp(null);
+  }, [pendingStamp, run]);
+  useEffect(() => {
+    if (!stamp) return;
+    const id = window.setTimeout(() => setStamp(null), STAMP_HOLD);
+    return () => window.clearTimeout(id);
+  }, [stamp]);
   useLayoutEffect(() => {
     const el = world.current;
     if (!el) return;
@@ -382,7 +411,8 @@ export function DinnerMap({ planId }: { planId: string }) {
               );
             })}
           </ol>
-          <div ref={world} className="relative min-h-0 flex-1 overflow-hidden">
+          <div className="flex min-h-0 flex-1">
+          <div ref={world} className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
             {size.w > 0 && (
               <div className="absolute inset-0 transition-transform duration-(--motion-duration-slow) ease-standard motion-reduce:transition-none" style={{ transformOrigin: '0 0', transform: zoomPoint ? `translate(${size.w * (zoomLeft ? 0.135 : 0.865) - zoomPoint.x * ZOOM}px, ${size.h * 0.46 - zoomPoint.y * ZOOM}px) scale(${ZOOM})` : 'none' }}>
                 <svg className="absolute inset-0 size-full overflow-visible" aria-hidden="true">
@@ -413,8 +443,12 @@ export function DinnerMap({ planId }: { planId: string }) {
                 <Walker key={`bell-${shown}-${size.w}-${size.h}`} pathRef={pathRef} trailRef={trailRef} target={target} startAtZero={run?.at === -1} paced={!!run} alert={mine && !decisionOpen} onClick={() => setDecisionOpen(true)} />
               </div>
             )}
+            {stamp && <Stamp key={stamp.text} text={stamp.text} tone={stamp.tone} />}
             {!zoomed && arrow('l', prev)}{!zoomed && arrow('r', next)}
             {size.w > 0 && Detail()}
+          </div>
+          {/* The dinner's card, beside the map so it never covers a station. */}
+          <aside className="hidden shrink-0 flex-col items-center justify-start pt-6 pr-6 pl-2 lg:flex"><RampCard view={view} settlement={settlement} audit={audit} limitCents={limit} /></aside>
           </div>
           {run && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-ink-secondary"><b>Checking {run.label.toLowerCase()}</b> · You can leave this page, and it stops when it needs you.</div>}
           {!run && canDecide && mine && !decisionOpen && !zoomed && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-ink-secondary">A decision is waiting. Click the bell to reopen it.</div>}

@@ -12,3 +12,22 @@
   /* Every amount uses tabular numerals. */
   .tabular { font-variant-numeric: tabular-nums; }
 }
+
+/* Closure and card moments (components/stamp.tsx, ramp-card.tsx, close-out.tsx). Timing comes from motion tokens. */
+@keyframes covers-stamp {
+  0% { opacity: 0; transform: rotate(-8deg) scale(2.2); }
+  60% { opacity: 1; transform: rotate(-8deg) scale(0.96); }
+  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+}
+@keyframes covers-card-in { from { transform: scale(0.96); } to { transform: none; } }
+@keyframes covers-slide-up { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+@keyframes covers-line-in { from { opacity: 0; transform: translateY(var(--space-2)); } to { opacity: 1; transform: none; } }
+@keyframes covers-flash { 0%, 100% { background: transparent; } 50% { background: var(--color-accent-tint); } }
+.covers-stamp { transform: rotate(-8deg); animation: covers-stamp var(--motion-duration-slow) var(--ease-standard) both; }
+.covers-card { animation: covers-card-in var(--motion-duration-slow) var(--ease-standard); }
+.covers-charge { animation: covers-slide-up var(--motion-duration-slow) var(--ease-standard) both; }
+.covers-line { animation: covers-line-in var(--motion-duration-base) var(--ease-standard) both; }
+.covers-flash { animation: covers-flash var(--motion-duration-slow) var(--ease-standard) 3 both; }
+@media (prefers-reduced-motion: reduce) {
+  .covers-stamp, .covers-card, .covers-charge, .covers-line, .covers-flash { animation: none; }
+}
