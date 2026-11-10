@@ -103,12 +103,22 @@ export function stationsFor(step: number, d: DinnerState, round?: number): Stati
   const speaker = speakerOf(plan);
   const speakerName = speaker?.hcp.name ?? plan.speakerId;
   switch (step) {
-    case 0: return [
-      done('Speaker', 'Speaker', [[speakerName, ''], ['Topic', plan.topic]], `${speakerName} will speak on ${plan.topic}.`, [{ label: 'Speaker record', doc: 'roster' }]),
-      done('Guests', 'Invited', plan.inviteeNpis.slice(0, 3).map((n) => [nameOf(n), '']).concat(plan.inviteeNpis.length > 3 ? [[`+${plan.inviteeNpis.length - 3} more`, '']] : []) as Station['card'], `${plan.inviteeNpis.map(nameOf).join(', ')}.`, [{ label: 'NPI records', doc: 'npi' }]),
-      done('Venue', 'Where and when', [[venueOf(plan), ''], [dayOf(plan), '']], `${plan.venue}, ${dayOf(plan)}.`),
-      done('Estimate', 'All in', [['Per person', usd(plan.estimatedPerPerson)], ['People', String(headcountOf(plan))]], `${usd(plan.estimatedPerPerson)} per person including tax and tip, for ${headcountOf(plan)} people.`, [{ label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
-    ];
+    case 0: {
+      // The dinner as Covers proposes it from the rep's calendar invite: each station reads one part of the invite.
+      const people = headcountOf(plan);
+      const [speakerS, guestsS, venueS, estimateS] = [
+        done('Speaker', 'Speaker', [[speakerName, ''], ['Topic', plan.topic]], `${speakerName} will speak on ${plan.topic}.`, [{ label: 'Speaker record', doc: 'roster' }]),
+        done('Guests', 'Invited', plan.inviteeNpis.slice(0, 3).map((n) => [nameOf(n), '']).concat(plan.inviteeNpis.length > 3 ? [[`+${plan.inviteeNpis.length - 3} more`, '']] : []) as Station['card'], `${plan.inviteeNpis.map(nameOf).join(', ')}.`, [{ label: 'NPI records', doc: 'npi' }]),
+        done('Venue', 'Where and when', [[venueOf(plan), ''], [dayOf(plan), '']], `${plan.venue}, ${dayOf(plan)}.`),
+        done('Estimate', 'All in', [['Per person', usd(plan.estimatedPerPerson)], ['People', String(people)]], `${usd(plan.estimatedPerPerson)} per person including tax and tip, for ${people} people.`, [{ label: 'Meal limit', doc: 'halden-policy', at: 's2-meals' }]),
+      ];
+      return [
+        { ...speakerS, think: [`Reading ${nameOf(plan.repId)}'s calendar invite`, `Speaker: ${speakerName}`, `Topic: ${plan.topic}`] },
+        { ...guestsS, think: [`${plan.inviteeNpis.length} doctors on the invite`, 'Matching each one to the NPI registry', 'Every guest identified'] },
+        { ...venueS, think: ['Reading where and when', `${venueOf(plan)}, ${dayOf(plan)}`] },
+        { ...estimateS, think: ['Pulling the reservation estimate', `${usd(plan.estimatedPerPerson)} a person, ${people} people`] },
+      ];
+    }
     case 1: {
       const ev = round !== undefined ? d.rounds[round] ?? d.view.evaluation : d.view.evaluation;
       return CHECKERS.map((c) => checkerStation(c.id, c.name, 'Before the dinner', beforeChecks(c.id, ev), c.id === 'P6' ? 'none' : beforeMark(c.id, ev), c.id === 'P6' ? 'Runs after the dinner' : 'Not checked yet'));

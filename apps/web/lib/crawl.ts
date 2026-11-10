@@ -75,12 +75,10 @@ export const LIVES: { kind: 'bob' | 'sway' | 'flicker' | 'warm'; bar: number; re
 ];
 
 /**
- * Two of the city's own, in the bars' style (public/crawl/): a sea lion on a dock crate in the gap after the Buena
- * Vista, and a dragon dance that now and then parades along the Chinatown sidewalk past Li Po, head first, then is gone.
- * `travel` is how far the parade goes (grid pixels, leftward), `every` its cycle in slow-motion units.
+ * One of the city's own, in the bars' style (public/crawl/): a dragon dance that now and then parades along the
+ * Chinatown sidewalk past Li Po, head first, then is gone. `travel` is how far the parade goes (grid pixels, leftward),
+ * `every` its cycle in slow-motion units.
  */
-/** `head`: the piece of the sea lion picture that lifts now and then ([x, y, w, h]); the crate below never moves. */
-export const SEALION = { src: '/crawl/sealion.png', x: 424, width: 47, height: 57, sink: 3, head: [22, 0, 18, 17] as [number, number, number, number] } as const;
 /** The flower stand by Pacific Cocktail Haven, and for the judges a Ramp Happy Hour chalkboard pointing into Trick Dog. */
 export const FLOWERS = { src: '/crawl/flowercart.png', x: 1586, width: 59, height: 60, sink: 2 } as const;
 export const RAMP_BOARD = { src: '/crawl/rampboard.png', x: 1918, width: 50, height: 54, sink: 3 } as const;
@@ -107,7 +105,8 @@ export const band = (h: number) => Math.max(160, h - ABOVE - BELOW);
 export const middle = (h: number, y0: number, y1: number, scale: number) => Math.round(ABOVE + (band(h) - (y1 - y0) * scale) / 2 - y0 * scale);
 
 /**
- * The camera for a step: that bar, as large as fits beside the task panel (`panel` pixels on the right). With `street`, it shows that whole stretch of street instead.
+ * The camera for a step: that bar, at the largest whole-number zoom that fits beside the task panel (`panel` pixels on
+ * the right). With `street`, it shows that whole stretch of street instead.
  */
 export function camera(step: number, w: number, h: number, street: number | null = null, panel = 0): Camera {
   const s = STOPS[step] ?? STOPS[0];
@@ -119,7 +118,9 @@ export function camera(step: number, w: number, h: number, street: number | null
   const x0 = s.span[0] - 40, x1 = s.span[1] + 40;
   const y0 = TOP - (BARS[s.bar]?.rise ?? 250) - 14, y1 = CRAWL.walk + 18, avail = Math.max(240, w - panel);
   const fit = Math.min((avail * 0.94) / (x1 - x0), (band(h) * 0.94) / (y1 - y0));
-  const scale = Math.min(4, fit);
+  // Whole-number zoom keeps every art pixel square (an in-between zoom smears the people and the cut-out life). Round up
+  // when the bar is within 15% of the next step, so it still fills the space; a sliver of margin may be cropped.
+  const scale = fit < 1 ? fit : Math.min(4, fit % 1 >= 0.85 ? Math.ceil(fit) : Math.floor(fit));
   return { scale, x: Math.round(avail / 2 - ((x0 + x1) / 2) * scale), y: middle(h, y0, y1, scale) };
 }
 
@@ -185,7 +186,7 @@ export function drawDeco(g: CanvasRenderingContext2D, frame: number) {
   g.clearRect(0, 0, CRAWL.width, CRAWL.height);
   drawCity(g, R, frame, 'behind');
 
-  // The Wharf: an SF lamp with a gull that hops now and then (the sea lion's crate sits just before it).
+  // The Wharf: an SF lamp with a gull that hops now and then.
   lamp(496, false);
   const gx = 494, gy = TOP - 136 - (tick % 7 === 0 ? 2 : 0);
   R(gx - 4, gy - 6, 9, 5, '#f4f4f0'); R(gx + 3, gy - 9, 4, 4, '#f4f4f0'); R(gx - 4, gy - 6, 6, 2, '#9aa0a6'); R(gx + 7, gy - 8, 2, 1, '#e8a33a'); R(gx + 5, gy - 8, 1, 1, '#141414');

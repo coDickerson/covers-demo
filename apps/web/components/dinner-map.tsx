@@ -11,7 +11,7 @@ import { openFlag, STEPS, stepOf, usd, type Role } from '../lib/dinner';
 import { cardLimitOf, changedStations, dayOf, EASE_STANDARD, headcountOf, layoutPath, nameOf, restingStation, sourceOf, speakerOf, STEP_KEYS, stationsFor, thinkingLines, type DinnerState, type DocRef, type Station } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
 import { Bell, BELL_FRAMES } from './bell';
-import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera, DRAGON, FLOWERS, RAMP_BOARD, SEALION } from '../lib/crawl';
+import { band, BARS, CAR, CRAWL, crawlPath, drawDeco, drawGround, LIVES, middle, STOPS, STREETS, streetOf, type Camera, DRAGON, FLOWERS, RAMP_BOARD } from '../lib/crawl';
 import { DocCard } from './doc-card';
 import { AuditLog } from './audit-log';
 import { CARD_STEPS, CardSlip } from './ramp-card';
@@ -111,7 +111,7 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
   );
 }
 
-export function DinnerMap({ planId }: { planId: string }) {
+export function DinnerMap({ planId, intro = false }: { planId: string; intro?: boolean }) {
   const { runs, play } = useRuns();
   const run = runs[planId];
   const [core, setCore] = useState<{ view: PlanView; rounds: Evaluation[]; receipt: Receipt | null; settlement: Settlement | null } | null>(null);
@@ -145,6 +145,15 @@ export function DinnerMap({ planId }: { planId: string }) {
   const loadAudit = useCallback(async () => { const a = await covers.listAudit({ planId }); setAudit(a); return a; }, [planId]);
 
   useEffect(() => { setRole(readRole()); void load(); void loadAudit(); void covers.listDocuments().then(setDocuments); }, [load, loadAudit]);
+  // Arriving from Start the demo: the cable car walks up to the first bar and reads the dinner from the calendar invite.
+  const introRef = useRef(intro);
+  useEffect(() => {
+    if (!introRef.current || !core) return;
+    introRef.current = false;
+    window.history.replaceState(null, '', `/plans/${encodeURIComponent(planId)}`);
+    const list = stationsFor(0, { ...core, notes, audit });
+    void play(planId, [{ step: 0, names: list.map((s) => s.name), lines: list.map((s) => thinkingLines(s).length) }]);
+  }, [core]); // eslint-disable-line react-hooks/exhaustive-deps
   // From the moment the card is issued until the dinner is settled, the rep may act on their phone (/m/{id}): watch for
   // the card charge in Ramp, and for a receipt or settlement made elsewhere, so the map catches up without a refresh.
   const watching = !!core?.view.plan.fundId && !core.settlement;
@@ -535,10 +544,7 @@ export function DinnerMap({ planId }: { planId: string }) {
                       ? <i key={n} className="covers-warm absolute bg-accent-tint mix-blend-soft-light" style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, ...timing }} />
                       : <i key={n} className={`covers-${l.kind} absolute`} style={{ left: b.x + x, top: CRAWL.top - b.rise + y, width: w, height: h, backgroundImage: `url(${b.src})`, backgroundPosition: `${-x}px ${-y}px`, imageRendering: 'pixelated', ...timing }} />;
                   })}
-                  {/* A sea lion on its crate by the Wharf, and now and then a dragon dance along the Chinatown sidewalk. */}
-                  {/* The crate stays put; only the sea lion's head and neck lift now and then (a piece of the same picture). */}
-                  <img src={SEALION.src} alt="" width={SEALION.width} height={SEALION.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: SEALION.x, top: CRAWL.top + SEALION.sink - SEALION.height }} />
-                  <i className="covers-bob absolute" style={{ left: SEALION.x + SEALION.head[0], top: CRAWL.top + SEALION.sink - SEALION.height + SEALION.head[1], width: SEALION.head[2], height: SEALION.head[3], backgroundImage: `url(${SEALION.src})`, backgroundPosition: `${-SEALION.head[0]}px ${-SEALION.head[1]}px`, imageRendering: 'pixelated', animationDuration: 'calc(var(--motion-duration-slow) * 18)' }} />
+                  {/* Now and then a dragon dance along the Chinatown sidewalk. */}
                   {[FLOWERS, RAMP_BOARD].map((p) => <img key={p.src} src={p.src} alt="" width={p.width} height={p.height} draggable={false} className="absolute [image-rendering:pixelated]" style={{ left: p.x, top: CRAWL.top + p.sink - p.height }} />)}
                   <span className="covers-parade absolute" style={{ left: DRAGON.x, top: CRAWL.top + DRAGON.sink - DRAGON.height, ['--travel' as string]: `${DRAGON.travel}px`, animationDuration: `calc(var(--motion-duration-slow) * ${DRAGON.every})` }}>
                     <img src={DRAGON.src} alt="" width={DRAGON.width} height={DRAGON.height} draggable={false} className="covers-bob block [image-rendering:pixelated]" style={{ animationDuration: 'calc(var(--motion-duration-slow) * 2)' }} />

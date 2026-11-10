@@ -14,7 +14,7 @@ export function StartScreen() {
     setBusy(true);
     try { await covers.reset(); } catch { /* a fresh sandbox has nothing to reset */ }
     setRoleCookie('rep');
-    router.push(`/plans/${DEMO_PLAN}`);
+    router.push(`/plans/${DEMO_PLAN}?start=1`); // the dinner plays its Propose step on arrival
   };
   return (
     <main className="grid min-h-dvh place-items-center px-5">
