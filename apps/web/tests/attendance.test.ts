@@ -61,6 +61,20 @@ describe('doubleCheck', () => {
   });
 });
 
+describe('padding the headcount', () => {
+  const coworkers: Added[] = [{ kind: 'coworker', id: 'c1', name: 'A' }, { kind: 'coworker', id: 'c2', name: 'B' }];
+  it('flags added people that pull the cost per person under the cap', () => {
+    // $900 over 6 is $150 a person; adding 2 makes it $112.50, under $125.
+    const f = doubleCheck({ present, added: coworkers, headcount: 8, totalCents: 90_000, capCents: 12_500 });
+    expect(f[0]).toMatchObject({ tone: 'review' });
+    expect(f[0]!.text).toContain('from $150.00 to $112.50');
+  });
+  it('stays quiet when the dinner was already under the cap', () => {
+    const f = doubleCheck({ present, added: coworkers, headcount: 8, totalCents: 61_200, capCents: 12_500 });
+    expect(f.some((x) => x.text.includes('brings the cost'))).toBe(false);
+  });
+});
+
 describe('noteFor', () => {
   it('records a guest with who they came with and the relation', () => {
     expect(noteFor({ kind: 'guest', id: 'g', name: 'Alex Lindqvist', withId: '9000000002', relation: 'family' }, present))

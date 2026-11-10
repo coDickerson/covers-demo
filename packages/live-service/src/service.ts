@@ -8,7 +8,7 @@ import {
   type ReceiptImage, type ReceiptLine, type Rep, type ReplayDiff, type RulePack, type Settlement, type Speaker,
 } from '@covers/contract';
 import { cloneSeed, type Company, type LedgerSeed } from '@covers/contract/fixtures';
-import { evaluate, settle, type Approval, type AttendanceHistory, type EngineSettings, type LedgerEntry } from '@covers/engine';
+import { evaluate, formatCents, settle, type Approval, type AttendanceHistory, type EngineSettings, type LedgerEntry } from '@covers/engine';
 import type { Sql } from './db';
 import { listAudit, write } from './gateway';
 import { hashImage } from './image-hash';
@@ -475,6 +475,12 @@ export class LiveService implements CoversService {
     if (!receipt) throw new CoversError('not_found', `Receipt ${receiptId} not found.`);
     if (!receipt.lines.some((l) => l.id === lineId)) throw new CoversError('not_found', `Line ${lineId} not found.`);
     const { id: _ignored, ...fields } = patch;
+    // Reclassifying the wine as food would hide it from the alcohol check, so the plan's rep can't move a line out of alcohol.
+    const before = receipt.lines.find((l) => l.id === lineId)!;
+    if (before.category === 'alcohol' && fields.category && fields.category !== 'alcohol') {
+      const plan = await getDoc<ProgramPlan>(this.sql, sid, 'plan', receipt.planId);
+      if (plan && ctx.actorId === plan.repId) throw new CoversError('forbidden', 'The rep on a plan cannot reclassify an alcohol line. Compliance can.');
+    }
     // A person confirmed it, so confidence is 1.
     const next: Receipt = { ...receipt, lines: receipt.lines.map((l) => (l.id === lineId ? { ...l, ...fields, confidence: 1 } : l)) };
     await write(this.sql, ctx, { action: 'receipt.line_fixed', planId: receipt.planId, input: { lineId, patch: fields }, detail: `Line ${lineId} confirmed` },
@@ -560,9 +566,19 @@ export class LiveService implements CoversService {
     try {
       // The dinner's charge is the cleared or pending one closest to the printed total; on a tie, the first Ramp returned.
       const settled = (await this.deps.ramp.transactions(link.cardId)).filter((t) => t.state === 'CLEARED' || t.state === 'PENDING');
-      const charge = settled.reduce<(typeof settled)[number] | undefined>((best, t) =>
+      let charge = settled.reduce<(typeof settled)[number] | undefined>((best, t) =>
         !best || Math.abs(t.amountCents - receipt.totalCents) < Math.abs(best.amountCents - receipt.totalCents) ? t : best, undefined);
-      if (settled.length > 1) {
+      // A bill split across charges: when the charges together are closer to the printed total than any one of them,
+      // use the sum (with the largest charge's merchant) so the card-vs-receipt check compares like with like.
+      const sum = settled.reduce((s, t) => s + t.amountCents, 0);
+      if (settled.length > 1 && charge && Math.abs(sum - receipt.totalCents) < Math.abs(charge.amountCents - receipt.totalCents)) {
+        const largest = settled.reduce((a, b) => (b.amountCents > a.amountCents ? b : a));
+        charge = { ...largest, amountCents: sum };
+        await write(this.sql, ctx, {
+          action: 'ramp.charge_split', planId: plan.id, input: { cardId: link.cardId, candidates: settled.map((t) => t.id) },
+          detail: `The bill was split across ${settled.length} charges on card …${link.lastFour}, ${formatCents(sum)} together`,
+        }, async () => {});
+      } else if (settled.length > 1) {
         await write(this.sql, ctx, {
           action: 'ramp.charge_chosen', planId: plan.id, input: { cardId: link.cardId, candidates: settled.map((t) => t.id) },
           detail: `${settled.length} charges on card …${link.lastFour}; used ${charge!.id}, closest to the printed total`,

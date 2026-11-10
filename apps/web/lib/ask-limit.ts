@@ -42,6 +42,20 @@ export function clientKey(headers: Headers): string {
   return createHash('sha256').update(ip).digest('hex').slice(0, 24);
 }
 
+// The diligence agents cost about $0.19 a run, so they get their own, tighter limits on the same counter.
+export const AGENT_LIMITS = { perDay: 30, perClientPerDay: 10, perSession: 3 };
+
+/** Counts this agents run. Returns the message to show if it is over any limit, otherwise null. */
+export async function checkAgentLimit(counter: Counter, who: { client: string; sessionId: string }, now = new Date()): Promise<string | null> {
+  const day = now.toISOString().slice(0, 10);
+  const [client, session] = await counter.bump([`covers:agents:client:${day}:${who.client}`, `covers:agents:session:${who.sessionId}`], TTL_SECONDS);
+  if (client! > AGENT_LIMITS.perClientPerDay) return 'You have reached today’s limit for agent runs. Try again tomorrow.';
+  if (session! > AGENT_LIMITS.perSession) return `This session has used its ${AGENT_LIMITS.perSession} agent runs. Reset to start over.`;
+  const [total] = await counter.bump([`covers:agents:day:${day}`], TTL_SECONDS);
+  if (total! > AGENT_LIMITS.perDay) return 'Agent runs have reached today’s limit. Try again tomorrow.';
+  return null;
+}
+
 /** Counts this question. Returns the message to show if it is over any limit, otherwise null. */
 export async function checkAskLimit(counter: Counter, who: { client: string; sessionId: string }, now = new Date()): Promise<string | null> {
   const day = now.toISOString().slice(0, 10);

@@ -32,9 +32,20 @@ export function buildAttendance(a: { planId: string; repId: string; people: stri
 
 const lastName = (name: string) => name.replace(/,.*$/, '').trim().split(/\s+/).pop()?.toLowerCase() ?? '';
 
-export function doubleCheck(a: { present: Present[]; added: Added[]; headcount: number; printedCovers?: number | undefined }): Finding[] {
+export const MAX_ADDED = 10;
+
+const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+export function doubleCheck(a: { present: Present[]; added: Added[]; headcount: number; printedCovers?: number | undefined; totalCents?: number | undefined; capCents?: number | undefined }): Finding[] {
   const out: Finding[] = [];
   const doctorsHere = a.present.filter((p) => p.id !== 'rep');
+
+  // Padding the table: people added at close-out that pull the cost per person under the cap.
+  const base = a.headcount - a.added.length;
+  if (a.added.length && a.totalCents !== undefined && a.capCents !== undefined && base > 0
+    && a.totalCents > a.capCents * base && a.totalCents <= a.capCents * a.headcount) {
+    out.push({ tone: 'review', text: `Adding ${a.added.length} ${a.added.length === 1 ? 'person' : 'people'} brings the cost from ${usd(a.totalCents / base)} to ${usd(a.totalCents / a.headcount)} a person, under the ${usd(a.capCents)} limit. Compliance will check who was added.` });
+  }
 
   if (a.printedCovers !== undefined && a.printedCovers !== a.headcount) {
     out.push(a.printedCovers > a.headcount

@@ -4,11 +4,11 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CloseOut, Hcp, PlanView, Receipt, ReceiptLine, Settlement } from '@covers/contract';
-import { IDS } from '@covers/contract/fixtures';
+import { fixtures, IDS } from '@covers/contract/fixtures';
 import { covers, CoversClientError } from '../lib/client';
 import { usd } from '../lib/dinner';
 import { dayOf, nameOf, speakerOf, venueOf } from '../lib/map';
-import { buildAttendance, doubleCheck, needsAnswers, noteFor, RELATIONS, type Added, type Finding, type Present, type Relation } from '../lib/attendance';
+import { buildAttendance, doubleCheck, MAX_ADDED, needsAnswers, noteFor, RELATIONS, type Added, type Finding, type Present, type Relation } from '../lib/attendance';
 
 type Phase = 'loading' | 'receipt' | 'reading' | 'review' | 'who' | 'check' | 'sending' | 'done' | 'missing';
 type GuestDraft = Partial<Extract<Added, { kind: 'guest' }>>;
@@ -86,7 +86,7 @@ export function CloseOutPhone({ planId }: { planId: string }) {
     ...people.filter((n) => !absent.has(n)).map((id) => ({ id, name: nameOf(id) })),
     ...(absent.has('rep') ? [] : [{ id: 'rep', name: `You (${nameOf(plan.repId)})` }]),
   ];
-  const findings = doubleCheck({ present, added, headcount, printedCovers: receipt?.printedCovers });
+  const findings = doubleCheck({ present, added, headcount, printedCovers: receipt?.printedCovers, totalCents: receipt?.totalCents, capCents: fixtures.company.perPersonCapCents });
   const coversGap = receipt?.printedCovers !== undefined && receipt.printedCovers > headcount;
   const blocked = needsAnswers(findings);
   const update = (id: string, patch: GuestDraft) => setAdded((xs) => xs.map((x) => (x.id === id && x.kind === 'guest' ? { ...x, ...patch, kind: 'guest' } : x)));
@@ -96,6 +96,8 @@ export function CloseOutPhone({ planId }: { planId: string }) {
       const s = await covers.confirmAttendance(attendance);
       // Every added person goes on the audit trail with who they are, so compliance sees what the rep said.
       for (const x of added) await covers.addNote(planId, { step: 'close_out', target: x.name, text: noteFor(x, present) });
+      const flagged = findings.filter((f) => f.tone !== 'ok' && !f.addedId);
+      if (flagged.length) await covers.addNote(planId, { step: 'close_out', target: 'Double check', text: flagged.map((f) => f.text).join(' ') });
       setSettlement(s);
       setPhase('done');
     } catch (e) { setError(errorText(e, 'That did not go through. Try again.')); setPhase('check'); }
@@ -178,7 +180,9 @@ export function CloseOutPhone({ planId }: { planId: string }) {
             ))}
           </ul>
           {coversGap && <p className="mt-3 border-l-2 border-status-near pl-3 text-small">The receipt prints {receipt?.printedCovers} covers but {headcount} {headcount === 1 ? 'person is' : 'people are'} marked. Did someone else eat?</p>}
-          {adding
+          {added.length >= MAX_ADDED
+            ? <p className="mt-3 text-small text-ink-muted">Up to {MAX_ADDED} people can be added at close-out. Anyone else goes to compliance directly.</p>
+            : adding
             ? <AddPerson present={present} taken={new Set([...people, ...attendance.attendedNpis])} onAdd={(x) => { setAdded((xs) => [...xs, x]); setAdding(false); }} onCancel={() => setAdding(false)} />
             : <button className={`${quiet} mt-3`} onClick={() => setAdding(true)}>+ Add someone who wasn&apos;t on the invite</button>}
           <button className={`${primary} mt-5`} onClick={() => { setAdding(false); setPhase('check'); }}>Close it out</button>
@@ -227,19 +231,28 @@ function AddPerson({ present, taken, onAdd, onCancel }: { present: Present[]; ta
     setHits(null);
     try { setHits((await covers.searchHcps(name.trim())).filter((h) => !taken.has(h.npi))); } catch { setHits([]); }
   };
-  const add = () => onAdd(kind === 'coworker' ? { kind: 'coworker', id: newId(), name: name.trim() } : { ...guest, kind: 'guest', id: newId(), name: name.trim() });
+  const [maybe, setMaybe] = useState<Hcp[] | null>(null); // registry matches for a "coworker" who may be a clinician
+  const addCoworker = () => onAdd({ kind: 'coworker', id: newId(), name: name.trim() });
+  const add = async () => {
+    if (kind === 'guest') return onAdd({ ...guest, kind: 'guest', id: newId(), name: name.trim() });
+    // A clinician entered as a coworker would skip the Open Payments row, so check the registry first.
+    const parts = name.trim().split(/\s+/);
+    let found: Hcp[] = [];
+    if (parts.length >= 2) { try { found = (await covers.searchHcps(name.trim())).filter((h) => !taken.has(h.npi)); } catch { found = []; } }
+    if (found.length) setMaybe(found.slice(0, 3)); else addCoworker();
+  };
   return (
     <div className="mt-3 border border-border bg-bg-surface p-3">
       <div className="flex gap-2" role="radiogroup" aria-label="Who are you adding?">
         {(['doctor', 'coworker', 'guest'] as const).map((k) => (
-          <button key={k} role="radio" aria-checked={kind === k} onClick={() => { setKind(k); setHits(null); }}
+          <button key={k} role="radio" aria-checked={kind === k} onClick={() => { setKind(k); setHits(null); setMaybe(null); }}
             className={`flex-1 cursor-pointer border px-2 py-2 text-small font-strong ${kind === k ? 'border-ink-primary bg-accent text-on-accent' : 'border-border'}`}>
             {k === 'doctor' ? 'Doctor' : k === 'coworker' ? 'Coworker' : 'Guest'}
           </button>
         ))}
       </div>
       <label className="mt-3 block text-small">{kind === 'doctor' ? 'Name or NPI' : 'Name'}
-        <input id="add-person-name" className={field} value={name} onChange={(e) => setName(e.target.value)} />
+        <input id="add-person-name" className={field} value={name} onChange={(e) => { setName(e.target.value); setMaybe(null); }} />
       </label>
       {kind === 'guest' && <GuestFields guest={guest} present={present} onChange={(p) => setGuest((g) => ({ ...g, ...p }))} />}
       {kind === 'doctor' && hits && (
@@ -254,10 +267,25 @@ function AddPerson({ present, taken, onAdd, onCancel }: { present: Present[]; ta
           ))}
         </ul>
       )}
+      {maybe && (
+        <div className="mt-3 border-l-2 border-status-over pl-3 text-small">
+          <p>The doctor registry has a clinician named {name.trim()}. Is this one of them?</p>
+          <ul className="mt-1">
+            {maybe.map((h) => (
+              <li key={h.npi}>
+                <button className="w-full cursor-pointer border-b border-border py-2 text-left" onClick={() => onAdd({ kind: 'doctor', id: newId(), npi: h.npi, name: h.name })}>
+                  Yes: {h.name}<span className="text-ink-muted"> · {h.specialty ?? 'clinician'} · {h.state}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button className={`${quiet} mt-2`} onClick={addCoworker}>No, a coworker with the same name</button>
+        </div>
+      )}
       <div className="mt-3 flex items-center gap-4">
         {kind === 'doctor'
           ? <button className={`${secondary} flex-1`} disabled={name.trim().length < 2} onClick={() => void search()}>Find in the registry</button>
-          : <button className={`${secondary} flex-1`} disabled={!name.trim()} onClick={add}>Add</button>}
+          : <button className={`${secondary} flex-1`} disabled={!name.trim() || maybe !== null} onClick={() => void add()}>Add</button>}
         <button className={quiet} onClick={onCancel}>Cancel</button>
       </div>
     </div>

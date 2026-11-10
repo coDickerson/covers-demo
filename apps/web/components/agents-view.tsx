@@ -153,6 +153,7 @@ export function AgentsView() {
           <div className="border border-ink-primary bg-bg-surface p-4">
             <span className="font-mono text-micro text-ink-muted">DILIGENCE REPORT · VERIFIED FACTS ONLY</span>
             <p className="mt-1.5">{result.report.summary}</p>
+            <p className="mt-1 text-small text-ink-muted">Public CMS Open Payments data, for a reviewer to look at. Not a finding of wrongdoing.</p>
             <h3 className="mt-4 text-small font-bold text-ink-muted">Look at these first</h3>
             <ul className="mt-1">
               {result.report.concerns.map((c, i) => <li key={i} className="flex items-start justify-between gap-3 border-b border-border py-2 text-small last:border-b-0"><span><span className="mr-1.5 text-status-ok">✓</span>{c.fact}</span><Source href={c.source} /></li>)}

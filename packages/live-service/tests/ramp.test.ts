@@ -172,6 +172,31 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.charge_chosen')).toBe(true);
   });
 
+  it('adds up a bill split across two charges, and logs the split', async () => {
+    const f = fakeRamp();
+    f.ramp.transactions = async () => [
+      { id: 'tx-1a', amountCents: 30_000, state: 'CLEARED', merchantName: 'Alder & Vine', categoryId: 19 },
+      { id: 'tx-1b', amountCents: 31_200, state: 'CLEARED', merchantName: 'Alder & Vine', categoryId: 19 },
+    ];
+    const c = ctx();
+    const svc = new LiveService({ sql, ramp: f.ramp });
+    const st = await settleWith(svc, c);
+    expect(st.charge?.amountCents).toBe(61_200);
+    expect(st.checks.find((x) => x.ruleId === 'P6.card-charge')?.outcome).toBe('pass');
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.charge_split')).toBe(true);
+  });
+
+  it('refuses the rep reclassifying the wine as food; compliance can', async () => {
+    const c = ctx();
+    const svc = new LiveService({ sql, ramp: fakeRamp().ramp });
+    await clear(svc, c);
+    const r = await svc.submitReceipt(c, IDS.demoPlan, { sampleId: IDS.cleanReceipt });
+    const wine = r.lines.find((l) => l.category === 'alcohol')!;
+    await expect(svc.fixLine(c, r.id, wine.id, { category: 'food' })).rejects.toThrow(/cannot reclassify an alcohol line/);
+    const fixed = await svc.fixLine({ ...c, actorId: IDS.compliance }, r.id, wine.id, { category: 'food' });
+    expect(fixed.lines.find((l) => l.id === wine.id)?.category).toBe('food');
+  });
+
   it('without Ramp, labels the printed total as a simulated charge', async () => {
     const st = await settleWith(new LiveService({ sql }), ctx());
     expect(st.charge).toEqual({ amountCents: 61_200, source: 'simulated' });

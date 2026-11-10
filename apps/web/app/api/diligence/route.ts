@@ -7,6 +7,8 @@
 // ANTHROPIC_API_KEY on the server (local live mode); the venue agent also needs APIFY_TOKEN.
 import { z } from 'zod';
 import { createDiligenceCrew, createNppesClient, createOpenPaymentsClient, createVenueClient, isValidNpi, type DiligenceEvent } from '@covers/integrations';
+import { checkAgentLimit, clientKey, counterFromEnv } from '@/lib/ask-limit';
+import { getCtx } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -24,6 +26,11 @@ export async function POST(request: Request) {
   // Fictional seed doctors (NPIs starting with 9 fail the check digit) have no public record to research.
   const npis = [...new Set(parsed.data.npis)].filter((n) => isValidNpi(n) && !n.startsWith('9'));
   if (!npis.length) return Response.json({ ok: false, error: 'The agents research real doctors. The demo’s doctors are fictional, so pick real ones.' }, { status: 400 });
+  // Each run costs real API money and the site is a public link: same shared counter as audit questions.
+  const counter = counterFromEnv();
+  if (!counter) return Response.json({ ok: false, error: 'The agents are off until the usage limits are configured.' }, { status: 503 });
+  const refused = await checkAgentLimit(counter, { client: clientKey(request.headers), sessionId: (await getCtx()).sessionId });
+  if (refused) return Response.json({ ok: false, error: refused }, { status: 429 });
 
   const enc = new TextEncoder();
   const stream = new ReadableStream({
