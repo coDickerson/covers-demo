@@ -177,6 +177,6 @@ pnpm --filter @covers/evals exec tsx ../packages/live-service/scripts/watch-char
 
 ## Team
 
-Built in four days for a hackathon by Nikhil Rajgopal (rule engine, integrations, live service, evals) and Cole ([@coDickerson](https://github.com/coDickerson)), who did design, the web app and motion. We pair-built with Claude Code.
+Built for a hackathon by Nikhil Rajgopal (rule engine, integrations, live service, evals) and Cole ([@coDickerson](https://github.com/coDickerson)), who did design, the web app and motion.
 
 Every person, doctor and company in the seed data is fictional. Every regulatory number and citation was checked against its primary source; see `docs/pitch-facts.md`.
