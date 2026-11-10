@@ -276,10 +276,11 @@ export function DinnerMap({ planId }: { planId: string }) {
   };
   const endDrag = () => { drag.current = null; setDragging(false); };
   // The street's drawn details: the sidewalk once, and the lamps, strings of lights and chalkboard on a slow tick.
-  const groundRef = useRef<HTMLCanvasElement>(null);
-  const decoRef = useRef<HTMLCanvasElement>(null);
+  // Held as state, not refs, so a fresh canvas (after a remount) is always drawn on again.
+  const [groundEl, groundRef] = useState<HTMLCanvasElement | null>(null);
+  const [decoEl, decoRef] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {
-    const ground = groundRef.current?.getContext('2d'), deco = decoRef.current?.getContext('2d');
+    const ground = groundEl?.getContext('2d'), deco = decoEl?.getContext('2d');
     if (!ground || !deco) return;
     const walk = new Image();
     walk.onload = () => drawGround(ground, walk);
@@ -289,7 +290,7 @@ export function DinnerMap({ planId }: { planId: string }) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const id = window.setInterval(() => drawDeco(deco, ++tick), tokens['motion/duration/slow']);
     return () => window.clearInterval(id);
-  }, [size.w > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [groundEl, decoEl]);
   // A cheer from the bar each time one of its checks comes back clear.
   const [cheers, setCheers] = useState<{ id: number; at: number }[]>([]);
   const cheerId = useRef(0);
