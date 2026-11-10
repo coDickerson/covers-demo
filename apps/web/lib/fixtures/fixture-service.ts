@@ -221,6 +221,10 @@ export class FixtureService implements CoversService {
       if (!receipt) throw new CoversError('not_found', `Receipt ${receiptId} not found.`);
       const line = receipt.lines.find((l) => l.id === lineId);
       if (!line) throw new CoversError('not_found', `Line ${lineId} not found.`);
+      // Reclassifying the wine as food would hide it from the alcohol check, so the plan's rep can't move a line out of alcohol.
+      if (line.category === 'alcohol' && parsed.category && parsed.category !== 'alcohol' && ctx.actorId === this.plan(s, receipt.planId).repId) {
+        throw new CoversError('forbidden', 'The rep on a plan cannot reclassify an alcohol line. Compliance can.');
+      }
       Object.assign(line, parsed);
       audit({ action: 'receipt.line_fixed', planId: receipt.planId, inputHash: hash(parsed), detail: `${lineId}: ${Object.keys(parsed).join(', ')}` });
       return receipt;
@@ -234,6 +238,7 @@ export class FixtureService implements CoversService {
       if (ctx.actorId !== plan.repId || parsed.confirmedBy !== plan.repId) {
         throw new CoversError('forbidden', 'Only the rep on the plan can confirm who attended.');
       }
+      if (s.settlements[plan.id]) throw new CoversError('invalid_state', 'Attendance is already confirmed for this plan.');
       const receipt = s.receipts[plan.id];
       if (!receipt) throw new CoversError('invalid_state', 'Submit the receipt before confirming attendance.');
       if (parsed.attendedNpis.length + parsed.employeesPresent + parsed.extraGuests === 0) {

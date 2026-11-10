@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { ASK_LIMITS, checkAskLimit, clientKey, counterFromEnv, MemoryCounter } from '../lib/ask-limit';
+import { AGENT_LIMITS, ASK_LIMITS, checkAgentLimit, checkAskLimit, clientKey, counterFromEnv, MemoryCounter } from '../lib/ask-limit';
+
+describe('agent run limits', () => {
+  it('stops a session after 3 runs, separately from questions', async () => {
+    const c = new MemoryCounter();
+    const who = { client: 'a', sessionId: 's' };
+    for (let i = 0; i < AGENT_LIMITS.perSession; i++) expect(await checkAgentLimit(c, who)).toBeNull();
+    expect(await checkAgentLimit(c, who)).toMatch(/3 agent runs/);
+    expect(await checkAskLimit(c, who)).toBeNull();
+  });
+});
 
 const day = new Date('2026-11-09T12:00:00Z');
 const run = async (c: MemoryCounter, n: number, who: (i: number) => { client: string; sessionId: string }) => {

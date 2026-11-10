@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { CoversError, type CoversErrorBody } from '@covers/contract';
 import { ZodError } from 'zod';
+import { guardCall } from '@/lib/guards';
 import { isMethod, NO_CTX } from '@/lib/methods';
 import { getService } from '@/lib/service';
 import { getCtx } from '@/lib/session';
@@ -24,6 +25,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ met
     args = (body.args as unknown[] | undefined) ?? [];
 
     const svc = await getService();
+    await guardCall(method, args, async ({ speakerId, planId }) => {
+      const ctx = await getCtx();
+      const plan = planId ? (await svc.getPlan(ctx, planId)).plan : undefined;
+      const id = speakerId ?? plan?.speakerId;
+      return (await svc.listSpeakers(ctx)).find((s) => s.id === id)?.hcp.npi;
+    });
     const fn = svc[method] as (...a: unknown[]) => Promise<unknown>;
     const data = NO_CTX.includes(method) ? await fn.call(svc) : await fn.call(svc, await getCtx(), ...args);
     return NextResponse.json({ ok: true, data: data ?? null });

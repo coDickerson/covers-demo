@@ -50,6 +50,7 @@ export function AppBar({ role, onRole, active = 'Crawl' }: { role: Role; onRole:
             <p className="font-mono text-micro tracking-widest opacity-80">NOW ACTING · {WHO[handoff].title.toUpperCase()}</p>
             <p className="mt-1 text-heading font-bold tracking-tight">{WHO[handoff].name}</p>
             <p className="mt-1 text-small opacity-80">{WHO[handoff].does}</p>
+            <p className="mt-2 text-micro opacity-70">Demo: one person plays both roles here. Every action is logged under the role that took it.</p>
           </div>
         </div>
       )}
