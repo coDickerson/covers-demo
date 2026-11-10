@@ -96,7 +96,8 @@ export function CloseOutPhone({ planId }: { planId: string }) {
       const s = await covers.confirmAttendance(attendance);
       // Every added person goes on the audit trail with who they are, so compliance sees what the rep said.
       for (const x of added) await covers.addNote(planId, { step: 'close_out', target: x.name, text: noteFor(x, present) });
-      const flagged = findings.filter((f) => f.tone !== 'ok' && !f.addedId);
+      // The covers mismatch, in the rep's words. The padding check is recorded by the server itself.
+      const flagged = findings.filter((f) => f.tone === 'ask' && !f.addedId);
       if (flagged.length) await covers.addNote(planId, { step: 'close_out', target: 'Double check', text: flagged.map((f) => f.text).join(' ') });
       setSettlement(s);
       setPhase('done');

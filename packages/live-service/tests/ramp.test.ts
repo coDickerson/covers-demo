@@ -186,6 +186,20 @@ describe.skipIf(!url)('LiveService + Ramp', () => {
     expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.charge_split')).toBe(true);
   });
 
+  it('does not add a charge at another merchant to the dinner', async () => {
+    const f = fakeRamp();
+    f.ramp.transactions = async () => [
+      { id: 'tx-2a', amountCents: 31_200, state: 'CLEARED', merchantName: 'Alder & Vine', categoryId: 19 },
+      { id: 'tx-2b', amountCents: 30_000, state: 'CLEARED', merchantName: 'Tosca Cafe', categoryId: 20 },
+    ];
+    const c = ctx();
+    const svc = new LiveService({ sql, ramp: f.ramp });
+    const st = await settleWith(svc, c);
+    expect(st.charge?.amountCents).toBe(31_200);
+    expect(st.checks.find((x) => x.ruleId === 'P6.card-charge')?.outcome).toBe('flag');
+    expect((await svc.listAudit(c, { planId: IDS.demoPlan })).some((e) => e.action === 'ramp.charge_split')).toBe(false);
+  });
+
   it('refuses the rep reclassifying the wine as food; compliance can', async () => {
     const c = ctx();
     const svc = new LiveService({ sql, ramp: fakeRamp().ramp });
