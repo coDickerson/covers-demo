@@ -10,7 +10,7 @@ describe('venue facts', () => {
     expect(priceLevelOf(undefined)).toBeNull();
   });
   it('tells a restaurant from a bar-first venue', () => {
-    const r = venueFactsFrom('Alder & Vine, San Francisco', { title: 'Alder & Vine', categoryName: 'American restaurant', categories: ['American restaurant', 'Wine bar'], price: '$$$', url: 'https://maps.google.com/x' });
+    const r = venueFactsFrom('Alder & Vine, San Francisco', { title: 'Alder & Vine', address: '1 Main St, San Francisco, CA', categoryName: 'American restaurant', categories: ['American restaurant', 'Wine bar'], price: '$$$', url: 'https://maps.google.com/x' });
     expect(r).toMatchObject({ found: true, isRestaurant: true, isBarFirst: false, priceLevel: 3, source: 'https://maps.google.com/x' });
     const b = venueFactsFrom('Li Po', { title: 'Li Po Cocktail Lounge', categoryName: 'Cocktail bar', categories: ['Cocktail bar', 'Lounge'] });
     expect(b).toMatchObject({ isRestaurant: false, isBarFirst: true });
@@ -18,12 +18,17 @@ describe('venue facts', () => {
   it('reports a venue it cannot find as not found', () => {
     expect(venueFactsFrom('Nowhere', undefined)).toMatchObject({ found: false, name: null, isBarFirst: false });
   });
+  it('rejects Google\'s nearest guess when the name or city is different (seen live: a fictional venue)', () => {
+    const r = venueFactsFrom('Alder & Vine, San Francisco', { title: 'Leeward', address: '85 Free St, Portland, ME 04101', categoryName: 'Italian restaurant' });
+    expect(r).toMatchObject({ found: false, closestMatch: 'Leeward, 85 Free St, Portland, ME 04101' });
+    expect(venueFactsFrom('Tosca Cafe, San Francisco', { title: 'Tosca Cafe', address: '242 Columbus Ave, Portland, OR' }).found).toBe(false);
+  });
   it('needs an Apify token and sends it as a bearer header', async () => {
     await expect(createVenueClient({ token: '' }).lookup('x')).rejects.toThrow(VenueError);
     let auth = '';
     const fetchFn = (async (_url: string, init: RequestInit) => {
       auth = new Headers(init.headers).get('authorization') ?? '';
-      return new Response(JSON.stringify([{ title: 'Tosca Cafe', categoryName: 'Bar', price: '$$' }]));
+      return new Response(JSON.stringify([{ title: 'Tosca Cafe', address: '242 Columbus Ave, San Francisco, CA 94133', categoryName: 'Bar', price: '$$' }]));
     }) as unknown as typeof fetch;
     const v = await createVenueClient({ token: 'test-token', fetchFn }).lookup('Tosca Cafe, San Francisco');
     expect(auth).toBe('Bearer test-token');

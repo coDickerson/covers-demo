@@ -1,0 +1,221 @@
+{
+  "venue": "Tosca Cafe, San Francisco",
+  "npis": [
+    "1164957957",
+    "1437151180",
+    "1861526451"
+  ],
+  "seconds": 81,
+  "trace": [
+    {
+      "agent": "history",
+      "toolCalls": 3,
+      "inputTokens": 9198,
+      "outputTokens": 2430
+    },
+    {
+      "agent": "identity",
+      "toolCalls": 3,
+      "inputTokens": 4032,
+      "outputTokens": 672
+    },
+    {
+      "agent": "venue",
+      "toolCalls": 1,
+      "inputTokens": 4222,
+      "outputTokens": 686
+    },
+    {
+      "agent": "verifier",
+      "toolCalls": 4,
+      "inputTokens": 13488,
+      "outputTokens": 1655
+    },
+    {
+      "agent": "lead",
+      "toolCalls": 0,
+      "inputTokens": 7018,
+      "outputTokens": 2370
+    }
+  ],
+  "report": {
+    "summary": "The speaker dinner at Tosca Cafe, San Francisco is estimated at $110.00 per person. Three attendees were checked. NPI 1861526451 is high risk: they received $3,468.64 in food and beverage across 95 meals last year, which is above the $2,000.00 annual meal limit, plus $2,762.43 in travel and lodging. NPIs 1164957957 and 1437151180 are medium risk. Of these, 51% of 1164957957's meals came from ABIOMED. One fact could not be verified and goes to a person for review.",
+    "concerns": [
+      {
+        "fact": "NPI 1861526451 received $6,231.07 in total payments, including $3,468.64 in food and beverage across 95 meals and $2,762.43 in travel and lodging.",
+        "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+        "confidence": 0.95
+      },
+      {
+        "fact": "NPI 1861526451's largest single meal was $294.66.",
+        "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+        "confidence": 0.9
+      },
+      {
+        "fact": "Medtronic paid NPI 1861526451 $2,191.27 in 15 payments, about 35% of the total, and Boston Scientific paid $1,493.04 in 14 payments.",
+        "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+        "confidence": 0.9
+      },
+      {
+        "fact": "ABIOMED paid NPI 1164957957 $678.82 across 6 meals, about 51% of the $1,339.68 in food and beverage this person received across 18 payments.",
+        "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1164957957&conditions%5B0%5D%5Boperator%5D=%3D",
+        "confidence": 0.9
+      },
+      {
+        "fact": "NPI 1437151180 received $1,827.36 in food and beverage across 72 payments, an average of about $25 per meal. The top payer, Edwards Lifesciences, paid $211.18, about 12% of the total.",
+        "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1437151180&conditions%5B0%5D%5Boperator%5D=%3D",
+        "confidence": 0.9
+      },
+      {
+        "fact": "On Google Maps, Tosca Cafe at 242 Columbus Ave, San Francisco has the primary category Italian restaurant and is also listed as a Bar and an Event venue.",
+        "source": "https://www.google.com/maps/search/?api=1&query=Tosca%20Cafe&query_place_id=ChIJ2xNJivSAhYARhivCKSIaZCY",
+        "confidence": 0.85
+      }
+    ],
+    "risk": [
+      {
+        "npi": "1861526451",
+        "tier": "high",
+        "why": "$3,468.64 in food and beverage last year, above a $2,000.00 annual meal limit"
+      },
+      {
+        "npi": "1164957957",
+        "tier": "medium",
+        "why": "$1,339.68 in food and beverage across 18 meals, 51% from ABIOMED"
+      },
+      {
+        "npi": "1437151180",
+        "tier": "medium",
+        "why": "$1,827.36 in food and beverage across 72 meals, 12% from Edwards Lifesciences Corporation"
+      }
+    ],
+    "unverified": [
+      {
+        "fact": "Google Maps shows no price level for this venue; the only cost figure is the rep's estimate of $110.00 per person.",
+        "evidence": "priceLevel is null, confirmed, but the $110 per-person rep estimate is not available from my tools so it can't be verified."
+      }
+    ],
+    "identity": {
+      "guests": [
+        {
+          "npi": "1861526451",
+          "found": true,
+          "name": "Jahandar Saleh",
+          "credential": "M.D.",
+          "specialty": "Internal Medicine, Cardiovascular Disease",
+          "state": "CA",
+          "notes": ""
+        },
+        {
+          "npi": "1164957957",
+          "found": true,
+          "name": "Antoinette Birs",
+          "credential": "M.D.",
+          "specialty": "Internal Medicine, Cardiovascular Disease",
+          "state": "CA",
+          "notes": ""
+        },
+        {
+          "npi": "1437151180",
+          "found": true,
+          "name": "Jacob Rubin",
+          "credential": "M.D.",
+          "specialty": "Internal Medicine, Cardiovascular Disease",
+          "state": "CA",
+          "notes": ""
+        }
+      ]
+    },
+    "history": {
+      "year": 2025,
+      "doctors": [
+        {
+          "npi": "1164957957",
+          "totalCents": 133968,
+          "foodCents": 133968,
+          "foodPayments": 18,
+          "topPayer": "ABIOMED",
+          "facts": [
+            {
+              "fact": "All $1,339.68 received was food and beverage across 18 payments.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1164957957&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.95
+            },
+            {
+              "fact": "ABIOMED paid $678.82 in 6 meals, about 51% of the total.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1164957957&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "npi": "1437151180",
+          "totalCents": 182736,
+          "foodCents": 182736,
+          "foodPayments": 72,
+          "topPayer": "Edwards Lifesciences Corporation",
+          "facts": [
+            {
+              "fact": "All $1,827.36 received was food and beverage across 72 payments, with small average meal size of about $25.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1437151180&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.95
+            },
+            {
+              "fact": "Top payer Edwards Lifesciences paid $211.18 in 5 meals, about 12% of the total, so payments are spread across companies.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1437151180&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "npi": "1861526451",
+          "totalCents": 623107,
+          "foodCents": 346864,
+          "foodPayments": 95,
+          "topPayer": "Medtronic, Inc.",
+          "facts": [
+            {
+              "fact": "Total payments were $6,231.07, including $3,468.64 food and beverage in 95 meals and $2,762.43 travel and lodging.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.95
+            },
+            {
+              "fact": "Medtronic paid $2,191.27 in 15 payments, about 35% of the total; Boston Scientific paid $1,493.04 in 14 payments.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.9
+            },
+            {
+              "fact": "The largest single meal was $294.66.",
+              "source": "https://openpaymentsdata.cms.gov/api/1/datastore/query/a25e7a31-503f-5a02-b0fc-b8c52275d1d8?limit=50&offset=0&count=true&schema=false&conditions%5B0%5D%5Bproperty%5D=covered_recipient_npi&conditions%5B0%5D%5Bvalue%5D=1861526451&conditions%5B0%5D%5Boperator%5D=%3D",
+              "confidence": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    "venue": {
+      "found": true,
+      "name": "Tosca Cafe",
+      "category": "Italian restaurant",
+      "priceLevel": null,
+      "isBarFirst": false,
+      "facts": [
+        {
+          "fact": "Tosca Cafe at 242 Columbus Ave, San Francisco has Google Maps primary category Italian restaurant, also listed as Bar, Event venue and Restaurant.",
+          "source": "https://www.google.com/maps/search/?api=1&query=Tosca%20Cafe&query_place_id=ChIJ2xNJivSAhYARhivCKSIaZCY",
+          "confidence": 0.9
+        },
+        {
+          "fact": "Google Maps shows no price level for this venue; the only cost figure is the rep's estimate of $110.00 per person.",
+          "source": "venue_lookup",
+          "confidence": 0.8
+        },
+        {
+          "fact": "Rated 4.3 from 623 reviews and is open.",
+          "source": "venue_lookup",
+          "confidence": 0.8
+        }
+      ]
+    }
+  }
+}

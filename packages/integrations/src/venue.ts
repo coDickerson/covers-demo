@@ -50,6 +50,8 @@ export const VenueFacts = z.object({
   reviews: z.number().int().nullable(),
   closed: z.boolean(),
   source: z.string().nullable().describe('The Google Maps link, so anyone can check'),
+  /** When Google's top result isn't the venue asked about (a different name or city), what it returned instead. */
+  closestMatch: z.string().nullable(),
 });
 export type VenueFacts = z.infer<typeof VenueFacts>;
 
@@ -63,8 +65,28 @@ export function priceLevelOf(price: string | null | undefined): number | null {
   return /^\${1,4}$/.test(t) ? t.length : null;
 }
 
+const STOP = new Set(['the', 'and', 'of', 'restaurant', 'bar', 'cafe', 'café', 'grill', 'kitchen', 'a', 'at', 'san', 'francisco']);
+const words = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !STOP.has(w));
+
+/** Split "Alder & Vine, San Francisco" into the name and the city. */
+export function splitVenue(query: string): { name: string; city: string | null } {
+  const [name, ...rest] = query.split(',').map((x) => x.trim());
+  return { name: name ?? query, city: rest.join(', ') || null };
+}
+
+/** Google returns its nearest guess even for a place that doesn't exist; only accept a result that is plainly the venue asked about. */
+export function sameVenueResult(query: string, place: Pick<Place, 'title' | 'address'>): boolean {
+  const { name, city } = splitVenue(query), want = words(name), got = new Set(words(place.title));
+  const nameOk = want.length > 0 && want.filter((w) => got.has(w)).length * 2 >= want.length;
+  const cityOk = !city || (place.address ?? '').toLowerCase().includes(city.split(',')[0]!.toLowerCase());
+  return nameOk && cityOk;
+}
+
+const NOT_FOUND = { found: false, name: null, address: null, category: null, categories: [], priceLevel: null, isRestaurant: false, isBarFirst: false, rating: null, reviews: null, closed: false, source: null } as const;
+
 export function venueFactsFrom(query: string, place: Place | undefined): VenueFacts {
-  if (!place) return { query, found: false, name: null, address: null, category: null, categories: [], priceLevel: null, isRestaurant: false, isBarFirst: false, rating: null, reviews: null, closed: false, source: null };
+  if (!place) return { query, ...NOT_FOUND, categories: [], closestMatch: null };
+  if (!sameVenueResult(query, place)) return { query, ...NOT_FOUND, categories: [], closestMatch: [place.title, place.address].filter(Boolean).join(', ') };
   const categories = place.categories ?? (place.categoryName ? [place.categoryName] : []);
   const main = place.categoryName ?? categories[0] ?? '';
   return VenueFacts.parse({
@@ -73,7 +95,7 @@ export function venueFactsFrom(query: string, place: Place | undefined): VenueFa
     isRestaurant: categories.some((c) => RESTAURANT.test(c)) && !BAR.test(main),
     isBarFirst: BAR.test(main) && !RESTAURANT.test(main),
     rating: place.totalScore ?? null, reviews: place.reviewsCount ?? null,
-    closed: !!(place.permanentlyClosed || place.temporarilyClosed), source: place.url ?? null,
+    closed: !!(place.permanentlyClosed || place.temporarilyClosed), source: place.url ?? null, closestMatch: null,
   });
 }
 
@@ -84,7 +106,8 @@ export function createVenueClient(opts: { token?: string; fetchFn?: typeof fetch
   return {
     async lookup(venue) {
       if (!token) throw new VenueError('not_configured', 'Venue research needs APIFY_TOKEN.');
-      const input = { searchStringsArray: [venue], maxCrawledPlacesPerSearch: 1, language: 'en', maxReviews: 0, maxImages: 0, scrapePlaceDetailPage: false, skipClosedPlaces: false };
+      const { name, city } = splitVenue(venue);
+      const input = { searchStringsArray: [name], ...(city ? { locationQuery: city } : {}), maxCrawledPlacesPerSearch: 1, language: 'en', maxReviews: 0, maxImages: 0, scrapePlaceDetailPage: false, skipClosedPlaces: false };
       let res: Response;
       try {
         res = await fetchFn(`${base}/acts/${GOOGLE_MAPS_ACTOR}/run-sync-get-dataset-items`, {
