@@ -17,7 +17,7 @@ import { DocCard } from './doc-card';
 import { tokens } from '../lib/tokens';
 import { useRuns, WALK_MS, type Stage } from './run-provider';
 
-const CHARGE_POLL_MS = 5000; // the charge watcher's interval too
+const CHARGE_POLL_MS = 5000; // how often an open dinner map checks for the charge and for a phone close-out
 const primary = 'cursor-pointer border border-ink-primary bg-accent px-4 py-2.5 font-strong text-on-accent disabled:cursor-default disabled:opacity-60';
 const secondary = 'cursor-pointer border border-ink-primary px-4 py-2.5 font-strong hover:bg-bg-surface';
 const MARK_BOX: Record<Station['mark'], string> = { clear: 'border-ink-primary bg-ink-primary', blocked: 'border-status-over bg-status-over', flagged: 'border-status-near bg-status-near', waiting: 'border-border bg-bg-surface', none: 'border-border bg-bg-surface' };
@@ -120,20 +120,28 @@ export function DinnerMap({ planId }: { planId: string }) {
   const loadAudit = useCallback(async () => { const a = await covers.listAudit({ planId }); setAudit(a); return a; }, [planId]);
 
   useEffect(() => { setRole(readRole()); void load(); void loadAudit(); void covers.listDocuments().then(setDocuments); }, [load, loadAudit]);
-  // While the card is issued and the dinner has no charge yet, ask Ramp every few seconds, so "Charge" flips by itself.
-  const waitingForCharge = !!core?.view.plan.fundId && !core.view.closeOut && !core.receipt && !core.settlement;
+  // From the moment the card is issued until the dinner is settled, the rep may act on their phone (/m/{id}): watch for
+  // the card charge in Ramp, and for a receipt or settlement made elsewhere, so the map catches up without a refresh.
+  const watching = !!core?.view.plan.fundId && !core.settlement;
+  const seenRef = useRef({ charged: false, receipt: false });
+  seenRef.current = { charged: !!core?.view.closeOut, receipt: !!core?.receipt };
   useEffect(() => {
-    if (!waitingForCharge) return;
+    if (!watching) return;
     let stopped = false;
     const tick = async () => {
       if (document.hidden) return;
-      const seen = await covers.checkForCharge(planId).catch(() => null);
-      if (seen && !stopped) { await load(); void loadAudit(); }
+      const was = seenRef.current;
+      const [charge, receipt, settlement] = await Promise.all([
+        was.charged ? Promise.resolve(null) : covers.checkForCharge(planId).catch(() => null),
+        covers.getReceipt(planId).catch(() => null),
+        covers.getSettlement(planId).catch(() => null),
+      ]);
+      if (!stopped && ((charge && !was.charged) || (!!receipt !== was.receipt) || settlement)) { await load(); void loadAudit(); }
     };
     const id = window.setInterval(() => void tick(), CHARGE_POLL_MS);
     void tick();
     return () => { stopped = true; window.clearInterval(id); };
-  }, [waitingForCharge, planId, load, loadAudit]);
+  }, [watching, planId, load, loadAudit]);
   useLayoutEffect(() => {
     const el = world.current;
     if (!el) return;
