@@ -264,12 +264,26 @@ type Rect = (x: number, y: number, w: number, h: number, c: string) => void;
 function drawCity(g: CanvasRenderingContext2D, R: Rect, frame: number, layer: 'behind' | 'front') {
   const tick = (frame / 3) | 0;
   if (layer === 'behind') {
-    // The Golden Gate, far off beyond the start of the street: a pale orange tower and its cables over a line of bay.
-    g.globalAlpha = 0.55;
-    R(0, TOP - 34, 60, 2, '#9fb8c8');
-    for (const x0 of [22, 34]) { R(x0, TOP - 118, 4, 84, '#e0896c'); R(x0, TOP - 120, 4, 2, '#c96f54'); }
-    for (const y of [TOP - 106, TOP - 84, TOP - 62]) R(22, y, 16, 3, '#e0896c');
-    for (let i = 0; i < 20; i++) { R(25 - i, TOP - 116 + i * 4, 1, 1, '#c96f54'); R(37 + i, TOP - 116 + i * 4, 1, 1, '#c96f54'); }
+    // The Golden Gate, far off beyond the start of the street: its Art Deco tower with stepped crown and portal braces,
+    // the deck and its truss, the main cables draping to either side with suspenders, a blinking light on top, over a
+    // strip of bay. Drawn pale, since it is far away, and kept left of the cable car.
+    const OR = '#d9775a', ORD = '#b35a42', ORL = '#f0a68a', g0 = TOP - 34;
+    g.globalAlpha = 0.62;
+    R(0, g0, 68, 3, '#9fb8c8'); for (let x = (tick % 4); x < 68; x += 7) R(x, g0 + 1, 3, 1, '#c8dbe6');      // the bay, a wave drifting
+    for (const lx of [25, 38]) { R(lx, TOP - 120, 5, 86, OR); R(lx, TOP - 120, 1, 86, ORL); R(lx + 4, TOP - 120, 1, 86, ORD); R(lx + 2, TOP - 116, 1, 80, ORD); } // two legs with a recessed panel
+    R(24, TOP - 123, 20, 3, OR); R(24, TOP - 123, 20, 1, ORL); R(26, TOP - 125, 16, 2, OR); R(29, TOP - 127, 10, 2, ORD); // stepped crown
+    for (const y of [TOP - 110, TOP - 96, TOP - 82, TOP - 68]) { R(30, y, 8, 3, OR); R(30, y, 8, 1, ORL); R(32, y + 1, 4, 1, ORD); } // portal braces
+    R(33, TOP - 130, 2, 2, tick % 4 < 2 ? '#ff4a3a' : '#a83a30');                                                    // aircraft light
+    R(0, TOP - 58, 68, 3, OR); R(0, TOP - 58, 68, 1, ORL); R(0, TOP - 55, 68, 1, ORD);                                // the deck
+    for (let x = 0; x < 68; x += 2) R(x, TOP - 54 + (x % 4 ? 1 : 0), 1, 1, ORD);                                      // truss beneath it
+    const cable = (x0: number, x1: number, y0: number, y1: number) => {
+      for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
+        const t = (x - x0) / (x1 - x0), y = Math.round(y0 + (y1 - y0) * (1 - (1 - t) ** 2));  // drops steeply from the tower, then levels
+        R(x, y, 1, 1, ORD);
+        if (x % 3 === 0 && y < TOP - 59) R(x, y + 1, 1, TOP - 59 - y, 'rgba(179,90,66,0.55)');                       // suspenders
+      }
+    };
+    cable(27, 0, TOP - 121, TOP - 64); cable(41, 67, TOP - 121, TOP - 66);
     g.globalAlpha = 1;
     // Two of Telegraph Hill's wild parrots on the North Beach lights, hopping now and then.
     [[962, 0], [984, 4]].forEach(([px0, off]) => {
