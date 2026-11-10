@@ -43,12 +43,12 @@ const pct = (x: number) => ((x - X0) / (X1 - X0)) * 100;
 
 /**
  * The camera for a step: that bar, at the largest whole-number zoom that fits beside the task panel (`panel` pixels on
- * the right). The overview shows the step's whole stretch of street.
+ * the right). With `street`, it shows that whole stretch of street instead.
  */
-export function camera(step: number, w: number, h: number, overview = false, panel = 0): Camera {
+export function camera(step: number, w: number, h: number, street: number | null = null, panel = 0): Camera {
   const s = STOPS[step] ?? STOPS[0];
-  if (overview) {
-    const st = STREETS[streetOf(step)]!, rw = st.to - st.from, scale = Math.min(1, (w - 48) / rw, (h - 48) / (CRAWL.height - 40));
+  if (street !== null) {
+    const st = STREETS[street] ?? STREETS[0], rw = st.to - st.from, scale = Math.min(1, (w - 48) / rw, (h - 48) / (CRAWL.height - 40));
     return { scale, x: Math.round((w - rw * scale) / 2 - st.from * scale), y: Math.round(h * 0.55 - (TOP - 100) * scale) };
   }
   const x0 = s.span[0] - 70, x1 = s.span[1] + 70;
@@ -62,8 +62,8 @@ export function camera(step: number, w: number, h: number, overview = false, pan
  * Geometry for one step. The path is the whole street, so the cable car never jumps: stops[0] is where this step's walk
  * starts (the last bar), stops[i + 1] is check i, and the last stop is just past the bar, all as a percentage of the street.
  */
-export function crawlPath(step: number, count: number, w: number, h: number, overview = false, view?: Camera | null, panel = 0) {
-  const cam = view ?? camera(step, w, h, overview, panel), s = STOPS[step] ?? STOPS[0];
+export function crawlPath(step: number, count: number, w: number, h: number, street: number | null = null, view?: Camera | null, panel = 0) {
+  const cam = view ?? camera(step, w, h, street, panel), s = STOPS[step] ?? STOPS[0];
   const prev = STOPS[step - 1], from = prev ? prev.span[1] + 14 : 100, to = s.span[1] + 14, n = Math.max(1, count);
   const xs = Array.from({ length: n }, (_, i) => Math.round(s.span[0] + ((i + 0.5) / n) * (s.span[1] - s.span[0])));
   return {
