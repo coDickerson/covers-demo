@@ -6,40 +6,15 @@ export const TREE_LAYERS = [0, 1, 2, 3, 4].map((n) => ({ src: `/town/trees-${n}.
 /** The bell's frame size in art pixels (public/town/bell-N.png), drawn on the same pixel grid as the town. */
 export const BELL_ART = { width: 25, height: 28 } as const;
 
-/** Small living details, in art pixels: the checkpoint's beacon, the restaurant's string lights, its kitchen vents. */
+/** Small living details, in art pixels: the terrace's string lights. */
 export const LIFE = {
-  beacon: { x: 155, y: 183, size: 4 },
-  bulbs: [[528, 285], [533, 285], [538, 285], [543, 284], [548, 283], [553, 286], [558, 287], [564, 289], [570, 291], [575, 292],
-    [529, 290], [534, 292], [540, 294], [546, 294], [554, 294], [558, 295], [564, 295], [570, 295], [575, 294]] as [number, number][],
-  vents: [{ x: 390, y: 252 }, { x: 412, y: 242 }],
+  bulbs: [[366, 223], [370, 223], [376, 224], [383, 225], [394, 226], [404, 226], [413, 225], [417, 226], [335, 228]] as [number, number][],
 };
 
-/**
- * People at the restaurant's long table, in art pixels (bottom-centre of each sprite, sitting on a chair). The far row
- * faces us across the table; the near row has its back to us. One far chair stays empty: the no-show.
- */
-export const PEOPLE = {
-  far: [[495, 347, 0], [507, 343, 1], [518, 340, 2], [528, 337, 3]] as [number, number, number][],
-  near: [[497, 353, 0], [526, 350, 1], [546, 346, 2]] as [number, number, number][],
-  waiter: { x: 498, y: 374, width: 10, height: 15 },
-};
-
-/**
- * Townsfolk strolling the sidewalks and back (feet at x, y; they walk dx, dy and turn round). Each takes its own time,
- * so they never move in step with each other or the trees.
- */
-export const FOLK = [
-  { look: 0, x: 432, y: 128, dx: 72, dy: 23, every: 17, delay: 2 },
-  { look: 1, x: 296, y: 369, dx: 84, dy: 19, every: 21, delay: 9 },
-  { look: 2, x: 352, y: 467, dx: 88, dy: 20, every: 19, delay: 5 },
-];
-
-/** Evening light: street lamps (bottom-centre of the post) at the back edge of the sidewalks. */
-export const LAMPS: [number, number][] = [[548, 156], [452, 128], [232, 90], [276, 164], [232, 236], [150, 318], [306, 340], [420, 374], [482, 388], [108, 450], [240, 458], [380, 462], [540, 472]];
-/** The checkpoint's boom gate: pivot, arm length, and its closed and lifted angles (degrees). */
-export const GATE = { x: 181, y: 224, length: 46, closed: -13.5, open: -75 } as const;
+/** The checkpoint's boom gate: pivot on the yellow post, arm length, and its closed and lifted angles (degrees). */
+export const GATE = { x: 439, y: 130.5, length: 63, closed: 7.3, open: -80, light: { x: 433, y: 125 } } as const;
 /** The bank's vault wheel (public/town/wheel.png) and the window bar drawn in front of it. */
-export const WHEEL = { x: 160, y: 289, size: 34, bar: { x: 175, y: 288, width: 3, height: 36 } } as const;
+export const WHEEL = { x: 476, y: 260, size: 39, bar: { x: 494, y: 260, width: 4, height: 39 } } as const;
 
 type Pt = { x: number; y: number };
 
@@ -52,14 +27,17 @@ export const PLACES = ['Halden HQ', 'Compliance row', 'The bank (Ramp)', 'The re
  * spine, the bank, the restaurant, back past the bank to the kiosk, along the bottom row to the federal building.
  */
 export const ROUTES: [number, number, 0 | 1][][] = [
-  [[535, 161, 0], [510, 153, 1], [480, 144, 1], [450, 134, 1], [420, 124, 1], [401, 117, 0], [389, 100, 0]],
-  [[340, 94, 0], [300, 86, 0], [270, 80, 0], [259, 82, 0], [222, 104, 0], [188, 103, 1], [222, 104, 0], [259, 84, 0], [322, 90, 1], [259, 84, 0],
-    [259, 160, 0], [232, 172, 0], [196, 180, 1], [232, 172, 0], [259, 160, 0], [300, 165, 1], [259, 162, 0], [259, 238, 0], [215, 242, 1], [259, 238, 0], [296, 243, 1]],
-  [[259, 239, 0], [276, 262, 0], [276, 360, 0], [232, 354, 1], [204, 345, 1], [176, 340, 1], [150, 334, 1]],
-  [[200, 344, 0], [276, 364, 0], [345, 378, 1], [395, 391, 1], [440, 401, 1], [482, 407, 1]],
-  [[440, 401, 0], [360, 383, 0], [276, 364, 0], [200, 344, 0], [146, 336, 0], [152, 394, 0], [160, 452, 0], [150, 459, 0], [140, 463, 1], [125, 466, 1], [110, 462, 1], [96, 457, 1]],
-  [[125, 466, 0], [150, 459, 0], [170, 456, 0], [188, 461, 1], [210, 466, 1], [232, 470, 1], [254, 475, 1], [266, 478, 0], [280, 472, 1], [300, 462, 1]],
-  [[334, 464, 0], [360, 468, 1], [410, 479, 1], [452, 488, 1], [484, 489, 0], [524, 470, 0], [545, 475, 0], [585, 482, 1], [600, 489, 0]],
+  // Top street, left to right: HQ, then the compliance office and the checkpoint.
+  [[60, 127, 0], [95, 131, 1], [130, 137, 1], [165, 141, 1], [200, 145, 1], [228, 147, 0]],
+  [[260, 151, 1], [295, 155, 1], [330, 159, 1], [370, 164, 1], [455, 168, 1], [530, 177, 1], [612, 183, 0]],
+  // Round the corner and back along the middle street, right to left: the bank, then the restaurant.
+  [[640, 193, 0], [660, 212, 0], [660, 298, 0], [652, 318, 0], [630, 332, 0], [622, 333, 1], [588, 330, 1], [555, 325, 1], [505, 320, 1]],
+  [[415, 313, 1], [350, 305, 1], [280, 298, 1], [200, 288, 1], [150, 284, 0]],
+  // Across at the zebra crossing and down to the bottom street: the phone kiosk.
+  [[95, 281, 0], [74, 284, 0], [62, 298, 0], [45, 316, 0], [40, 350, 0], [40, 394, 0], [52, 410, 0], [70, 417, 1], [92, 419, 1], [114, 421, 1], [136, 423, 1]],
+  // Along the bottom street, left to right: the accounting office, the parcel depot, the federal building.
+  [[165, 427, 1], [190, 431, 1], [215, 434, 1], [240, 436, 1], [262, 439, 1], [286, 442, 1]],
+  [[325, 446, 1], [358, 451, 1], [374, 459, 0], [395, 464, 0], [462, 468, 0], [486, 461, 0], [560, 467, 1], [612, 473, 1], [690, 481, 0]],
 ];
 
 /** The whole tour as one path: its points, the length along it at each point, and where each leg starts and ends. */
@@ -84,7 +62,7 @@ export type Camera = { x: number; y: number; scale: number };
 export function camera(step: number, w: number, h: number, overview = false): Camera {
   const leg = ROUTES[step] ?? ROUTES[0]!, prev = ROUTES[step - 1]?.at(-1);
   const xs = [...leg, ...(prev ? [prev] : [])].map((q) => q[0]), ys = [...leg, ...(prev ? [prev] : [])].map((q) => q[1]);
-  const [x0, y0, x1, y1] = overview ? [0, 0, TOWN.width, TOWN.height] : [Math.min(...xs) - 40, Math.min(...ys) - 85, Math.max(...xs) + 40, Math.max(...ys) + 30];
+  const [x0, y0, x1, y1] = overview ? [0, 0, TOWN.width, TOWN.height] : [Math.min(...xs) - 40, Math.min(...ys) - 120, Math.max(...xs) + 40, Math.max(...ys) + 28];
   const scale = Math.min(3, (w * 0.92) / (x1 - x0), (h * 0.88) / (y1 - y0));
   return { scale, x: w / 2 - ((x0 + x1) / 2) * scale, y: h / 2 - ((y0 + y1) / 2) * scale };
 }
