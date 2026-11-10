@@ -8,12 +8,12 @@ They were made in Figma Motion: Covers-Design → page "06 Motion"
 
 | File | Length | What happens |
 |---|---|---|
-| `01-title.mp4` | 4.5 s | The cable car drops in and squashes on landing, "Covers" rises in, then the tagline and an accent bar. The cable car hops twice. |
+| `01-title.mp4` | 4.5 s | The cable car drops in and squashes on landing, the pixel "Covers" wordmark (the app's) rises in, then the tagline and an accent bar. The cable car hops twice. |
 | `02-problem.mp4` | 6 s | "$678 million", the Novartis line, then "Today these dinners are checked after the money is spent." The cable car walks in at the bottom right. Source credit included. |
 | `03-chapter-before-the-dinner.mp4` | 3 s | Chapter card: the cable car walks in and "01 Before the dinner · Plan · Check · Fund" rises. |
 | `04-chapter-the-morning-after.mp4` | 3 s | Chapter 02: "The morning after · Charge · Notify · Close out". |
 | `05-chapter-oversight.mp4` | 3 s | Chapter 03: "Oversight · Settle · Compliance · Report". |
-| `06-end.mp4` | 5 s | "Covers", the tagline and the repo link. A green SETTLED stamp slams down and the cable car hops. |
+| `06-end.mp4` | 5 s | The pixel "Covers" wordmark, the tagline and the repo link. Once everything is on screen, a green SETTLED stamp slams down across the wordmark. |
 | `phone-notification-16x9.mp4` | 7.4 s | Full-frame phone beat with captions, for Dr. Patel's dinner: $612.00 at Alder & Vine, the morning after (Friday, November 13). It ends zooming in and fading to the site background. |
 | `phone-overlay-greenscreen.mp4` | 7.4 s | The same phone motion with no captions, on chroma green (`#00B140`). The phone slides in from the right, then out. Key it over the laptop recording. |
 | `phone-notification.mp4` | 6 s | Portrait v1, phone only. |
