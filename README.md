@@ -129,7 +129,7 @@ flowchart LR
 - **Facts, never decisions.** Each agent ends by submitting a Zod-validated result with a source and a confidence for every fact. The deterministic engine still decides, and people still approve.
 - **Real venues.** The venue agent researches the restaurant on Google Maps through an Apify integration (`venue.ts`): category, price level, whether it's a bar first. It refuses Google's nearest guess when the name or city doesn't match. On the demo's fictional Alder & Vine it correctly reports "not found"; on Tosca Cafe it finds 242 Columbus Ave.
 
-A live run on three real California cardiologists (`pnpm --filter @covers/evals diligence`) took 81 seconds and about $0.19:
+A live run on three real California cardiologists (`pnpm --filter @covers/evals diligence`) took 81 seconds:
 - It ranked one clinician high risk: $3,468.64 in food and beverage across 95 meals in 2025, above a $2,000 annual meal limit.
 - It ranked the other two medium. One received 51% of their meals from a single company.
 - The verifier confirmed 6 concerns and sent 1 fact it couldn't confirm to a person.
