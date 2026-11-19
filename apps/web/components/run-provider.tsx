@@ -1,7 +1,7 @@
 'use client';
 // Keeps the bell working when you change pages: runs live above every page, so the dashboard and the map watch the same one.
 // A run paces results the service has already returned. Nothing here changes the record.
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { tokens } from '../lib/tokens';
 
 /** `start` picks up partway along a step's stations. `recheck` lists the only stations to revisit, from wherever the bell is. `exit` walks to the end of the path before the next stage begins. */
@@ -11,7 +11,15 @@ export type Run = { step: number; at: number; seen: number; line: number; label:
 type Runs = { runs: Record<string, Run>; play: (planId: string, stages: Stage[]) => Promise<void> };
 
 const RunContext = createContext<Runs>({ runs: {}, play: async () => {} });
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// P pauses a run mid-walk (for a presenter who needs longer at a step) and resumes it. A paused wait doesn't count down.
+let paused = false;
+const TICK = 50;
+const sleep = async (ms: number) => {
+  for (let left = ms; left > 0;) {
+    await new Promise((r) => setTimeout(r, Math.min(TICK, left)));
+    if (!paused) left -= TICK;
+  }
+};
 export const WALK_MS = tokens['motion/duration/slow'] * 3.5; // the walker's pace between stations at one place
 /** The longer walk from one place (bar) to the next, slow enough to see the cable car sway. */
 export const TRAVEL_MS = tokens['motion/duration/slow'] * 11;
@@ -20,6 +28,17 @@ const THINK = tokens['motion/duration/fast'];
 
 export function RunProvider({ children }: { children: React.ReactNode }) {
   const [runs, setRuns] = useState<Record<string, Run>>({});
+  const [isPaused, setPaused] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.key.toLowerCase() !== 'p') return;
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable]')) return;
+      paused = !paused;
+      setPaused(paused);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const play = useCallback(async (planId: string, stages: Stage[]) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const set = (run: Run) => setRuns((r) => ({ ...r, [planId]: run }));
@@ -52,7 +71,17 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
     setRuns((r) => { const { [planId]: _done, ...rest } = r; return rest; });
   }, []);
   const value = useMemo(() => ({ runs, play }), [runs, play]);
-  return <RunContext.Provider value={value}>{children}</RunContext.Provider>;
+  return (
+    <RunContext.Provider value={value}>
+      {children}
+      {isPaused && (
+        <div role="status" className="fixed right-5 bottom-5 z-50 flex h-9 items-center gap-2 rounded-pill border border-ink-primary bg-bg-surface px-4 text-ink-primary">
+          <span className="font-mono text-micro tracking-widest">PAUSED</span>
+          <span className="text-micro text-ink-muted">P to resume</span>
+        </div>
+      )}
+    </RunContext.Provider>
+  );
 }
 
 export const useRuns = () => useContext(RunContext);
