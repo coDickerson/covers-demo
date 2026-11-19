@@ -29,7 +29,10 @@ function Source({ href }: { href: string }) {
   return /^https?:/.test(href) ? <a href={href} target="_blank" rel="noreferrer" className="shrink-0 text-small text-ink-muted underline hover:text-ink-primary">source ↗</a> : <span className="shrink-0 font-mono text-micro text-ink-muted">{href}</span>;
 }
 
-export function AgentsView() {
+/** What the Agents tab label shows while you're on another tab. */
+export type AgentsStatus = 'idle' | 'working' | 'done';
+
+export function AgentsView({ onStatus }: { onStatus?: (s: AgentsStatus) => void } = {}) {
   const [doctors, setDoctors] = useState<Hcp[]>([]);
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<Hcp[]>([]);
@@ -54,6 +57,8 @@ export function AgentsView() {
     const id = window.setInterval(() => setElapsed(Math.round((Date.now() - started.current) / 1000)), 1000);
     return () => window.clearInterval(id);
   }, [running]);
+
+  useEffect(() => { onStatus?.(running ? 'working' : result ? 'done' : 'idle'); }, [running, result, onStatus]);
 
   const add = (h: Hcp) => { setDoctors((d) => (d.some((x) => x.npi === h.npi) || d.length >= 6 ? d : [...d, h])); setQuery(''); setFound([]); };
   const sample = async () => {
