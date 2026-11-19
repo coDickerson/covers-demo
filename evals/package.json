@@ -12,7 +12,8 @@
     "demo:record": "COVERS_CACHE=record tsx cache/demo-run.ts",
     "demo:replay": "COVERS_CACHE=1 tsx cache/demo-run.ts",
     "backtest": "tsx backtest/run-backtest.ts",
-    "diligence": "tsx backtest/run-diligence.ts"
+    "diligence": "tsx backtest/run-diligence.ts",
+    "preflight": "tsx preflight.ts"
   },
   "dependencies": {
     "@covers/contract": "workspace:*",

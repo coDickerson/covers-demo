@@ -11,7 +11,8 @@
     "test": "pnpm -r --if-present test",
     "test:contract": "pnpm -r --if-present test:contract",
     "typecheck": "pnpm -r --if-present typecheck",
-    "tokens:pull": "node design/tokens-pull.mjs"
+    "tokens:pull": "node design/tokens-pull.mjs",
+    "preflight": "pnpm --filter @covers/evals preflight"
   },
   "devDependencies": {
     "typescript": "6.0.3"
