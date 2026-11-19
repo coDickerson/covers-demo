@@ -30,7 +30,7 @@ export type RampTransaction = {
   categoryId?: number; categoryName?: string;
 };
 
-const SCOPES = [
+export const RAMP_SCOPES = [
   'users:read', 'cards:read', 'limits:read', 'limits:write', 'transactions:read',
   'receipts:write', 'memos:write',
 ].join(' ');
@@ -50,7 +50,7 @@ export function createRampClient(cfg: RampConfig) {
         Authorization: `Basic ${btoa(`${cfg.clientId}:${cfg.clientSecret}`)}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ grant_type: 'client_credentials', scope: SCOPES }).toString(),
+      body: new URLSearchParams({ grant_type: 'client_credentials', scope: RAMP_SCOPES }).toString(),
     });
     const body = await parse(res);
     token = { value: body.access_token, expiresAt: now() + Number(body.expires_in ?? 3600) * 1000 };

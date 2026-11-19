@@ -20,6 +20,11 @@ export function getService(): Promise<CoversService> {
         ? import('./live').then((m) => m.createLiveService())
         : Promise.resolve<CoversService>(new FixtureService(storeFromEnv(), () => ProofBundle.parse(proofJson)));
     g.__coversService = { mode, svc };
+    // A start that fails (the database is down or paused) is not kept: the next request tries again, so the site
+    // recovers on its own once the database is back instead of failing until the server restarts.
+    svc.catch(() => {
+      if (g.__coversService?.svc === svc) g.__coversService = undefined;
+    });
   }
   return g.__coversService.svc;
 }
