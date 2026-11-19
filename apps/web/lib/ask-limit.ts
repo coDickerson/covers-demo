@@ -43,6 +43,11 @@ export function clientKey(headers: Headers): string {
 }
 
 // The diligence agents cost about $0.19 a run, so they get their own, tighter limits on the same counter.
+/**
+ * The agent limits protect the public link (Vercel), where anyone can spend the API key. Running on your own laptop
+ * with your own keys, there is no limit, so a rehearsal can't use up the runs needed on stage.
+ */
+export const agentLimitsApply = (env: NodeJS.ProcessEnv = process.env) => !!env.VERCEL;
 export const AGENT_LIMITS = { perDay: 30, perClientPerDay: 10, perSession: 3 };
 
 /** Counts this agents run. Returns the message to show if it is over any limit, otherwise null. */
