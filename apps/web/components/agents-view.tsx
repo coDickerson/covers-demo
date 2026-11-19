@@ -29,6 +29,9 @@ function Source({ href }: { href: string }) {
   return /^https?:/.test(href) ? <a href={href} target="_blank" rel="noreferrer" className="shrink-0 text-small text-ink-muted underline hover:text-ink-primary">source ↗</a> : <span className="shrink-0 font-mono text-micro text-ink-muted">{href}</span>;
 }
 
+/** A saved run played back while presenting (COVERS_AGENTS=replay). */
+type Replayed = { recordedAt: string; seconds: number };
+
 /** What the Agents tab label shows while you're on another tab. */
 export type AgentsStatus = 'idle' | 'working' | 'done';
 
@@ -39,7 +42,7 @@ export function AgentsView({ onStatus }: { onStatus?: (s: AgentsStatus) => void 
   const [venue, setVenue] = useState('Tosca Cafe, San Francisco');
   const [states, setStates] = useState<Record<AgentId, State>>(() => Object.fromEntries(CREW.map((a) => [a.id, 'waiting'])) as Record<AgentId, State>);
   const [log, setLog] = useState<Record<AgentId, string[]>>(emptyLog);
-  const [result, setResult] = useState<(DiligenceRun & { seconds: number }) | null>(null);
+  const [result, setResult] = useState<(DiligenceRun & { seconds: number; replayOf?: Replayed }) | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const started = useRef(0);
@@ -82,12 +85,12 @@ export function AgentsView({ onStatus }: { onStatus?: (s: AgentsStatus) => void 
         const lines = buf.split('\n'); buf = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.trim()) continue;
-          const msg = JSON.parse(line) as { type: 'event'; event: DiligenceEvent } | ({ type: 'report'; seconds: number } & DiligenceRun) | { type: 'error'; error: string };
+          const msg = JSON.parse(line) as { type: 'event'; event: DiligenceEvent } | ({ type: 'report'; seconds: number; replayOf?: Replayed } & DiligenceRun) | { type: 'error'; error: string };
           if (msg.type === 'event') {
             const { agent, phase, detail } = msg.event;
             setStates((s) => ({ ...s, [agent]: phase === 'start' || phase === 'tool' ? 'working' : phase }));
             if (detail) setLog((l) => ({ ...l, [agent]: [...l[agent], phase === 'tool' ? detail : `→ ${detail}`].slice(-4) }));
-          } else if (msg.type === 'report') setResult({ report: msg.report, trace: msg.trace, seconds: msg.seconds });
+          } else if (msg.type === 'report') setResult({ report: msg.report, trace: msg.trace, seconds: msg.seconds, ...(msg.replayOf ? { replayOf: msg.replayOf } : {}) });
           else throw new Error(msg.error);
         }
       }
@@ -185,7 +188,7 @@ export function AgentsView({ onStatus }: { onStatus?: (s: AgentsStatus) => void 
                 <p className="mt-1 text-small">{result.report.venue.found ? <><b className="font-strong">{result.report.venue.name}</b> · {result.report.venue.category ?? 'uncategorised'}{result.report.venue.priceLevel ? ` · ${'$'.repeat(result.report.venue.priceLevel)}` : ''}{result.report.venue.isBarFirst ? ' · a bar first' : ''}</> : 'Not found on Google Maps'}</p>
               </div>
             )}
-            <p className="text-micro text-ink-muted">{result.seconds}s · {tokens ? `${(tokens.in + tokens.out).toLocaleString()} tokens across ${result.trace.length} agents` : ''} · real public data: CMS Open Payments, the NPI registry, Google Maps via Apify. The agents report facts; nothing here passes or blocks a dinner.</p>
+            <p className="text-micro text-ink-muted">{result.replayOf ? '' : `${result.seconds}s · `}{tokens ? `${(tokens.in + tokens.out).toLocaleString()} tokens across ${result.trace.length} agents` : ''} · real public data: CMS Open Payments, the NPI registry, Google Maps via Apify. The agents report facts; nothing here passes or blocks a dinner.</p>
           </div>
         </section>
       )}

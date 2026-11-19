@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { createDiligenceCrew, createNppesClient, createOpenPaymentsClient, createVenueClient, isValidNpi, type DiligenceEvent } from '@covers/integrations';
 import { agentLimitsApply, checkAgentLimit, clientKey, counterFromEnv } from '@/lib/ask-limit';
+import { agentsReplay, loadRecording, replaySchedule, saveRecording, type DiligenceRecording } from '@/lib/diligence-replay';
 import { getCtx } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -22,6 +23,11 @@ const Body = z.object({
 export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ ok: false, error: 'Pick one to six doctors and a venue.' }, { status: 400 });
+  // Presenting: play a saved real run back, sped up, at no cost. With no saved run for these guests, run for real.
+  if (agentsReplay()) {
+    const saved = await loadRecording([...new Set(parsed.data.npis)], parsed.data.venue);
+    if (saved) return replay(saved);
+  }
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ ok: false, error: 'The agents run in local live mode: they need ANTHROPIC_API_KEY on the server.' }, { status: 503 });
   // Fictional seed doctors (NPIs starting with 9 fail the check digit) have no public record to research.
   const npis = [...new Set(parsed.data.npis)].filter((n) => isValidNpi(n) && !n.startsWith('9'));
@@ -39,21 +45,45 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (x: unknown) => controller.enqueue(enc.encode(`${JSON.stringify(x)}\n`));
-      const started = Date.now();
+      const started = Date.now(), events: DiligenceRecording['events'] = [];
       try {
         const crew = createDiligenceCrew({
           nppes: createNppesClient(),
           payments: createOpenPaymentsClient(),
           venue: process.env.APIFY_TOKEN ? createVenueClient() : undefined,
-          onEvent: (event: DiligenceEvent) => send({ type: 'event', event }),
+          onEvent: (event: DiligenceEvent) => { events.push({ ms: Date.now() - started, event }); send({ type: 'event', event }); },
         });
         const { report, trace } = await crew.investigate({ venue: parsed.data.venue, npis, estimatedPerPersonCents: parsed.data.estimatedPerPersonCents });
-        send({ type: 'report', report, trace, seconds: Math.round((Date.now() - started) / 1000) });
+        const seconds = Math.round((Date.now() - started) / 1000);
+        send({ type: 'report', report, trace, seconds });
+        // Saved so it can be replayed while presenting (COVERS_AGENTS=replay).
+        await saveRecording({ recordedAt: new Date().toISOString(), npis: parsed.data.npis, venue: parsed.data.venue, seconds, events, report, trace });
       } catch (e) {
         send({ type: 'error', error: e instanceof Error ? e.message : 'The agents could not finish.' });
       } finally {
         controller.close();
       }
+    },
+  });
+  return new Response(stream, { headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store' } });
+}
+
+/** Streams a saved run in the same shape as a real one, its real timing sped up to about 20 seconds. */
+function replay(saved: DiligenceRecording) {
+  const enc = new TextEncoder();
+  const at = replaySchedule(saved.events);
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (x: unknown) => controller.enqueue(enc.encode(`${JSON.stringify(x)}\n`));
+      const started = Date.now();
+      const wait = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms - (Date.now() - started))));
+      for (const [i, e] of saved.events.entries()) {
+        await wait(at[i]!);
+        send({ type: 'event', event: e.event });
+      }
+      await wait((at.at(-1) ?? 0) + 600);
+      send({ type: 'report', report: saved.report, trace: saved.trace, seconds: Math.round((Date.now() - started) / 1000), replayOf: { recordedAt: saved.recordedAt, seconds: saved.seconds } });
+      controller.close();
     },
   });
   return new Response(stream, { headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store' } });
