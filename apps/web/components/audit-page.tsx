@@ -10,7 +10,7 @@ import { actorOf, CHIPS, labelOf, sectionOf, SECTIONS, type SectionId } from '..
 import { usd, type Role } from '../lib/dinner';
 import type { DocRef } from '../lib/map';
 import { AppBar, readRole, setRoleCookie } from './app-bar';
-import { AgentsView } from './agents-view';
+import { AgentsView, type AgentsStatus } from './agents-view';
 import { DoctorsView, ProofView, RulesView, SourcesView } from './audit-views';
 
 export type AuditView = 'events' | 'agents' | 'rules' | 'doctors' | 'sources' | 'proof';
@@ -20,6 +20,7 @@ export function AuditPage({ view: startView = 'events', doc, at }: { view?: Audi
   const router = useRouter();
   const [role, setRole] = useState<Role>('rep');
   const [view, setView] = useState<AuditView>(startView);
+  const [agents, setAgents] = useState<AgentsStatus>('idle');
   const [section, setSection] = useState<SectionId | null>(null);
   const [chip, setChip] = useState(0);
   const [search, setSearch] = useState('');
@@ -82,7 +83,7 @@ export function AuditPage({ view: startView = 'events', doc, at }: { view?: Audi
 
         <main className="flex min-h-0 flex-col">
           <div className="flex items-end gap-5 border-b border-ink-primary">
-            {VIEWS.map(([v, name]) => <button key={v} onClick={() => pick(v)} aria-current={view === v ? 'page' : undefined} className={`-mb-px cursor-pointer border-b-2 pb-1.5 text-small ${view === v ? 'border-ink-primary font-strong' : 'border-transparent text-ink-muted hover:text-ink-primary'}`}>{name}{v === 'events' && here ? ` · ${here.name}` : ''}</button>)}
+            {VIEWS.map(([v, name]) => <button key={v} onClick={() => pick(v)} aria-current={view === v ? 'page' : undefined} className={`-mb-px cursor-pointer border-b-2 pb-1.5 text-small ${view === v ? 'border-ink-primary font-strong' : 'border-transparent text-ink-muted hover:text-ink-primary'}`}>{name}{v === 'events' && here ? ` · ${here.name}` : ''}{v === 'agents' && agents !== 'idle' ? ` · ${agents}` : ''}</button>)}
           </div>
 
           {view === 'events' && (
@@ -132,9 +133,12 @@ export function AuditPage({ view: startView = 'events', doc, at }: { view?: Audi
               )}
             </div>
           )}
-          {view !== 'events' && (
+          {/* Agents stays mounted while you look at other tabs, so a run keeps going and its report is there when you come back. */}
+          <div className={`mt-3 min-h-0 flex-1 flex-col ${view === 'agents' ? 'flex' : 'hidden'}`}>
+            <AgentsView onStatus={setAgents} />
+          </div>
+          {view !== 'events' && view !== 'agents' && (
             <div className="mt-3 flex min-h-0 flex-1 flex-col">
-              {view === 'agents' && <AgentsView />}
               {view === 'rules' && <RulesView onDoc={openDoc} used={used} />}
               {view === 'doctors' && <DoctorsView onDoc={openDoc} />}
               {view === 'sources' && <SourcesView doc={source.doc} at={source.at} onDoc={openDoc} />}
