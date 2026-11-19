@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_LIMITS, ASK_LIMITS, checkAgentLimit, checkAskLimit, clientKey, counterFromEnv, MemoryCounter } from '../lib/ask-limit';
+import { AGENT_LIMITS, ASK_LIMITS, agentLimitsApply, checkAgentLimit, checkAskLimit, clientKey, counterFromEnv, MemoryCounter } from '../lib/ask-limit';
 
 describe('agent run limits', () => {
+  it('apply on the public link (Vercel) and not on a laptop', () => {
+    expect(agentLimitsApply({ VERCEL: '1' } as unknown as NodeJS.ProcessEnv)).toBe(true);
+    expect(agentLimitsApply({} as unknown as NodeJS.ProcessEnv)).toBe(false);
+  });
+
   it('stops a session after 3 runs, separately from questions', async () => {
     const c = new MemoryCounter();
     const who = { client: 'a', sessionId: 's' };
