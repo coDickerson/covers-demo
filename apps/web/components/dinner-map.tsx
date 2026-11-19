@@ -111,7 +111,7 @@ function Walker({ pathRef, trailRef, target, startAtZero, paced, alert, onClick,
   );
 }
 
-export function DinnerMap({ planId, intro = false }: { planId: string; intro?: boolean }) {
+export function DinnerMap({ planId, intro = false, openStep }: { planId: string; intro?: boolean; openStep?: number }) {
   const { runs, play } = useRuns();
   const run = runs[planId];
   const [core, setCore] = useState<{ view: PlanView; rounds: Evaluation[]; receipt: Receipt | null; settlement: Settlement | null } | null>(null);
@@ -214,6 +214,15 @@ export function DinnerMap({ planId, intro = false }: { planId: string; intro?: b
 
   const state: DinnerState | null = useMemo(() => (core ? { ...core, notes, audit } : null), [core, notes, audit]);
   const step = core ? stepOf(core.view, core.receipt, core.settlement, role) : 0;
+  // Opened from the Audit tab at a step: show that step once the dinner has loaded, if it has been reached.
+  const openRef = useRef(openStep);
+  useEffect(() => {
+    const to = openRef.current;
+    if (to === undefined || !core) return;
+    openRef.current = undefined;
+    window.history.replaceState(null, '', `/plans/${encodeURIComponent(planId)}`);
+    if (to < step) setViewing(to);
+  }, [core]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = run?.step ?? viewing ?? step;
   const stations = useMemo(() => (state ? stationsFor(shown, state, shown === 1 && round !== null ? round : undefined) : []), [state, shown, round]);
   // `street`: looking at a whole stretch of the street (0 the Wharf to North Beach, 1 Chinatown to the Mission) instead of following.
