@@ -120,7 +120,7 @@ export function AuditPage({ view: startView = 'events', doc, at }: { view?: Audi
                                   {e.model && <><dt className="text-ink-muted">Model</dt><dd className="font-mono text-micro">{e.model}{e.promptVersion ? ` · prompt ${e.promptVersion}` : ''}</dd></>}
                                   {(e.ruleId || e.packId) && <><dt className="text-ink-muted">Rule</dt><dd><button onClick={(ev) => { ev.stopPropagation(); pick('rules'); }} className="cursor-pointer font-mono text-micro underline">{e.ruleId ?? e.packId}</button></dd></>}
                                 </dl>
-                                {e.planId && <Link href={`/plans/${encodeURIComponent(e.planId)}`} className="mt-2 inline-block border border-ink-primary px-2.5 py-1 text-small font-strong hover:bg-accent-tint">Open this step on the crawl</Link>}
+                                {e.planId && <Link href={`/plans/${encodeURIComponent(e.planId)}${typeof sectionOf(e) === 'number' ? `?step=${sectionOf(e)}` : ''}`} className="mt-2 inline-block border border-ink-primary px-2.5 py-1 text-small font-strong hover:bg-accent-tint">Open this step on the crawl</Link>}
                               </td>
                             </tr>
                           ),
